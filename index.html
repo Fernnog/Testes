@@ -135,16 +135,18 @@
                         <input type="text" id="total" name="total" value="0,00" readonly class="campo-calculado">
                     </div>
                 </div>
-                <div class="form-row"> <!-- Modified Row -->
+                <!-- MODIFICAÇÃO: Mover Observações e adicionar Previsão de Entrega lado a lado -->
+                <div class="form-row">
                     <div class="form-group">
                         <label for="observacoes">Observações:</label>
                         <textarea id="observacoes" name="observacoes" rows="4"></textarea>
                     </div>
-                    <div class="form-group"> <!-- Added Group -->
+                     <div class="form-group">
                         <label for="previsaoEntrega">Previsão de entrega do produto:</label>
                         <textarea id="previsaoEntrega" name="previsaoEntrega" rows="4"></textarea>
                     </div>
-                </div> <!-- End Modified Row -->
+                </div>
+                <!-- FIM DA MODIFICAÇÃO -->
                 <button type="button" id="btnGerarOrcamento">Gerar Orçamento</button>
                 <button type="button" id="btnAtualizarOrcamento" style="display: none;">Atualizar Orçamento</button>
             </form>
@@ -186,37 +188,37 @@
         <!-- ==== FIM SEÇÃO - ORÇAMENTOS GERADOS ==== -->
 
       <!-- ==== INÍCIO SEÇÃO - LISTA DE PEDIDOS ==== -->
-		<section id="lista-pedidos" class="pagina" style="display:none;">
-		    <h2>Pedidos Realizados</h2>
-		    <div class="filtro-data">
-		        <label for="filtroDataInicioPedido">Início:</label>
-		        <input type="date" id="filtroDataInicioPedido">
-		        <label for="filtroDataFimPedido">Fim:</label>
-		        <input type="date" id="filtroDataFimPedido">
-		        <label for="filtroNumeroPedido">Número:</label>
-		        <input type="number" id="filtroNumeroPedido" placeholder="Número do Pedido">
-		        <label for="filtroAnoPedido">Ano:</label>
-		        <input type="number" id="filtroAnoPedido" placeholder="Ano do Pedido">
-		        <label for="filtroClientePedido">Cliente:</label>
-		        <input type="text" id="filtroClientePedido" placeholder="Parte do nome do Cliente">
-		        <button type="button" onclick="filtrarPedidos()">Filtrar</button>
-		    </div>
-		    <table id="tabela-pedidos">
-		        <thead>
-		            <tr>
-		                <th>Número</th>
-		                <th>Data do Pedido</th>
-		                <th>Cliente</th>
-		                <th>Total</th>
-		                <th>Ações</th>
-		            </tr>
-		        </thead>
-		        <tbody>
-		            <!-- Linhas de pedidos serão adicionadas aqui -->
-		        </tbody>
-		    </table>
-		</section>
-		<!-- ==== FIM SEÇÃO - LISTA DE PEDIDOS ==== -->
+        <section id="lista-pedidos" class="pagina" style="display:none;">
+            <h2>Pedidos Realizados</h2>
+            <div class="filtro-data">
+                <label for="filtroDataInicioPedido">Início:</label>
+                <input type="date" id="filtroDataInicioPedido">
+                <label for="filtroDataFimPedido">Fim:</label>
+                <input type="date" id="filtroDataFimPedido">
+                <label for="filtroNumeroPedido">Número:</label>
+                <input type="number" id="filtroNumeroPedido" placeholder="Número do Pedido">
+                <label for="filtroAnoPedido">Ano:</label>
+                <input type="number" id="filtroAnoPedido" placeholder="Ano do Pedido">
+                <label for="filtroClientePedido">Cliente:</label>
+                <input type="text" id="filtroClientePedido" placeholder="Parte do nome do Cliente">
+                <button type="button" onclick="filtrarPedidos()">Filtrar</button>
+            </div>
+            <table id="tabela-pedidos">
+                <thead>
+                    <tr>
+                        <th>Número</th>
+                        <th>Data do Pedido</th>
+                        <th>Cliente</th>
+                        <th>Total</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Linhas de pedidos serão adicionadas aqui -->
+                </tbody>
+            </table>
+        </section>
+        <!-- ==== FIM SEÇÃO - LISTA DE PEDIDOS ==== -->
 
         <!-- ==== INÍCIO SEÇÃO - FORMULÁRIO DE EDIÇÃO DE PEDIDO ==== -->
         <section id="form-edicao-pedido" class="pagina" style="display:none;">
@@ -328,16 +330,10 @@
                         <input type="text" id="restanteEdicao" name="restanteEdicao" value="0,00" readonly>
                     </div>
                 </div>
-                 <div class="form-row"> <!-- Modified Row -->
-                    <div class="form-group">
-                        <label for="observacoesEdicao">Observações:</label>
-                        <textarea id="observacoesEdicao" name="observacoesEdicao" rows="4"></textarea>
-                    </div>
-                    <div class="form-group"> <!-- Added Group -->
-                        <label for="previsaoEntregaEdicao">Previsão de entrega do produto:</label>
-                        <textarea id="previsaoEntregaEdicao" name="previsaoEntregaEdicao" rows="4"></textarea>
-                    </div>
-                </div> <!-- End Modified Row -->
+                <div class="form-group">
+                    <label for="observacoesEdicao">Observações:</label>
+                    <textarea id="observacoesEdicao" name="observacoesEdicao" rows="4"></textarea>
+                </div>
                 <button type="button" id="btnSalvarPedidoEdicao">Salvar Alterações</button>
             </form>
         </section>
