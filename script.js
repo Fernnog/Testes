@@ -5,13 +5,13 @@ import { getFirestore, collection, addDoc, getDocs, doc, setDoc, query, where, o
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyDG1NYs6CM6TDfGAPXSz1ho8_-NWs28zSg", // SUA API KEY
-    authDomain: "perola-rara.firebaseapp.com",       // SEU AUTH DOMAIN
-    projectId: "perola-rara",                     // SEU PROJECT ID
-    storageBucket: "perola-rara.firebasestorage.app", // SEU STORAGE BUCKET
-    messagingSenderId: "502232132512",               // SEU MESSAGING SENDER ID
-    appId: "1:502232132512:web:59f227a7d35b39cc8752c5", // SEU APP ID
-    measurementId: "G-VHVMR10RSQ"                   // SEU MEASUREMENT ID (se usar Analytics)
+  apiKey: "AIzaSyC4xXSGw91MPLbC3ikCsdJ4pkNu1GZTqKQ",
+  authDomain: "teste-da-perola.firebaseapp.com",
+  projectId: "teste-da-perola",
+  storageBucket: "teste-da-perola.firebasestorage.app",
+  messagingSenderId: "845747978306",
+  appId: "1:845747978306:web:90314c25caf38106bc6ddb",
+  measurementId: "G-BLJ0S9GZLE"
 };
 
 const app = initializeApp(firebaseConfig);
