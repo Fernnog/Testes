@@ -1,0 +1,135 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+
+/* Paleta de cores e variáveis (ajuste para usar as mesmas variáveis do precificacao.css) */
+:root {
+    --cor-principal: #7aa2a9;
+    --cor-secundaria: #dfb6b0;
+    --cor-autenticacao-1: #687f82;      /* Botões */
+    --cor-autenticacao-2: #ecd5d1;      /* Fundo da seção de autenticação E user-info */
+    --cor-fundo: #f0f2f5;             /* Fundo geral da página */
+}
+
+
+body {
+    font-family: 'Roboto', Arial, sans-serif;
+    background-color: var(--cor-fundo); /* Usando a variável */
+    color: #333;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+/* ====  ESTILOS PARA A TELA DE AUTENTICAÇÃO  ==== */
+/* (Manter todos os estilos que estavam dentro de .auth-container, .auth-form, etc. do precificacao.css) */
+
+.auth-container {
+    background-color: var(--cor-autenticacao-2); /*  Fundo #e5c4bf */
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.auth-form {
+    width: 300px;
+    margin: 0 auto;
+}
+
+.auth-form h2 {
+    color: var(--cor-autenticacao-1); /* Cor mais suave para o título */
+    margin-bottom: 20px;
+}
+
+.auth-form .form-group {
+    margin-bottom: 15px;
+    text-align: left;
+}
+
+.auth-form label {
+    display: block;
+    margin-bottom: 5px;
+    color: #555;
+    font-weight: bold;
+}
+
+.auth-form input[type="email"],
+.auth-form input[type="password"] {
+    width: calc(100% - 20px);
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 20px;
+    font-size: 16px;
+    margin-bottom: 10px;
+    background-color: #fff;  /* Fundo branco - pode mudar para #e5c4bf */
+    color: #333;
+}
+
+.auth-buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+}
+
+/* Botões na tela de autenticação */
+.auth-buttons button, .auth-form button[type="button"]:not(.forgot-password) {
+    background-color: var(--cor-autenticacao-1); /* Cor de fundo dos botões */
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 20px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.auth-buttons button:hover, .auth-form button[type="button"]:not(.forgot-password):hover {
+    background-color: #4a5c5e; /* Cor mais escura no hover */
+}
+
+.auth-form .forgot-password {
+    background: none;
+    border: none;
+    color: var(--cor-autenticacao-1); /* Cor do link "Esqueci minha senha" */
+    cursor: pointer;
+    text-decoration: underline;
+    font-size: 0.9em;
+    margin-top: 10px;
+}
+
+.auth-form .forgot-password:hover {
+    color: #4a5c5e; /* Cor mais escura no hover */
+}
+
+.auth-message {
+    margin-top: 15px;
+    color: #555;
+    font-size: 0.9em;
+}
+
+/* Logo na tela de autenticação */
+.auth-form .logo-container {
+    margin-top: 0px;
+    margin-bottom: 10px;
+}
+
+/* Adicione este bloco para controlar o tamanho da logo */
+.auth-form .logo-container #logo {
+    max-width: 150px; /* Ou o tamanho que você desejar */
+    height: auto;     /* Mantém a proporção */
+    display: block;   /* Garante que a margem automática funcione */
+    margin: 0 auto;    /* Centraliza horizontalmente */
+}
+
+/* Estilos para o indicador de carregamento */
+#loading-indicator {
+    position: fixed; /* Fixo no centro da tela */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1000; /* Garante que fique acima de tudo */
+    /* Estilos adicionais para o GIF (tamanho, borda, etc.) */
+}
