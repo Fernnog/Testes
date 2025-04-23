@@ -5,13 +5,13 @@ import { getFirestore, collection, addDoc, getDocs, doc, setDoc, query, where, o
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyC4xXSGw91MPLbC3ikCsdJ4pkNu1GZTqKQ",
-  authDomain: "teste-da-perola.firebaseapp.com",
-  projectId: "teste-da-perola",
-  storageBucket: "teste-da-perola.firebasestorage.app",
-  messagingSenderId: "845747978306",
-  appId: "1:845747978306:web:90314c25caf38106bc6ddb",
-  measurementId: "G-BLJ0S9GZLE"
+    apiKey: "AIzaSyDG1NYs6CM6TDfGAPXSz1ho8_-NWs28zSg", // SUA API KEY
+    authDomain: "perola-rara.firebaseapp.com",       // SEU AUTH DOMAIN
+    projectId: "perola-rara",                     // SEU PROJECT ID
+    storageBucket: "perola-rara.firebasestorage.app", // SEU STORAGE BUCKET
+    messagingSenderId: "502232132512",               // SEU MESSAGING SENDER ID
+    appId: "1:502232132512:web:59f227a7d35b39cc8752c5", // SEU APP ID
+    measurementId: "G-VHVMR10RSQ"                   // SEU MEASUREMENT ID (se usar Analytics)
 };
 
 const app = initializeApp(firebaseConfig);
@@ -286,6 +286,7 @@ async function gerarOrcamento() {
         valorOrcamento: converterMoedaParaNumero(document.getElementById("valorOrcamento").value),
         total: converterMoedaParaNumero(document.getElementById("total").value),
         observacoes: document.getElementById("observacoes").value,
+        previsaoEntrega: document.getElementById("previsaoEntrega").value, // Added field
         pedidoGerado: false,
         numeroPedido: null,
         tipo: 'orcamento' // Definição do tipo aqui
@@ -386,6 +387,7 @@ function exibirOrcamentoEmHTML(orcamento) {
                 <strong>Valor do Orçamento:</strong> ${formatarMoeda(orcamento.valorOrcamento)}<br>
                 <strong>Total:</strong> ${formatarMoeda(orcamento.total)}<br>
                 ${orcamento.observacoes ? `<strong>Observações:</strong> ${orcamento.observacoes}<br>` : ''}
+                ${orcamento.previsaoEntrega ? `<strong>Previsão de Entrega:</strong> ${orcamento.previsaoEntrega}<br>` : ''} <!-- Added display -->
             </div>
         `;
 
@@ -422,8 +424,12 @@ function mostrarOrcamentosGerados() {
         cellAcoes.appendChild(buttonVisualizar);
 
         if (!orcamento.pedidoGerado) {
-            cellAcoes.innerHTML = `<button type="button" class="btnEditarOrcamento" data-orcamento-id="${orcamento.id}">Editar</button>
-                                   `; // Removido o botão visualizar daqui, ele já foi adicionado acima
+            let buttonEditar = document.createElement('button'); // Criar botão editar separadamente
+            buttonEditar.textContent = 'Editar';
+            buttonEditar.classList.add('btnEditarOrcamento');
+            buttonEditar.dataset.orcamentoId = orcamento.id;
+            cellAcoes.appendChild(buttonEditar); // Adicionar botão editar
+
             let buttonGerarPedido = document.createElement('button');
             buttonGerarPedido.textContent = 'Gerar Pedido';
             buttonGerarPedido.classList.add('btnGerarPedido');
@@ -513,8 +519,12 @@ function atualizarListaOrcamentos(orcamentosFiltrados) {
         cellAcoes.appendChild(buttonVisualizar);
 
          if (!orcamento.pedidoGerado) {
-             cellAcoes.innerHTML = `<button type="button" class="btnEditarOrcamento" data-orcamento-id="${orcamento.id}">Editar</button>
-                                    `; // Removido o botão visualizar daqui, ele já foi adicionado acima
+             let buttonEditar = document.createElement('button'); // Criar botão editar separadamente
+             buttonEditar.textContent = 'Editar';
+             buttonEditar.classList.add('btnEditarOrcamento');
+             buttonEditar.dataset.orcamentoId = orcamento.id;
+             cellAcoes.appendChild(buttonEditar); // Adicionar botão editar
+
             let buttonGerarPedido = document.createElement('button');
             buttonGerarPedido.textContent = 'Gerar Pedido';
             buttonGerarPedido.classList.add('btnGerarPedido');
@@ -582,6 +592,7 @@ function editarOrcamento(orcamentoId) {
     document.getElementById("valorOrcamento").value = formatarMoeda(orcamento.valorOrcamento);
     document.getElementById("total").value = formatarMoeda(orcamento.total);
     document.getElementById("observacoes").value = orcamento.observacoes;
+    document.getElementById("previsaoEntrega").value = orcamento.previsaoEntrega || ''; // Added field population
 
     const tbody = document.querySelector("#tabelaProdutos tbody");
     tbody.innerHTML = '';
@@ -615,7 +626,7 @@ async function atualizarOrcamento() {
         return;
     }
 
-  const orcamentoIndex = orcamentos.findIndex(o => o.id === orcamentoEditando); // Find by ID
+    const orcamentoIndex = orcamentos.findIndex(o => o.id === orcamentoEditando); // Find by ID
     if (orcamentoIndex === -1) {
         alert("Orçamento não encontrado.");
         return;
@@ -638,6 +649,7 @@ async function atualizarOrcamento() {
         valorOrcamento: converterMoedaParaNumero(document.getElementById("valorOrcamento").value),
         total: converterMoedaParaNumero(document.getElementById("total").value),
         observacoes: document.getElementById("observacoes").value,
+        previsaoEntrega: document.getElementById("previsaoEntrega").value, // Added field update
         tipo: 'orcamento' // Explicitamente define o tipo
     };
 
@@ -698,6 +710,7 @@ async function gerarPedido(orcamentoId) {
         valorOrcamento: orcamento.valorOrcamento,
         total: orcamento.total,
         observacoes: orcamento.observacoes,
+        previsaoEntrega: orcamento.previsaoEntrega || '', // Added field propagation
         entrada: 0,
         restante: orcamento.total,
         margemLucro: converterMoedaParaNumero(String(orcamento.margemLucro)) || 0,
@@ -833,6 +846,7 @@ function editarPedido(pedidoId) {
     document.getElementById("margemLucroEdicao").value = formatarMoeda(pedido.margemLucro);
     document.getElementById("custoMaoDeObraEdicao").value = formatarMoeda(pedido.custoMaoDeObra || 0);
     document.getElementById("observacoesEdicao").value = pedido.observacoes;
+    document.getElementById("previsaoEntregaEdicao").value = pedido.previsaoEntrega || ''; // Added field population
 
     const tbody = document.querySelector("#tabelaProdutosEdicao tbody");
     tbody.innerHTML = '';
@@ -889,6 +903,7 @@ async function atualizarPedido() {
         margemLucro: converterMoedaParaNumero(document.getElementById("margemLucroEdicao").value) || 0,
         custoMaoDeObra: converterMoedaParaNumero(document.getElementById("custoMaoDeObraEdicao").value) || 0,
         observacoes: document.getElementById("observacoesEdicao").value,
+        previsaoEntrega: document.getElementById("previsaoEntregaEdicao").value, // Added field update
         tipo: 'pedido'
     };
 
