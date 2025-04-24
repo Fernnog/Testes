@@ -1,259 +1,41 @@
-// ==== INÍCIO SEÇÃO - IMPORTS FIREBASE SDKS ====
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-// Firestore e Analytics não são necessários aqui
-// ==== FIM SEÇÃO - IMPORTS FIREBASE SDKS ====
-
-// ==== INÍCIO SEÇÃO - CONFIGURAÇÃO FIREBASE ====
-// Certifique-se de que esta configuração é a mesma usada em script.js
-const firebaseConfig = {
-    apiKey: "AIzaSyDG1NYs6CM6TDfGAPXSz1ho8_-NWs28zSg", // SUA API KEY
-    authDomain: "perola-rara.firebaseapp.com",       // SEU AUTH DOMAIN
-    projectId: "perola-rara",                     // SEU PROJECT ID
-    storageBucket: "perola-rara.firebasestorage.app", // SEU STORAGE BUCKET
-    messagingSenderId: "502232132512",               // SEU MESSAGING SENDER ID
-    appId: "1:502232132512:web:59f227a7d35b39cc8752c5", // SEU APP ID
-    measurementId: "G-VHVMR10RSQ"                   // SEU MEASUREMENT ID (se usar Analytics)
-};
-// ==== FIM SEÇÃO - CONFIGURAÇÃO FIREBASE ====
-
-// ==== INÍCIO SEÇÃO - INICIALIZAÇÃO FIREBASE ====
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-// ==== FIM SEÇÃO - INICIALIZAÇÃO FIREBASE ====
-
-// ==== INÍCIO SEÇÃO - FUNÇÕES DE AUTENTICAÇÃO FIREBASE (login.js) ====
-
-// Função auxiliar para mostrar/ocultar o indicador de carregamento
-function showLoading(show) {
-    const loadingIndicator = document.getElementById('loading-indicator');
-    // Verifica se o elemento existe antes de tentar manipular o estilo
-    if (loadingIndicator) {
-        loadingIndicator.style.display = show ? 'block' : 'none';
-    } else {
-        console.warn("Elemento #loading-indicator não encontrado.");
-    }
-}
-
-async function registrarUsuario(email, password) {
-    showLoading(true); // Mostrar loading
-    const authMessage = document.getElementById('auth-message');
-    try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        // Apenas mostra mensagem de sucesso. O redirecionamento é feito pelo onAuthStateChanged.
-        if (authMessage) {
-            authMessage.textContent = 'Registro bem-sucedido. Redirecionando...';
-            authMessage.style.color = 'green';
-        }
-        // REMOVIDO: window.location.href = "../index.html";
-    } catch (error) {
-        console.error("Erro ao registrar usuário:", error);
-        let message = 'Erro ao registrar usuário. Tente novamente.';
-        if (error.code === 'auth/email-already-in-use') {
-            message = 'Este e-mail já está em uso.';
-        } else if (error.code === 'auth/weak-password') {
-            message = 'A senha é muito fraca. Use pelo menos 6 caracteres.';
-        } else if (error.code === 'auth/invalid-email') {
-            message = 'O formato do e-mail é inválido.';
-        } else if (error.code) {
-             message = `Erro (${error.code}). Tente novamente.`; // Mensagem mais genérica com código
-        } else {
-             message = `Erro ao registrar: ${error.message}`;
-        }
-        if (authMessage) {
-            authMessage.textContent = message;
-            authMessage.style.color = 'red';
-        }
-    } finally {
-        showLoading(false); // Ocultar loading
-    }
-}
-
-async function loginUsuario(email, password) {
-    showLoading(true);
-    const authMessage = document.getElementById('auth-message');
-    try {
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        // Apenas mostra mensagem de sucesso. O redirecionamento é feito pelo onAuthStateChanged.
-        if (authMessage) {
-            authMessage.textContent = 'Login bem-sucedido. Redirecionando...';
-            authMessage.style.color = 'green';
-        }
-        // REMOVIDO: window.location.href = "../index.html";
-    } catch (error) {
-        console.error("Erro ao fazer login:", error);
-        let message = 'Erro ao fazer login. Tente novamente.';
-        // Códigos comuns para login inválido
-        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential' || error.code === 'auth/invalid-email') {
-             message = 'E-mail ou senha inválidos.';
-        } else if (error.code === 'auth/too-many-requests') {
-            message = 'Muitas tentativas de login falharam. Sua conta pode ter sido bloqueada temporariamente. Tente novamente mais tarde.';
-        } else if (error.code === 'auth/network-request-failed') {
-             message = 'Erro de rede. Verifique sua conexão com a internet.';
-        } else if (error.code) {
-             message = `Erro (${error.code}). Tente novamente.`;
-        } else {
-             message = `Erro ao fazer login: ${error.message}`;
-        }
-        if (authMessage) {
-            authMessage.textContent = message;
-            authMessage.style.color = 'red';
-        }
-    } finally {
-        showLoading(false);
-    }
-}
-
-async function enviarEmailRedefinicaoSenha(email) {
-    showLoading(true);
-    const authMessage = document.getElementById('auth-message');
-    try {
-        await sendPasswordResetEmail(auth, email);
-        if (authMessage) {
-            authMessage.textContent = 'Email de redefinição de senha enviado. Verifique sua caixa de entrada (e spam).';
-            authMessage.style.color = 'blue';
-        }
-    } catch (error) {
-        console.error("Erro ao enviar email de redefinição de senha:", error);
-         let message = 'Erro ao enviar email de redefinição.';
-         if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-email') {
-             message = 'Não há usuário registrado com este e-mail ou o formato é inválido.';
-         } else if (error.code) {
-             message = `Erro (${error.code}). Tente novamente.`;
-         } else {
-             message = `Erro ao enviar email: ${error.message}`;
-         }
-         if (authMessage) {
-             authMessage.textContent = message;
-             authMessage.style.color = 'red';
-         }
-    }finally {
-        showLoading(false);
-    }
-}
-// ==== FIM SEÇÃO - FUNÇÕES DE AUTENTICAÇÃO FIREBASE (login.js) ====
-
-// ==== INÍCIO SEÇÃO - EVENT LISTENERS (login.js) ====
-document.addEventListener('DOMContentLoaded', () => {
-
-    // Obter referências aos elementos do DOM
-    const registerBtn = document.getElementById('registerBtn');
-    const loginBtn = document.getElementById('loginBtn');
-    const forgotPasswordBtn = document.getElementById('forgotPasswordBtn');
-    const emailInput = document.getElementById('email');
-    const passwordInput = document.getElementById('password');
-    const authMessage = document.getElementById('auth-message');
-
-    // Verificar se todos os elementos essenciais foram encontrados
-    if (!registerBtn || !loginBtn || !forgotPasswordBtn || !emailInput || !passwordInput || !authMessage) {
-        console.error("Erro: Um ou mais elementos do formulário de login não foram encontrados no DOM.");
-        // Opcional: Exibir uma mensagem de erro para o usuário
-        // document.body.innerHTML = "<p style='color: red; text-align: center;'>Erro ao carregar a página de login. Tente recarregar.</p>";
-        return; // Interrompe a execução se elementos cruciais faltarem
-    }
-
-    // Função para limpar a mensagem de erro ao digitar
-    const clearErrorOnChange = () => {
-        // Limpa apenas se a mensagem for de erro (vermelha)
-        if (authMessage.textContent !== '' && authMessage.style.color === 'red') {
-           authMessage.textContent = '';
-        }
-    };
-    emailInput.addEventListener('input', clearErrorOnChange);
-    passwordInput.addEventListener('input', clearErrorOnChange);
-
-    // Expressão regular simples para validação de email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-
-    // Listener para o botão de Registrar
-    registerBtn.addEventListener('click', () => {
-        const email = emailInput.value.trim(); // Remove espaços extras
-        const password = passwordInput.value;
-
-        if (!email || !password) {
-            authMessage.textContent = "Preencha e-mail e senha.";
-            authMessage.style.color = 'red';
-            return;
-        }
-        if (!emailRegex.test(email)) {
-            authMessage.textContent = "Formato de e-mail inválido.";
-            authMessage.style.color = 'red';
-            return;
-        }
-        // Validação de senha (exemplo: mínimo 6 caracteres)
-        if (password.length < 6) {
-             authMessage.textContent = "A senha deve ter pelo menos 6 caracteres.";
-             authMessage.style.color = 'red';
-             return;
-        }
-
-        registrarUsuario(email, password);
-    });
-
-    // Listener para o botão de Entrar
-    loginBtn.addEventListener('click', () => {
-        const email = emailInput.value.trim();
-        const password = passwordInput.value;
-
-        if (!email || !password) {
-            authMessage.textContent = "Preencha e-mail e senha.";
-            authMessage.style.color = 'red';
-            return;
-        }
-        if (!emailRegex.test(email)) {
-            authMessage.textContent = "Formato de e-mail inválido.";
-            authMessage.style.color = 'red';
-            return;
-        }
-        loginUsuario(email, password);
-    });
-
-    // Listener para o botão "Esqueci minha senha"
-    forgotPasswordBtn.addEventListener('click', () => {
-        const email = emailInput.value.trim();
-
-        if (!email) {
-             authMessage.textContent = "Preencha o campo e-mail para redefinir a senha.";
-             authMessage.style.color = 'red';
-             return;
-        }
-        if (!emailRegex.test(email)) {
-             authMessage.textContent = "Formato de e-mail inválido.";
-             authMessage.style.color = 'red';
-             return;
-        }
-        enviarEmailRedefinicaoSenha(email);
-    });
-
-    // ---- O OBSERVADOR DE ESTADO DE AUTENTICAÇÃO ----
-    // Este listener é crucial. Ele roda quando a página de login carrega
-    // e também quando o estado de autenticação muda (login/logout).
-    onAuthStateChanged(auth, (user) => {
-        if (user) {
-            // Se detectar um usuário logado (pode ser de uma sessão anterior
-            // ou logo após um login/registro bem-sucedido nesta página):
-            console.log("Usuário autenticado detectado em login.js (ID:", user.uid, "), redirecionando para index.html");
-
-            // Verifica se JÁ ESTÁ em index.html para evitar loops desnecessários
-            // (Embora improvável neste fluxo, é uma boa prática)
-            const currentPath = window.location.pathname;
-            if (!currentPath.endsWith('/index.html') && !currentPath.endsWith('/')) { // Adiciona verificação para raiz também
-                 // Adiciona um pequeno delay antes de redirecionar (opcional, pode ajudar em casos raros)
-                // setTimeout(() => {
-                     window.location.href = "../index.html"; // Redireciona para a página principal
-                // }, 100); // Delay de 100ms
-            } else {
-                 console.log("Já está em index.html ou raiz, não redirecionando de login.js.");
-            }
-
-        } else {
-            // Se nenhum usuário estiver logado quando a página de login carregar:
-            console.log("Nenhum usuário logado detectado em login.js. A página de login será exibida.");
-            // Nenhuma ação necessária aqui, o usuário precisa fazer login/registrar.
-            // Garante que o indicador de loading seja escondido caso estivesse visível
-            showLoading(false);
-        }
-    });
-});
-// ==== FIM SEÇÃO - EVENT LISTENERS (login.js) ====
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Pérola Rara</title>
+    <link rel="stylesheet" href="login.css">
+    <link rel="icon" href="../images/favicon.ico" type="image/x-icon">
+</head>
+<body>
+    <div id="auth-container" class="auth-container">
+        <div class="auth-form">
+            <div class="logo-container">
+                <img src="../logo_perola_rara.png" alt="Logo Pérola Rara" id="logo">
+            </div>
+            <h2>Autenticação</h2>
+            <div class="form-group">
+                <label for="email">Email:</label><br>
+                <input type="email" id="email" name="email" placeholder="Digite seu email">
+            </div>
+            <div class="form-group">
+                <label for="password">Senha:</label><br>
+                <input type="password" id="password" name="password" placeholder="Digite sua senha">
+            </div>
+            <div class="auth-buttons">
+                <button type="button" id="registerBtn">Registrar</button>
+                <button type="button" id="loginBtn">Entrar</button>
+            </div>
+            <button type="button" id="forgotPasswordBtn" class="forgot-password">Esqueci minha senha?</button>
+            <p id="auth-message" class="auth-message"></p>
+           <p class="slogan"><strong><em>"Pérola Rara, onde a arte se encontra com o amor em cada detalhe".</em></strong></p>
+        </div>
+         <div id="loading-indicator" style="display: none;">
+            <img src="loading.gif" alt="Carregando...">  <!-- Substitua 'loading.gif' pelo caminho do seu GIF de loading -->
+        </div>
+    </div>
+    <!-- VERIFIQUE ESTA LINHA -->
+    <script src="login.js" type="module"></script>
+    <!-- A LINHA ACIMA ESTÁ CORRETA -->
+</body>
+</html>
