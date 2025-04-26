@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checklist de Produção - Pérola Rara</title>
+    <!-- You can link style.css or use inline/embedded styles -->
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        body {
+            font-family: 'Roboto', Arial, sans-serif;
+            color: #333;
+            margin: 20px; /* Add some margin */
+            padding: 0;
+        }
+        .header-checklist { /* Renamed class */
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #7aa2a9; /* Add bottom border */
+            padding-bottom: 10px;
+        }
+        #logo-checklist { /* Renamed ID */
+            width: 120px; /* Slightly smaller */
+            height: auto;
+            margin-bottom: 5px;
+        }
+        .header-checklist h1 {
+            color: #7aa2a9;
+            margin: 5px 0;
+            font-size: 1.8em;
+        }
+        .info-cliente-tema {
+            text-align: left;
+            margin-bottom: 20px;
+            font-size: 1.1em;
+        }
+        .checklist-container {
+            margin-top: 15px;
+        }
+        .checklist-item {
+            display: flex; /* Use flexbox for alignment */
+            align-items: center; /* Vertically center items */
+            padding: 8px 0;
+            border-bottom: 1px dashed #eee; /* Separator between items */
+        }
+        .checklist-item:last-child {
+            border-bottom: none; /* No border for the last item */
+        }
+        .checklist-item input[type="checkbox"] {
+            margin-right: 15px; /* Space after checkbox */
+            transform: scale(1.2); /* Make checkbox slightly larger */
+        }
+        .checklist-item .quantidade {
+            font-weight: bold;
+            margin-right: 10px;
+            min-width: 30px; /* Ensure space for quantity */
+            text-align: right;
+        }
+        .checklist-item .descricao {
+            flex-grow: 1; /* Allow description to take remaining space */
+        }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 0.9em;
+            color: #777;
+            border-top: 1px solid #ccc;
+            padding-top: 10px;
+        }
+
+        /* Print specific styles */
+        @media print {
+            body {
+                margin: 10mm; /* Adjust print margins */
+            }
+            .header-checklist, .footer {
+                border-color: #aaa; /* Lighter borders for print */
+            }
+            .checklist-item {
+                border-color: #ddd;
+            }
+            button { display: none; } /* Hide buttons when printing */
+        }
+    </style>
+</head>
+<body>
+    <div class="header-checklist">
+        <img src="./logo_perola_rara.png" alt="Logo Pérola Rara" id="logo-checklist">
+        <h1>Pérola Rara</h1>
+        <p>Checklist de Produção</p>
+    </div>
+
+    <div id="conteudo-checklist">
+        <!-- O conteúdo do checklist será inserido aqui pelo JavaScript -->
+        <!-- Example structure (will be generated):
+        <div class="info-cliente-tema">
+            <strong>Orçamento Nº:</strong> <span>0001/2023</span><br>
+            <strong>Cliente:</strong> <span>Nome do Cliente</span><br>
+            <strong>Tema:</strong> <span>Tema do Projeto</span>
+        </div>
+        <div class="checklist-container">
+            <h3>Itens</h3>
+            <div class="checklist-item">
+                <input type="checkbox">
+                <span class="quantidade">1x</span>
+                <span class="descricao">Descrição do Produto 1</span>
+            </div>
+            <div class="checklist-item">
+                <input type="checkbox">
+                <span class="quantidade">2x</span>
+                <span class="descricao">Descrição do Produto 2</span>
+            </div>
+        </div>
+        -->
+    </div>
+
+    <div class="footer">
+        <p>Pérola Rara - Fraldas Personalizadas | (65) 99250-3151 | @perolararafraldapersonalizada</p>
+    </div>
+
+    <!-- Optional: Add a print button -->
+    <div style="text-align: center; margin-top: 20px;">
+      <button type="button" onclick="window.print();" style="padding: 10px 20px; font-size: 1em; cursor: pointer;">Imprimir Checklist</button>
+    </div>
+
+</body>
+</html>
