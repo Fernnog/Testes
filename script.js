@@ -1351,39 +1351,67 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    // ==== MONITOR DE AUTENTICAÇÃO (REVISED FIX) ====
-    let authInitialized = false; // Flag to track if the first auth state has been received
+    // ==== MONITOR DE AUTENTICAÇÃO (FINAL FIX ATTEMPT) ====
+    let authInitialized = false; // Flag to track if the *first* callback has finished processing
 
     onAuthStateChanged(auth, (user) => {
         console.log(`onAuthStateChanged: User=${user ? user.email : null}, Initialized=${authInitialized}`);
-        usuarioAtual = user; // Update global user
+        usuarioAtual = user; // Update global user immediately
 
-        // --- Basic UI Visibility (Handle this first, regardless of init state) ---
+        // --- Basic UI Visibility (always run) ---
         const appContent = document.getElementById('appContent');
         const navMenu = document.querySelector('nav ul');
-        const localBtnLogout = document.getElementById('btnLogout'); // Use a different name to avoid conflict
+        const localBtnLogout = document.getElementById('btnLogout'); // Use a different name to avoid conflict with the global variable
 
         if (user) {
-            // Show logged-in UI elements
             if (appContent) appContent.style.display = "block";
             if (navMenu) navMenu.style.display = "block";
             if (localBtnLogout) localBtnLogout.style.display = "inline-block";
         } else {
-            // Show logged-out UI elements (or hide app content)
             if (appContent) appContent.style.display = "none";
             if (navMenu) navMenu.style.display = "none";
             if (localBtnLogout) localBtnLogout.style.display = "none";
         }
         // --- End Basic UI ---
 
+        // --- Main Logic ---
+        if (!authInitialized) {
+            // --- First time the listener runs ---
+            console.log("First auth state received.");
+            if (user) {
+                // Initial state is LOGGED IN
+                console.log("Initial state confirmed: Logged In. Performing setup.");
+                // Perform initial setup for logged-in user
+                carregarDados();
+                mostrarPagina('form-orcamento');
+                limparCamposMoeda();
+                const dataOrcamentoInput = document.getElementById('dataOrcamento');
+                if (dataOrcamentoInput && !dataOrcamentoInput.value) {
+                    dataOrcamentoInput.value = new Date().toISOString().split('T')[0];
+                }
+            } else {
+                // Initial state is LOGGED OUT (or Firebase still checking)
+                // We *don't* redirect here yet. We wait to see if Firebase provides a user later.
+                console.log("Initial state is null. Waiting to confirm...");
+                // Only redirect immediately if we are NOT on the login page itself
+                // This handles the case where the user lands directly on index.html without being logged in
+                if (!window.location.pathname.includes('/login/login.html')) {
+                   console.log("Initial state is null AND not on login page. Redirecting now.");
+                   window.location.href = "./login/login.html";
+                } else {
+                   console.log("Initial state is null, but already on login page.");
+                }
+            }
+            // Mark initialization as complete AFTER processing the first result
+            authInitialized = true;
+            console.log("Auth initialization flag set to true.");
 
-        // --- Logic based on Initialization State ---
-        if (authInitialized) {
-            // --- Subsequent Runs (Auth check already happened once) ---
-            console.log("Subsequent auth state change.");
+        } else {
+            // --- Subsequent times the listener runs ---
+            console.log("Subsequent auth state change received.");
             if (!user) {
-                // User is now null *after* being initialized (likely a logout)
-                console.log("User confirmed logged out after initialization. Cleaning up and redirecting.");
+                // User is null *after* the initial check completed. This means a logout or session expiry.
+                console.log("User is null after initialization. Cleaning up and redirecting.");
 
                 // --- Perform Cleanup ---
                 orcamentos = []; pedidos = []; numeroOrcamento = 1; numeroPedido = 1;
@@ -1405,43 +1433,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // --- Redirect ---
                 if (!window.location.pathname.includes('/login/login.html')) {
-                    console.log("Redirecting to login page (subsequent)...");
+                    console.log("Redirecting to login page (subsequent null state)...");
                     window.location.href = "./login/login.html";
                 } else {
                     console.log("Already on login page, no redirect needed.");
                 }
             } else {
-                // User is still logged in on subsequent check. Usually no action needed here.
-                 console.log("User still logged in (subsequent check).");
-            }
-
-        } else {
-            // --- First Run (This block runs only ONCE per page load) ---
-            console.log("First auth state received. Setting authInitialized = true.");
-            authInitialized = true; // Set the flag *now*
-
-            if (user) {
-                // First run AND user is logged in
-                console.log("Initial state confirmed: Logged In. Performing initial setup.");
-                // --- Initial Logged-In Setup ---
-                 carregarDados();
-                 mostrarPagina('form-orcamento');
-                 limparCamposMoeda();
-                 const dataOrcamentoInput = document.getElementById('dataOrcamento');
-                 if (dataOrcamentoInput && !dataOrcamentoInput.value) {
-                     dataOrcamentoInput.value = new Date().toISOString().split('T')[0];
-                 }
-                 // --- End Initial Logged-In Setup ---
-
-            } else {
-                // First run AND user is null
-                console.log("Initial state confirmed: Logged Out. Redirecting now.");
-                 // --- Redirect ---
-                 if (!window.location.pathname.includes('/login/login.html')) {
-                    console.log("Redirecting to login page (initial)...");
-                    window.location.href = "./login/login.html";
-                 } else {
-                    console.log("Already on login page (initial state null), no redirect needed.");
+                 // User is logged in on a subsequent check.
+                 // This might happen if the initial check was null but Firebase then found the user.
+                 // Ensure data is loaded if it wasn't loaded initially.
+                 console.log("User confirmed logged in (subsequent check). Ensuring data is loaded.");
+                 // Simple check: if orcamentos array is empty, try loading data. Adjust if needed.
+                 if (orcamentos.length === 0 && pedidos.length === 0) {
+                     console.log("Data appears unloaded, calling carregarDados().");
+                     carregarDados();
                  }
             }
         }
