@@ -697,74 +697,84 @@ function exibirOrcamentoEmHTML(orcamento) {
      };
 }
 
-// Exibir Checklist de Produção em Nova Janela (HTML)
+// Exibir Checklist de Produção em Nova Janela (HTML) - VERSÃO ATUALIZADA PARA TABELA
 function exibirChecklistEmHTML(orcamento) {
     if (!orcamento) {
         console.error("exibirChecklistEmHTML: Orçamento inválido.");
         return;
     }
-    // ***** ALTERAÇÃO INÍCIO: Adicionar Logs *****
     console.log("Gerando checklist para orçamento:", orcamento.numero);
     console.log("Abrindo janela checklist...");
-    // ***** ALTERAÇÃO FIM *****
-    const janelaChecklist = window.open('./checklist.html', '_blank'); // Usa caminho relativo
+    const janelaChecklist = window.open('./checklist.html', '_blank');
 
-    // ***** ALTERAÇÃO INÍCIO: Verificar se janela foi bloqueada *****
     if (!janelaChecklist) {
         console.error("Falha ao abrir a janela de checklist. Provavelmente bloqueada pelo navegador.");
         alert("A janela do checklist foi bloqueada pelo navegador. Por favor, permita pop-ups para este site e tente visualizar o checklist na lista de orçamentos.");
-        return; // Interrompe a execução se a janela não abriu
+        return;
     }
     console.log("Janela checklist aberta:", janelaChecklist);
-    // ***** ALTERAÇÃO FIM *****
 
     janelaChecklist.onload = () => {
-        // ***** ALTERAÇÃO INÍCIO: Adicionar Log *****
         console.log("checklist.html carregado, buscando #conteudo-checklist");
-        // ***** ALTERAÇÃO FIM *****
         const conteudoChecklistDiv = janelaChecklist.document.getElementById("conteudo-checklist");
 
         if (!conteudoChecklistDiv) {
             console.error("Elemento #conteudo-checklist não encontrado em checklist.html");
-            janelaChecklist.close(); // Fecha a janela se o elemento não for encontrado
+            janelaChecklist.close();
             return;
         }
 
+        // ***** INÍCIO DA GERAÇÃO DO HTML COM TABELA *****
         let checklistHtml = `
             <div class="info-cliente-tema">
                 <strong>Orçamento Nº:</strong> <span>${orcamento.numero || 'N/A'}</span><br>
                 <strong>Cliente:</strong> <span>${orcamento.cliente || 'Não informado'}</span><br>
-                ${orcamento.tema ? `<strong>Tema:</strong> <span>${orcamento.tema}</span>` : ''}
+                ${orcamento.tema ? `<strong>Tema:</strong> <span>${orcamento.tema}</span><br>` : ''}
+                ${orcamento.cores ? `<strong>Cores:</strong> <span>${orcamento.cores}</span>` : ''}
             </div>
             <div class="checklist-container">
-                <h3>Itens a Produzir/Separar</h3>`;
+                <h3>Itens a Produzir/Separar</h3>
+                <table class="checklist-table">
+                    <thead>
+                        <tr>
+                            <th class="col-check">Feito</th>
+                            <th class="col-qtd">Qtd.</th>
+                            <th class="col-desc">Descrição</th>
+                        </tr>
+                    </thead>
+                    <tbody>`; // Abre o tbody
 
         if (orcamento.produtos && orcamento.produtos.length > 0) {
-            orcamento.produtos.forEach(produto => {
-                const randomSuffix = Math.random().toString(36).substring(2, 8);
-                const cleanDescricao = (produto.descricao || 'item').replace(/[^a-zA-Z0-9-_]/g, '');
-                const checkboxId = `chk-${cleanDescricao}-${randomSuffix}`;
+            orcamento.produtos.forEach((produto, index) => {
+                // Gera um ID único para o checkbox e label
+                const cleanDescricao = (produto.descricao || `item-${index}`).replace(/[^a-zA-Z0-9-_]/g, '');
+                const checkboxId = `chk-${cleanDescricao}-${index}`; // Usa index para garantir unicidade
 
                 checklistHtml += `
-                    <div class="checklist-item">
-                        <input type="checkbox" id="${checkboxId}">
-                        <label for="${checkboxId}" style="display: contents;"> <!-- Label for better accessibility -->
-                            <span class="quantidade">${produto.quantidade || 0}x</span>
-                            <span class="descricao">${produto.descricao || 'Sem descrição'}</span>
-                        </label>
-                    </div>`;
+                    <tr>
+                        <td class="col-check">
+                            <input type="checkbox" id="${checkboxId}">
+                        </td>
+                        <td class="col-qtd">
+                            ${produto.quantidade || 0}x
+                        </td>
+                        <td class="col-desc">
+                            <label for="${checkboxId}">${produto.descricao || 'Sem descrição'}</label>
+                        </td>
+                    </tr>`;
             });
         } else {
-            checklistHtml += `<p style="text-align: center;">Nenhum produto listado neste orçamento.</p>`;
+            checklistHtml += `<tr><td colspan="3" style="text-align: center; padding: 20px;">Nenhum produto listado neste orçamento.</td></tr>`;
         }
 
         checklistHtml += `
-            </div>`; // Fim checklist-container
+                    </tbody>
+                </table>
+            </div>`; // Fim checklist-container e table
+        // ***** FIM DA GERAÇÃO DO HTML COM TABELA *****
 
         conteudoChecklistDiv.innerHTML = checklistHtml;
-        // ***** ALTERAÇÃO INÍCIO: Adicionar Log *****
-        console.log("Conteúdo do checklist inserido em checklist.html.");
-        // ***** ALTERAÇÃO FIM *****
+        console.log("Conteúdo do checklist (tabela) inserido em checklist.html.");
     };
 
     janelaChecklist.onerror = (err) => {
@@ -772,7 +782,6 @@ function exibirChecklistEmHTML(orcamento) {
         alert("Ocorreu um erro ao tentar abrir a visualização do checklist.");
     };
 }
-
 
 // Mostrar Orçamentos Gerados na Tabela (COM BOTÕES DE TEXTO)
 function mostrarOrcamentosGerados() {
