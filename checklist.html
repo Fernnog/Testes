@@ -1,85 +1,261 @@
-// Exibir Checklist de Produção em Nova Janela (HTML) - VERSÃO ATUALIZADA PARA TABELA
-function exibirChecklistEmHTML(orcamento) {
-    if (!orcamento) {
-        console.error("exibirChecklistEmHTML: Orçamento inválido.");
-        return;
-    }
-    console.log("Gerando checklist para orçamento:", orcamento.numero);
-    console.log("Abrindo janela checklist...");
-    const janelaChecklist = window.open('./checklist.html', '_blank');
-
-    if (!janelaChecklist) {
-        console.error("Falha ao abrir a janela de checklist. Provavelmente bloqueada pelo navegador.");
-        alert("A janela do checklist foi bloqueada pelo navegador. Por favor, permita pop-ups para este site e tente visualizar o checklist na lista de orçamentos.");
-        return;
-    }
-    console.log("Janela checklist aberta:", janelaChecklist);
-
-    janelaChecklist.onload = () => {
-        console.log("checklist.html carregado, buscando #conteudo-checklist");
-        const conteudoChecklistDiv = janelaChecklist.document.getElementById("conteudo-checklist");
-
-        if (!conteudoChecklistDiv) {
-            console.error("Elemento #conteudo-checklist não encontrado em checklist.html");
-            janelaChecklist.close();
-            return;
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checklist de Produção - Pérola Rara</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* Variáveis de Cor (para consistência) */
+        :root {
+            --cor-principal: #7aa2a9;
+            --cor-secundaria: #dfb6b0;
+            --cor-texto-padrao: #333;
+            --cor-fundo-claro: #f8f9fa; /* Um cinza bem claro */
+            --cor-borda-delicada: #e0e0e0;
         }
 
-        // ***** INÍCIO DA GERAÇÃO DO HTML COM TABELA *****
-        let checklistHtml = `
-            <div class="info-cliente-tema">
-                <strong>Orçamento Nº:</strong> <span>${orcamento.numero || 'N/A'}</span><br>
-                <strong>Cliente:</strong> <span>${orcamento.cliente || 'Não informado'}</span><br>
-                ${orcamento.tema ? `<strong>Tema:</strong> <span>${orcamento.tema}</span><br>` : ''}
-                ${orcamento.cores ? `<strong>Cores:</strong> <span>${orcamento.cores}</span>` : ''}
-            </div>
-            <div class="checklist-container">
-                <h3>Itens a Produzir/Separar</h3>
-                <table class="checklist-table">
-                    <thead>
-                        <tr>
-                            <th class="col-check">Feito</th>
-                            <th class="col-qtd">Qtd.</th>
-                            <th class="col-desc">Descrição</th>
-                        </tr>
-                    </thead>
-                    <tbody>`; // Abre o tbody
+        body {
+            font-family: 'Roboto', Arial, sans-serif;
+            color: var(--cor-texto-padrao);
+            margin: 20px;
+            padding: 0;
+            font-size: 15px; /* Aumentando um pouco a fonte base */
+            background-color: #fff; /* Fundo branco */
+        }
+        .header-checklist {
+            text-align: center;
+            margin-bottom: 25px; /* Mais espaço */
+            border-bottom: 2px solid var(--cor-principal); /* Borda principal */
+            padding-bottom: 15px;
+        }
+        #logo-checklist {
+            width: 120px;
+            height: auto;
+            margin-bottom: 5px;
+        }
+        .header-checklist h1 {
+            color: var(--cor-principal);
+            margin: 5px 0;
+            font-size: 2em; /* Um pouco maior */
+            font-weight: 700;
+        }
+         .header-checklist p {
+            font-size: 1.1em;
+            color: #555;
+            margin-top: 5px;
+         }
 
-        if (orcamento.produtos && orcamento.produtos.length > 0) {
-            orcamento.produtos.forEach((produto, index) => {
-                // Gera um ID único para o checkbox e label
-                const cleanDescricao = (produto.descricao || `item-${index}`).replace(/[^a-zA-Z0-9-_]/g, '');
-                const checkboxId = `chk-${cleanDescricao}-${index}`; // Usa index para garantir unicidade
+        .info-cliente-tema {
+            text-align: left;
+            margin-bottom: 25px; /* Mais espaço */
+            font-size: 1.1em; /* Maior */
+            padding: 15px;
+            background-color: #fdf0ed; /* Fundo rosa muito suave */
+            border-left: 4px solid var(--cor-secundaria); /* Destaque lateral rosa */
+            border-radius: 4px;
+        }
+         .info-cliente-tema strong {
+             color: var(--cor-principal); /* Destaca labels */
+         }
 
-                checklistHtml += `
+        .checklist-container {
+            margin-top: 15px;
+        }
+        .checklist-container h3 {
+            text-align: center;
+            color: var(--cor-principal);
+            font-size: 1.5em; /* Maior */
+            margin-bottom: 20px;
+            font-weight: 700;
+            border-bottom: 1px dashed var(--cor-principal);
+            padding-bottom: 5px;
+            display: inline-block; /* Para a borda se ajustar ao texto */
+            position: relative; /* Para centralizar com display inline-block */
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        /* Estilos da Tabela */
+        .checklist-table {
+            width: 100%;
+            border-collapse: collapse; /* Linhas mais limpas */
+            margin-top: 15px;
+            font-size: 1.05em; /* Fonte itens um pouco maior */
+        }
+
+        .checklist-table th,
+        .checklist-table td {
+            padding: 12px 10px; /* Mais padding vertical */
+            text-align: left;
+            border: 1px solid var(--cor-borda-delicada); /* Borda mais delicada */
+            vertical-align: middle; /* Alinha verticalmente */
+        }
+
+        .checklist-table th {
+            background-color: #eef6f7; /* Fundo azul muito suave */
+            color: var(--cor-principal); /* Texto azul */
+            font-weight: 700; /* Negrito */
+        }
+
+        /* Colunas específicas */
+        .checklist-table th.col-check,
+        .checklist-table td.col-check {
+            width: 60px; /* Largura fixa para checkbox */
+            text-align: center;
+        }
+        .checklist-table th.col-qtd,
+        .checklist-table td.col-qtd {
+            width: 70px; /* Largura fixa para quantidade */
+            text-align: center; /* Centraliza quantidade */
+            font-weight: bold;
+        }
+        .checklist-table th.col-desc,
+        .checklist-table td.col-desc {
+           /* Descrição ocupa o restante */
+        }
+
+        /* Linhas Alternadas */
+        .checklist-table tbody tr:nth-child(even) {
+            background-color: var(--cor-fundo-claro); /* Fundo cinza bem claro */
+        }
+         .checklist-table tbody tr:hover {
+            background-color: #fdf0ed; /* Rosa suave no hover */
+         }
+
+        /* Estilo Checkbox */
+        .checklist-table input[type="checkbox"] {
+            transform: scale(1.4); /* Checkbox maior */
+            cursor: pointer;
+            accent-color: var(--cor-principal); /* Cor do check (navegadores modernos) */
+            vertical-align: middle; /* Alinha com o texto */
+        }
+
+        /* Estilo Label da Descrição (para clique) */
+        .checklist-table td.col-desc label {
+            display: block; /* Ocupa toda a célula */
+            cursor: pointer; /* Indica clicável */
+            margin: -12px -10px; /* Compensa padding da célula para clique total */
+            padding: 12px 10px;  /* Restaura padding interno para texto */
+        }
+
+
+        .footer {
+            margin-top: 40px; /* Mais espaço */
+            text-align: center;
+            font-size: 0.95em; /* Um pouco maior */
+            color: #777;
+            border-top: 1px solid var(--cor-borda-delicada);
+            padding-top: 15px;
+        }
+
+        /* Botão Imprimir */
+        .print-button-container { /* Novo container para o botão */
+             text-align: center;
+             margin-top: 30px;
+        }
+        .print-button-container button {
+            padding: 12px 25px; /* Botão maior */
+            font-size: 1.1em;
+            cursor: pointer;
+            background-color: var(--cor-principal);
+            color: white;
+            border: none;
+            border-radius: 25px; /* Mais arredondado */
+            transition: background-color 0.3s ease;
+        }
+         .print-button-container button:hover {
+             background-color: #5a8289; /* Cor principal mais escura */
+         }
+
+
+        /* Print specific styles */
+        @media print {
+            body {
+                margin: 10mm; /* Ajusta margens de impressão */
+                font-size: 10pt; /* Tamanho de fonte comum para impressão */
+            }
+            .header-checklist, .footer {
+                border-color: #ccc; /* Bordas mais claras */
+            }
+            .checklist-table th {
+                background-color: #f0f0f0 !important; /* Fundo cinza claro para cabeçalho (importante para sobrescrever) */
+                color: #000 !important; /* Texto preto */
+                -webkit-print-color-adjust: exact; /* Garante cores de fundo no Chrome/Safari */
+                print-color-adjust: exact; /* Garante cores de fundo */
+            }
+             .checklist-table th, .checklist-table td {
+                 border: 1px solid #ccc; /* Borda sólida leve para impressão */
+             }
+             .checklist-table tbody tr:nth-child(even) {
+                background-color: #f9f9f9 !important; /* Fundo alternado suave */
+                 -webkit-print-color-adjust: exact;
+                 print-color-adjust: exact;
+            }
+             .info-cliente-tema {
+                 background-color: #f0f0f0 !important; /* Fundo cinza para info */
+                 border: 1px solid #ccc;
+                 padding: 10px;
+                 -webkit-print-color-adjust: exact;
+                 print-color-adjust: exact;
+             }
+            .print-button-container { display: none; } /* Esconde botão */
+            a { text-decoration: none; color: inherit; } /* Remove sublinhado de links */
+        }
+    </style>
+</head>
+<body>
+    <div class="header-checklist">
+        <img src="./logo_perola_rara.png" alt="Logo Pérola Rara" id="logo-checklist">
+        <h1>Pérola Rara</h1>
+        <p>Checklist de Produção</p>
+    </div>
+
+    <div id="conteudo-checklist">
+        <!-- O conteúdo do checklist (info cliente + tabela) será inserido aqui pelo JavaScript -->
+        <!-- Example structure (will be generated):
+        <div class="info-cliente-tema">
+            <strong>Orçamento Nº:</strong> <span>0001/2023</span><br>
+            <strong>Cliente:</strong> <span>Nome do Cliente</span><br>
+            <strong>Tema:</strong> <span>Tema do Projeto</span>
+        </div>
+        <div class="checklist-container">
+            <h3>Itens a Produzir/Separar</h3>
+            <table class="checklist-table">
+                <thead>
                     <tr>
-                        <td class="col-check">
-                            <input type="checkbox" id="${checkboxId}">
-                        </td>
-                        <td class="col-qtd">
-                            ${produto.quantidade || 0}x
-                        </td>
-                        <td class="col-desc">
-                            <label for="${checkboxId}">${produto.descricao || 'Sem descrição'}</label>
-                        </td>
-                    </tr>`;
-            });
-        } else {
-            checklistHtml += `<tr><td colspan="3" style="text-align: center; padding: 20px;">Nenhum produto listado neste orçamento.</td></tr>`;
-        }
+                        <th class="col-check">Feito</th>
+                        <th class="col-qtd">Qtd.</th>
+                        <th class="col-desc">Descrição</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="col-check"><input type="checkbox" id="chk-item-1"></td>
+                        <td class="col-qtd">1x</td>
+                        <td class="col-desc"><label for="chk-item-1">Descrição do Produto 1</label></td>
+                    </tr>
+                    <tr>
+                        <td class="col-check"><input type="checkbox" id="chk-item-2"></td>
+                        <td class="col-qtd">2x</td>
+                        <td class="col-desc"><label for="chk-item-2">Descrição do Produto 2</label></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        -->
+    </div>
 
-        checklistHtml += `
-                    </tbody>
-                </table>
-            </div>`; // Fim checklist-container e table
-        // ***** FIM DA GERAÇÃO DO HTML COM TABELA *****
+    <div class="footer">
+        <p>Pérola Rara - Fraldas Personalizadas | (65) 99250-3151 | @perolararafraldapersonalizada</p>
+    </div>
 
-        conteudoChecklistDiv.innerHTML = checklistHtml;
-        console.log("Conteúdo do checklist (tabela) inserido em checklist.html.");
-    };
+    <!-- Botão de Impressão -->
+    <div class="print-button-container">
+      <button type="button" onclick="window.print();">Imprimir Checklist</button>
+    </div>
 
-    janelaChecklist.onerror = (err) => {
-        console.error("Erro ao carregar checklist.html:", err);
-        alert("Ocorreu um erro ao tentar abrir a visualização do checklist.");
-    };
-}
+</body>
+</html>
