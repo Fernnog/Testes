@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       preservar:
-        description: 'Arquivos/pastas adicionais a preservar (separados por espaço)'
+        description: 'Arquivos/pastas adicionais a preservar (separados por vírgula)'
         required: false
         default: ''
         type: string
@@ -37,9 +37,13 @@ jobs:
           
           # Adicionar os padrões fornecidos pelo usuário
           if [ ! -z "${{ github.event.inputs.preservar }}" ]; then
-            for item in ${{ github.event.inputs.preservar }}; do
-              echo "$item" >> .preservar
-              echo "Preservando: $item"
+            # Separar por vírgula e processar cada item
+            IFS=',' read -ra ITENS <<< "${{ github.event.inputs.preservar }}"
+            for item in "${ITENS[@]}"; do
+              # Remover espaços em branco no início e fim do nome
+              trimmed_item=$(echo "$item" | xargs)
+              echo "$trimmed_item" >> .preservar
+              echo "Preservando: $trimmed_item"
             done
           fi
           
@@ -47,11 +51,13 @@ jobs:
 
       - name: Remover arquivos e pastas (exceto os especificados)
         run: |
-          # Remover tudo exceto os padrões listados em .preservar
+          # Criar string para argumentos do find
+          find_args=""
           while IFS= read -r pattern; do
             find_args="$find_args -not -name \"$pattern\" -not -path \"./$pattern/*\""
           done < .preservar
           
+          # Executar o comando find com os argumentos
           eval "find . -mindepth 1 -maxdepth 1 $find_args -exec rm -rf {} +"
 
       - name: Listar arquivos após a remoção
