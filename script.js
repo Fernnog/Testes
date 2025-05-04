@@ -236,6 +236,7 @@ function atualizarTotais() {
 }
 
 
+// ========= INÍCIO DA FUNÇÃO MODIFICADA =========
 function atualizarTotaisEdicao() {
     let valorTotalProdutosEdicao = 0;
     const tabelaProdutosEdicaoBody = document.querySelector("#tabelaProdutosEdicao tbody");
@@ -258,25 +259,30 @@ function atualizarTotaisEdicao() {
         }
     });
 
+    // --- INÍCIO DA MODIFICAÇÃO LÓGICA ---
     const valorFreteEdicaoInput = document.getElementById("valorFreteEdicao");
-    const valorPedidoEdicaoInput = document.getElementById("valorPedidoEdicao");
+    const valorPedidoEdicaoInput = document.getElementById("valorPedidoEdicao"); // Referência ao campo
     const totalEdicaoInput = document.getElementById("totalEdicao");
 
     if (valorFreteEdicaoInput && valorPedidoEdicaoInput && totalEdicaoInput) {
+        // 1. Atualiza o campo "Valor do Pedido" com a soma dos produtos calculada
+        valorPedidoEdicaoInput.value = formatarMoeda(valorTotalProdutosEdicao);
+
+        // 2. Pega o valor do frete
         const valorFreteEdicao = converterMoedaParaNumero(valorFreteEdicaoInput.value);
-        const valorPedidoEdicao = converterMoedaParaNumero(valorPedidoEdicaoInput.value); // Pega o valor do campo editável
 
-        // O total agora é a soma do valor do pedido (que pode incluir produtos e outros custos) + frete
-        const totalGeralEdicao = valorPedidoEdicao + valorFreteEdicao;
+        // 3. Calcula o Total Geral usando a SOMA DOS PRODUTOS + FRETE
+        const totalGeralEdicao = valorTotalProdutosEdicao + valorFreteEdicao;
 
-        // Atualiza o campo Valor do Pedido para refletir a soma dos produtos (se for desejado, senão remover esta linha)
-        // valorPedidoEdicaoInput.value = formatarMoeda(valorTotalProdutosEdicao); // Descomente se o campo "Valor do Pedido" deve ser a soma dos produtos
-
+        // 4. Atualiza o campo "Total"
         totalEdicaoInput.value = formatarMoeda(totalGeralEdicao);
 
-        atualizarRestanteEdicao(); // Atualiza o restante sempre que os totais mudam
+        // 5. Atualiza o restante (esta chamada já existia e está correta)
+        atualizarRestanteEdicao();
     }
+    // --- FIM DA MODIFICAÇÃO LÓGICA ---
 }
+// ========= FIM DA FUNÇÃO MODIFICADA =========
 
 
 function atualizarRestanteEdicao() {
