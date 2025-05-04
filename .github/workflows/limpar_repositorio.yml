@@ -1,10 +1,16 @@
 name: Limpar Repositório
 
 on:
-  workflow_dispatch:  # Permite executar manualmente
+  workflow_dispatch:
+    inputs:
+      preservar:
+        description: 'Arquivos/pastas adicionais a preservar (separados por espaço)'
+        required: false
+        default: ''
+        type: string
 
 permissions:
-  contents: write  # Permissão para modificar o repositório
+  contents: write
 
 jobs:
   limpeza:
@@ -13,7 +19,7 @@ jobs:
       - name: Checkout do repositório
         uses: actions/checkout@v3
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}  # Usa o token do GitHub com permissões de escrita
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configurar Git
         run: |
@@ -21,19 +27,38 @@ jobs:
           git config --global user.email "actions@github.com"
 
       - name: Listar arquivos antes da remoção
-        run: ls -la  # Mostra os arquivos presentes antes de tentar remover
+        run: ls -la
 
-      - name: Remover todos os arquivos e pastas (exceto .github)
+      - name: Preparar lista de exclusões
         run: |
-          # Remove tudo no nível raiz, exceto .github e .git
-          find . -mindepth 1 -maxdepth 1 -not -name ".github" -not -name ".git" -exec rm -rf {} +
-          # Garante que a pasta .github não seja afetada
+          # Criar arquivo temporário com padrões a preservar
+          echo ".github" > .preservar
+          echo ".git" >> .preservar
+          
+          # Adicionar os padrões fornecidos pelo usuário
+          if [ ! -z "${{ github.event.inputs.preservar }}" ]; then
+            for item in ${{ github.event.inputs.preservar }}; do
+              echo "$item" >> .preservar
+              echo "Preservando: $item"
+            done
+          fi
+          
+          cat .preservar
+
+      - name: Remover arquivos e pastas (exceto os especificados)
+        run: |
+          # Remover tudo exceto os padrões listados em .preservar
+          while IFS= read -r pattern; do
+            find_args="$find_args -not -name \"$pattern\" -not -path \"./$pattern/*\""
+          done < .preservar
+          
+          eval "find . -mindepth 1 -maxdepth 1 $find_args -exec rm -rf {} +"
 
       - name: Listar arquivos após a remoção
-        run: ls -la  # Mostra o estado após a remoção
+        run: ls -la
 
       - name: Commit e push das mudanças
         run: |
           git add .
-          git commit -m "Limpeza manual do repositório (preservando .github)" || echo "Nenhuma mudança para commitar"
-          git push origin HEAD --force  # Força o push para a branch atual
+          git commit -m "Limpeza manual do repositório (preservando itens especificados)" || echo "Nenhuma mudança para commitar"
+          git push origin HEAD --force
