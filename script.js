@@ -575,19 +575,16 @@ async function gerarOrcamento() {
         const tabelaProdutosBody = document.querySelector("#tabelaProdutos tbody");
         if (tabelaProdutosBody) tabelaProdutosBody.innerHTML = ""; // Limpa tabela de produtos
 
-        // ***** ALTERAÇÃO INÍCIO: Modificar Alerta e Adicionar Logs *****
-        alert("Orçamento gerado com sucesso! Verifique se as janelas de Orçamento e Checklist foram abertas (pode ser necessário permitir pop-ups).");
-        // ***** ALTERAÇÃO FIM *****
+        alert("Orçamento gerado com sucesso! Verifique se a janela de Orçamento foi aberta (pode ser necessário permitir pop-ups)."); // MENSAGEM ALTERADA: Não menciona mais Checklist
 
         mostrarPagina('orcamentos-gerados');
         mostrarOrcamentosGerados(); // Atualiza a lista exibida
 
-        // ***** ALTERAÇÃO INÍCIO: Adicionar Logs antes de chamar as funções de exibição *****
         console.log("Tentando abrir Orçamento HTML...");
         exibirOrcamentoEmHTML(orcamento);
-        console.log("Tentando abrir Checklist HTML...");
-        exibirChecklistEmHTML(orcamento);
-        // ***** ALTERAÇÃO FIM *****
+        // REMOVIDO: Chamada para exibir checklist ao gerar orçamento
+        // console.log("Tentando abrir Checklist HTML...");
+        // exibirChecklistEmHTML(orcamento);
     }
 }
 
@@ -630,9 +627,9 @@ function exibirOrcamentoEmHTML(orcamento) {
         }).join(', ') || 'Não especificado';
 
         // Formata o campo prazoEntrega para exibição, mantendo quebras de linha
-        const prazoEntregaFormatado = orcamento.prazoEntrega ? `<pre style="white-space: pre-wrap; font-family: inherit; margin: 0;">${orcamento.prazoEntrega.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>` : 'Não informado';
+        const prazoEntregaFormatado = orcamento.prazoEntrega ? `<pre style="white-space: pre-wrap; font-family: inherit; margin: 0;">${orcamento.prazoEntrega.replace(/</g, "<").replace(/>/g, ">")}</pre>` : 'Não informado';
         // Formata o campo observacoes para exibição, mantendo quebras de linha
-        const observacoesFormatado = orcamento.observacoes ? `<pre style="white-space: pre-wrap; font-family: inherit; margin: 0;">${orcamento.observacoes.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>` : '';
+        const observacoesFormatado = orcamento.observacoes ? `<pre style="white-space: pre-wrap; font-family: inherit; margin: 0;">${orcamento.observacoes.replace(/</g, "<").replace(/>/g, ">")}</pre>` : '';
 
 
         let html = `
@@ -698,18 +695,19 @@ function exibirOrcamentoEmHTML(orcamento) {
 }
 
 // Exibir Checklist de Produção em Nova Janela (HTML) - VERSÃO ATUALIZADA PARA TABELA
-function exibirChecklistEmHTML(orcamento) {
-    if (!orcamento) {
-        console.error("exibirChecklistEmHTML: Orçamento inválido.");
+// Esta função agora pode receber tanto um objeto 'orcamento' quanto um 'pedido'
+function exibirChecklistEmHTML(dadosChecklist) { // Parâmetro renomeado para clareza
+    if (!dadosChecklist) {
+        console.error("exibirChecklistEmHTML: Dados inválidos (orçamento ou pedido).");
         return;
     }
-    console.log("Gerando checklist para orçamento:", orcamento.numero);
+    console.log("Gerando checklist para:", dadosChecklist.numero); // Exibe número do orçamento OU pedido
     console.log("Abrindo janela checklist...");
     const janelaChecklist = window.open('./checklist.html', '_blank');
 
     if (!janelaChecklist) {
         console.error("Falha ao abrir a janela de checklist. Provavelmente bloqueada pelo navegador.");
-        alert("A janela do checklist foi bloqueada pelo navegador. Por favor, permita pop-ups para este site e tente visualizar o checklist na lista de orçamentos.");
+        alert("A janela do checklist foi bloqueada pelo navegador. Por favor, permita pop-ups para este site e tente visualizar o checklist novamente.");
         return;
     }
     console.log("Janela checklist aberta:", janelaChecklist);
@@ -724,13 +722,16 @@ function exibirChecklistEmHTML(orcamento) {
             return;
         }
 
+        // Determina o título correto (Orçamento ou Pedido)
+        const tipoDocumento = dadosChecklist.tipo === 'pedido' ? 'Pedido' : 'Orçamento';
+
         // ***** INÍCIO DA GERAÇÃO DO HTML COM TABELA *****
         let checklistHtml = `
             <div class="info-cliente-tema">
-                <strong>Orçamento Nº:</strong> <span>${orcamento.numero || 'N/A'}</span><br>
-                <strong>Cliente:</strong> <span>${orcamento.cliente || 'Não informado'}</span><br>
-                ${orcamento.tema ? `<strong>Tema:</strong> <span>${orcamento.tema}</span><br>` : ''}
-                ${orcamento.cores ? `<strong>Cores:</strong> <span>${orcamento.cores}</span>` : ''}
+                <strong>${tipoDocumento} Nº:</strong> <span>${dadosChecklist.numero || 'N/A'}</span><br>
+                <strong>Cliente:</strong> <span>${dadosChecklist.cliente || 'Não informado'}</span><br>
+                ${dadosChecklist.tema ? `<strong>Tema:</strong> <span>${dadosChecklist.tema}</span><br>` : ''}
+                ${dadosChecklist.cores ? `<strong>Cores:</strong> <span>${dadosChecklist.cores}</span>` : ''}
             </div>
             <div class="checklist-container">
                 <h3>Itens a Produzir/Separar</h3>
@@ -744,8 +745,8 @@ function exibirChecklistEmHTML(orcamento) {
                     </thead>
                     <tbody>`; // Abre o tbody
 
-        if (orcamento.produtos && orcamento.produtos.length > 0) {
-            orcamento.produtos.forEach((produto, index) => {
+        if (dadosChecklist.produtos && dadosChecklist.produtos.length > 0) {
+            dadosChecklist.produtos.forEach((produto, index) => {
                 // Gera um ID único para o checkbox e label
                 const cleanDescricao = (produto.descricao || `item-${index}`).replace(/[^a-zA-Z0-9-_]/g, '');
                 const checkboxId = `chk-${cleanDescricao}-${index}`; // Usa index para garantir unicidade
@@ -764,7 +765,7 @@ function exibirChecklistEmHTML(orcamento) {
                     </tr>`;
             });
         } else {
-            checklistHtml += `<tr><td colspan="3" style="text-align: center; padding: 20px;">Nenhum produto listado neste orçamento.</td></tr>`;
+            checklistHtml += `<tr><td colspan="3" style="text-align: center; padding: 20px;">Nenhum produto listado neste ${tipoDocumento.toLowerCase()}.</td></tr>`;
         }
 
         checklistHtml += `
@@ -774,7 +775,7 @@ function exibirChecklistEmHTML(orcamento) {
         // ***** FIM DA GERAÇÃO DO HTML COM TABELA *****
 
         conteudoChecklistDiv.innerHTML = checklistHtml;
-        console.log("Conteúdo do checklist (tabela) inserido em checklist.html.");
+        console.log(`Conteúdo do checklist (tabela) para ${tipoDocumento} ${dadosChecklist.numero} inserido em checklist.html.`);
     };
 
     janelaChecklist.onerror = (err) => {
@@ -783,7 +784,7 @@ function exibirChecklistEmHTML(orcamento) {
     };
 }
 
-// Mostrar Orçamentos Gerados na Tabela (COM BOTÕES DE TEXTO)
+// Mostrar Orçamentos Gerados na Tabela (COM BOTÕES DE TEXTO - SEM BOTÃO CHECKLIST)
 function mostrarOrcamentosGerados() {
     const tbody = document.querySelector("#tabela-orcamentos tbody");
     if (!tbody) return;
@@ -836,14 +837,7 @@ function mostrarOrcamentosGerados() {
         btnVisualizar.title = 'Visualizar Orçamento';
         cellAcoes.appendChild(btnVisualizar);
 
-        // ***** ALTERAÇÃO INÍCIO: Adicionar botão Ver Checklist *****
-        const btnChecklist = document.createElement('button');
-        btnChecklist.type = 'button';
-        btnChecklist.textContent = 'Ver Checklist'; // Texto do novo botão
-        btnChecklist.classList.add('btnVisualizarChecklist'); // Nova classe CSS
-        btnChecklist.title = 'Visualizar Checklist de Produção';
-        cellAcoes.appendChild(btnChecklist); // Adiciona o botão
-        // ***** ALTERAÇÃO FIM *****
+        // ===== REMOVIDO o botão Ver Checklist daqui =====
 
         // Botões Editar / Gerar Pedido (condicionais)
         if (!orcamento.pedidoGerado) {
@@ -902,7 +896,7 @@ function filtrarOrcamentos() {
     atualizarListaOrcamentosFiltrados(orcamentosFiltrados); // Chama função para redesenhar a tabela
 }
 
-// Atualizar Tabela de Orçamentos com Dados Filtrados (COM BOTÕES DE TEXTO)
+// Atualizar Tabela de Orçamentos com Dados Filtrados (COM BOTÕES DE TEXTO - SEM BOTÃO CHECKLIST)
 function atualizarListaOrcamentosFiltrados(orcamentosFiltrados) {
     const tbody = document.querySelector("#tabela-orcamentos tbody");
     if (!tbody) return;
@@ -955,14 +949,7 @@ function atualizarListaOrcamentosFiltrados(orcamentosFiltrados) {
         btnVisualizar.title = 'Visualizar Orçamento';
         cellAcoes.appendChild(btnVisualizar);
 
-        // ***** ALTERAÇÃO INÍCIO: Adicionar botão Ver Checklist *****
-        const btnChecklist = document.createElement('button');
-        btnChecklist.type = 'button';
-        btnChecklist.textContent = 'Ver Checklist';
-        btnChecklist.classList.add('btnVisualizarChecklist');
-        btnChecklist.title = 'Visualizar Checklist de Produção';
-        cellAcoes.appendChild(btnChecklist);
-        // ***** ALTERAÇÃO FIM *****
+        // ===== REMOVIDO o botão Ver Checklist daqui =====
 
         if (!orcamento.pedidoGerado) {
             const btnEditar = document.createElement('button');
@@ -1226,7 +1213,7 @@ async function gerarPedido(orcamentoId) {
     }
 }
 
-// Mostrar Pedidos Realizados na Tabela (COM BOTÃO DE TEXTO)
+// Mostrar Pedidos Realizados na Tabela (COM BOTÕES EDITAR E VER CHECKLIST)
 function mostrarPedidosRealizados() {
     const tbody = document.querySelector("#tabela-pedidos tbody");
     if (!tbody) return;
@@ -1266,16 +1253,26 @@ function mostrarPedidosRealizados() {
         cellTotal.textContent = formatarMoeda(pedido.total);
         cellTotal.style.textAlign = 'right';
 
-        // ---- Criação do Botão Editar com Texto ----
+        // ---- Criação dos Botões ----
         cellAcoes.style.textAlign = 'center';
 
+        // Botão Editar
         const btnEditar = document.createElement('button');
         btnEditar.type = 'button';
         btnEditar.textContent = 'Editar'; // Texto
         btnEditar.classList.add('btnEditarPedido');
         btnEditar.title = 'Editar Pedido';
         cellAcoes.appendChild(btnEditar);
-        // ---- Fim da Criação do Botão ----
+
+        // ===== ADICIONADO - Botão Ver Checklist =====
+        const btnChecklistPedido = document.createElement('button');
+        btnChecklistPedido.type = 'button';
+        btnChecklistPedido.textContent = 'Ver Checklist'; // Texto para o botão
+        btnChecklistPedido.classList.add('btnVisualizarChecklistPedido'); // Classe específica
+        btnChecklistPedido.title = 'Visualizar Checklist de Produção do Pedido';
+        cellAcoes.appendChild(btnChecklistPedido); // Adiciona o botão
+        // ===== FIM ADIÇÃO =====
+
     });
      // Listeners adicionados via delegação no DOMContentLoaded
 }
@@ -1306,7 +1303,7 @@ function filtrarPedidos() {
     atualizarListaPedidosFiltrados(pedidosFiltrados);
 }
 
-// Atualizar Tabela de Pedidos com Dados Filtrados (COM BOTÃO DE TEXTO)
+// Atualizar Tabela de Pedidos com Dados Filtrados (COM BOTÕES EDITAR E VER CHECKLIST)
 function atualizarListaPedidosFiltrados(pedidosFiltrados) {
      const tbody = document.querySelector("#tabela-pedidos tbody");
     if (!tbody) return;
@@ -1346,15 +1343,26 @@ function atualizarListaPedidosFiltrados(pedidosFiltrados) {
         cellTotal.textContent = formatarMoeda(pedido.total);
         cellTotal.style.textAlign = 'right';
 
-        // ---- Criação do Botão Editar com Texto ----
+        // ---- Criação dos Botões ----
         cellAcoes.style.textAlign = 'center';
+
+        // Botão Editar
         const btnEditar = document.createElement('button');
         btnEditar.type = 'button';
         btnEditar.textContent = 'Editar';
         btnEditar.classList.add('btnEditarPedido');
         btnEditar.title = 'Editar Pedido';
         cellAcoes.appendChild(btnEditar);
-        // ---- Fim da Criação do Botão ----
+
+        // ===== ADICIONADO - Botão Ver Checklist =====
+        const btnChecklistPedido = document.createElement('button');
+        btnChecklistPedido.type = 'button';
+        btnChecklistPedido.textContent = 'Ver Checklist';
+        btnChecklistPedido.classList.add('btnVisualizarChecklistPedido'); // Mesma classe específica
+        btnChecklistPedido.title = 'Visualizar Checklist de Produção do Pedido';
+        cellAcoes.appendChild(btnChecklistPedido);
+        // ===== FIM ADIÇÃO =====
+
     });
     // Event listeners são adicionados via delegação
 }
@@ -1793,11 +1801,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (target.classList.contains('btnVisualizarOrcamento')) {
                     exibirOrcamentoEmHTML(orcamento);
                 }
-                // ***** ALTERAÇÃO INÍCIO: Adicionar condição para botão Checklist *****
-                else if (target.classList.contains('btnVisualizarChecklist')) {
-                    exibirChecklistEmHTML(orcamento); // Chama a função para exibir o checklist
-                }
-                // ***** ALTERAÇÃO FIM *****
+                // ===== REMOVIDO: Ação do botão btnVisualizarChecklist daqui =====
                 else if (target.classList.contains('btnEditarOrcamento')) {
                     editarOrcamento(orcamentoId); // Passa o ID aqui
                 } else if (target.classList.contains('btnGerarPedido')) {
@@ -1812,7 +1816,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (tabelaPedidos) {
         tabelaPedidos.addEventListener('click', (event) => {
              const target = event.target;
-             if (target.tagName === 'BUTTON' && target.classList.contains('btnEditarPedido')) {
+             if (target.tagName === 'BUTTON') { // Verifica se o clique foi em um botão
                  const linha = target.closest('tr');
                  if (!linha) return;
                  const pedidoId = linha.dataset.pedidoId;
@@ -1821,10 +1825,27 @@ document.addEventListener('DOMContentLoaded', () => {
                      console.warn("ID do pedido não encontrado na linha:", linha);
                      return;
                  }
-                 editarPedido(pedidoId);
+
+                 // Encontra o pedido correspondente no array 'pedidos'
+                 const pedido = pedidos.find(p => p.id === pedidoId);
+
+                 if (!pedido) {
+                     console.error("Pedido não encontrado no array local:", pedidoId);
+                     alert("Erro: Pedido não encontrado.");
+                     return;
+                 }
+
+                 // Verifica qual botão foi clicado
+                 if (target.classList.contains('btnEditarPedido')) {
+                     editarPedido(pedidoId); // Chama a função de edição
+                 }
+                 // ===== ADICIONADO: Ação do botão btnVisualizarChecklistPedido =====
+                 else if (target.classList.contains('btnVisualizarChecklistPedido')) {
+                     // Chama a função existente de exibir checklist, passando o OBJETO PEDIDO
+                     exibirChecklistEmHTML(pedido);
+                 }
+                 // ===== FIM ADIÇÃO =====
              }
-              // Adicionar listener para visualizar pedido aqui se implementar
-             // else if (target.classList.contains('btnVisualizarPedido')) { ... }
         });
     }
 
