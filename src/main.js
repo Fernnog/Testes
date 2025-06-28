@@ -8,7 +8,7 @@
 // --- Importações ---
 
 // Firebase e Configuração
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js';
 import { auth } from './config/firebase-config.js';
 
 // Camada de Serviços (Dados)
