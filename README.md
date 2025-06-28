@@ -12,37 +12,36 @@ O projeto foi arquitetado com uma **estrutura de módulos JavaScript (ESM)**, fo
 
 O projeto é organizado na seguinte estrutura de diretórios, promovendo a separação de responsabilidades e a manutenibilidade:
 
-.
-├── index.html # Ponto de entrada HTML da aplicação
-├── styles.css # Folha de estilos principal
-├── logo.png # Imagem do logotipo
-├── favicon.ico # Ícone da aba do navegador
-├── manifest.json # Configuração para Progressive Web App (PWA)
-├── README.md # Esta documentação
+## Estrutura de Arquivos
+
+[...]
+
 └── src/ # Contém todo o código-fonte modular da aplicação
-├── main.js # Ponto de entrada JS, orquestrador principal
-│
-├── config/ # Módulos de configuração e dados estáticos
-│ ├── firebase-config.js # Credenciais e inicialização do Firebase
-│ ├── bible-data.js # Constantes dos livros e capítulos da Bíblia
-│ └── plan-templates.js # Modelos para planos de leitura predefinidos
-│
-├── services/ # Camada de abstração de dados (comunicação com backend)
-│ ├── authService.js # Funções de autenticação (login, signup, etc.)
-│ └── planService.js # Funções de CRUD para os planos no Firestore
-│
-├── ui/ # Módulos de UI (manipulação do DOM)
-│ ├── dom-elements.js # Centraliza todos os seletores de elementos do DOM
-│ ├── auth-ui.js # Lógica da UI de autenticação
-│ ├── header-ui.js # Lógica da UI do cabeçalho
-│ ├── modals-ui.js # Lógica da UI de todos os modais
-│ ├── perseverance-panel-ui.js # Lógica da UI do painel de perseverança
-│ ├── plan-creation-ui.js # Lógica da UI de criação de planos
-│ └── reading-plan-ui.js # Lógica da UI do plano de leitura ativo
-│
-└── utils/ # Funções puras e utilitárias
-├── chapter-helpers.js # Funções para gerar e manipular capítulos
-└── date-helpers.js # Funções para formatar e calcular datas
+    ├── main.js # Ponto de entrada JS, orquestrador principal
+    │
+    ├── config/ # Módulos de configuração e dados estáticos
+    │   ├── firebase-config.js # Credenciais e inicialização do Firebase
+    │   ├── bible-data.js # Constantes dos livros e capítulos da Bíblia
+    │   └── plan-templates.js # Modelos para planos de leitura predefinidos
+    │
+    ├── services/ # Camada de abstração de dados (comunicação com backend)
+    │   ├── authService.js # Funções de autenticação (login, signup, etc.)
+    │   └── planService.js # Funções de CRUD para os planos no Firestore
+    │
+    ├── ui/ # Módulos de UI (manipulação do DOM)
+    │   ├── dom-elements.js # Centraliza todos os seletores de elementos do DOM
+    │   ├── auth-ui.js # Lógica da UI de autenticação
+    │   ├── header-ui.js # Lógica da UI do cabeçalho
+    │   ├── modals-ui.js # Lógica da UI de todos os modais
+    │   ├── perseverance-panel-ui.js # Lógica da UI do painel de perseverança
+    │   ├── plan-creation-ui.js # Lógica da UI de criação de planos
+    │   ├── reading-plan-ui.js # Lógica da UI do plano de leitura ativo
+    │   └── side-panels-ui.js # **NOVO:** Lógica da UI dos painéis de leituras atrasadas e próximas.
+    │
+    └── utils/ # Funções puras e utilitárias
+        ├── chapter-helpers.js # Funções para gerar e manipular capítulos
+        ├── date-helpers.js # Funções para formatar e calcular datas
+        └── plan-logic-helpers.js # **NOVO:** Lógica para calcular a data efetiva de um dia de leitura, considerando recálculos.
 
 
 ## Funcionalidades Principais
