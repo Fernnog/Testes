@@ -1,3 +1,64 @@
+# Plano de Leitura da Bíblia Personalizado com Firebase
+
+![Logotipo do Plano de Leitura](logo.png)
+
+## Descrição
+
+Este projeto é uma aplicação web interativa que permite aos usuários criar, acompanhar e gerenciar múltiplos planos personalizados de leitura da Bíblia. Utilizando Firebase para autenticação e armazenamento de dados em tempo real (Firestore), a aplicação oferece uma experiência flexível, personalizada, moderna e motivadora.
+
+O projeto foi arquitetado com uma **estrutura de módulos JavaScript (ESM)**, focando em separação de responsabilidades, manutenibilidade e escalabilidade.
+
+## Estrutura de Arquivos
+
+O projeto é organizado na seguinte estrutura de diretórios, promovendo a separação de responsabilidades e a manutenibilidade:
+
+.
+├── index.html # Ponto de entrada HTML da aplicação
+├── styles.css # Folha de estilos principal
+├── logo.png # Imagem do logotipo
+├── favicon.ico # Ícone da aba do navegador
+├── manifest.json # Configuração para Progressive Web App (PWA)
+├── README.md # Esta documentação
+└── src/ # Contém todo o código-fonte modular da aplicação
+├── main.js # Ponto de entrada JS, orquestrador principal
+│
+├── config/ # Módulos de configuração e dados estáticos
+│ ├── firebase-config.js # Credenciais e inicialização do Firebase
+│ ├── bible-data.js # Constantes dos livros e capítulos da Bíblia
+│ └── plan-templates.js # Modelos para planos de leitura predefinidos
+│
+├── services/ # Camada de abstração de dados (comunicação com backend)
+│ ├── authService.js # Funções de autenticação (login, signup, etc.)
+│ └── planService.js # Funções de CRUD para os planos no Firestore
+│
+├── ui/ # Módulos de UI (manipulação do DOM)
+│ ├── dom-elements.js # Centraliza todos os seletores de elementos do DOM
+│ ├── auth-ui.js # Lógica da UI de autenticação
+│ ├── header-ui.js # Lógica da UI do cabeçalho
+│ ├── modals-ui.js # Lógica da UI de todos os modais
+│ ├── perseverance-panel-ui.js # Lógica da UI do painel de perseverança
+│ ├── plan-creation-ui.js # Lógica da UI de criação de planos
+│ └── reading-plan-ui.js # Lógica da UI do plano de leitura ativo
+│
+└── utils/ # Funções puras e utilitárias
+├── chapter-helpers.js # Funções para gerar e manipular capítulos
+└── date-helpers.js # Funções para formatar e calcular datas
+
+
+## Funcionalidades Principais
+
+*   **Autenticação de Usuários:** Cadastro e login seguros usando Firebase Authentication.
+*   **Gerenciamento de Múltiplos Planos:** Crie, alterne, gerencie e delete múltiplos planos de leitura.
+*   **Criação Rápida:** Gere um conjunto de três planos anuais estruturados com um único clique.
+*   **Criação de Planos Personalizados:** Defina conteúdo por intervalo, seleção de livros/capítulos avulsos e configure a duração e a periodicidade (dias da semana).
+*   **Acompanhamento de Progresso Detalhado:**
+    *   Leitura diária com checkboxes individuais por capítulo.
+    *   Painel de **Perseverança** que rastreia a sequência de dias de leitura consecutivos (streak).
+    *   Painel de **Interações Semanais** com um resumo visual da sua atividade.
+    *   Visualização de leituras atrasadas e próximas em todos os seus planos.
+*   **Recálculo de Plano:** Ajuste dinamicamente o ritmo de um plano ativo sem perder o progresso.
+*   **Histórico e Estatísticas:** Acesse o histórico de leituras concluídas e veja estatísticas sobre seu progresso.
+*   **Interface Responsiva:** Design moderno e otimizado para dispositivos móveis (Mobile-First).
 
 ## Tech Stack
 
