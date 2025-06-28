@@ -10,8 +10,9 @@ import {
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
     signOut,
-    onAuthStateChanged as firebaseOnAuthStateChanged // Renomeia para evitar conflito de nomes
-} from "firebase/auth";
+    onAuthStateChanged as firebaseOnAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
+
 import { auth } from "../config/firebase-config.js";
 
 /**
