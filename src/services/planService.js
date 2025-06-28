@@ -6,21 +6,13 @@
  */
 
 // Importações necessárias do SDK do Firebase e da configuração local
-import { db } from '../config/firebase-config.js';
 import {
-    doc,
-    getDoc,
-    setDoc,
-    updateDoc,
-    deleteDoc,
-    addDoc,
-    collection,
-    getDocs,
-    query,
-    orderBy,
-    serverTimestamp
-} from "firebase/firestore";
-import { getUTCWeekId } from '../utils/date-helpers.js'; // Assumindo que esta função foi movida
+    doc, getDoc, setDoc, updateDoc, deleteDoc,
+    addDoc, collection, getDocs, query, orderBy, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+
+import { db } from '../config/firebase-config.js';
+import { getUTCWeekId } from '../utils/date-helpers.js';
 
 // --- Funções de Leitura de Dados (Read) ---
 
