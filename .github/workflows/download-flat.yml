@@ -1,46 +1,36 @@
-# Nome do Workflow que aparecerá na aba "Actions" do seu repositório
-name: Download de Arquivos (Flat)
+name: Criar e Publicar Release com Arquivos
 
-# Define os gatilhos (triggers) que iniciarão o workflow
 on:
-  # Permite que você execute este workflow manualmente a partir da aba Actions
   workflow_dispatch:
 
-  # Você também pode descomentar a linha abaixo para rodar a cada push na branch main
-  # push:
-  #   branches: [ main ]
-
 jobs:
-  # Nome do job
-  flatten-and-archive:
-    # O tipo de máquina virtual para executar o job. 'ubuntu-latest' é a mais comum e recomendada.
+  build-and-release:
     runs-on: ubuntu-latest
+    # Adicionamos permissões para a action poder criar uma release
+    permissions:
+      contents: write
 
     steps:
-      # Passo 1: Clona o seu repositório para a máquina virtual do workflow
       - name: Checkout do repositório
         uses: actions/checkout@v4
 
-      # Passo 2: Cria uma pasta temporária para armazenar todos os arquivos
-      - name: Criar pasta de destino
-        run: mkdir flat-files
-
-      # Passo 3: Encontra e copia todos os arquivos para a pasta de destino
-      # Este é o passo mais importante!
-      - name: Copiar todos os arquivos para a pasta de destino
-        # Usamos 'find' para localizar todos os arquivos (-type f)
-        # Excluímos as pastas .git e .github para não incluir arquivos internos
-        # Usamos `cp --backup=numbered` para evitar que arquivos com o mesmo nome se sobrescrevam.
-        # Ex: se houver 'src/config.js' e 'test/config.js', o segundo será salvo como 'config.js.~1~'
+      - name: Criar pasta de destino e copiar arquivos
         run: |
+          mkdir flat-files
           find . -type f -not -path './.git/*' -not -path './.github/*' -exec cp --backup=numbered {} flat-files/ \;
 
-      # Passo 4: Faz o upload da pasta 'flat-files' como um artefato do workflow
-      # Este artefato será um arquivo .zip que você poderá baixar.
-      - name: Fazer upload dos arquivos como um artefato
-        uses: actions/upload-artifact@v4
+      - name: Compactar arquivos em um ZIP
+        run: zip -r arquivos-achatados.zip ./flat-files
+
+      - name: Criar Release e fazer upload do ZIP
+        uses: softprops/action-gh-release@v2
         with:
-          # Nome do arquivo .zip que será gerado
-          name: arquivos-achatados
-          # Caminho da pasta que será compactada e disponibilizada para download
-          path: flat-files/
+          # O nome do arquivo que será anexado à release
+          files: arquivos-achatados.zip
+          # Cria uma tag única baseada na data e hora para cada release
+          # Ex: release-2023-10-27-14-30-05
+          tag_name: release-${{ github.run_id }}
+          name: "Arquivos Achatados (Build ${{ github.run_id }})"
+          body: |
+            Download de todos os arquivos do repositório em uma única pasta.
+            Executado em: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
