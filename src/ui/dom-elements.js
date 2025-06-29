@@ -142,8 +142,3 @@ export function closeModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) modal.style.display = 'none';
 }
-
-// --- Painel de Progresso Semanal Global ---
-export const globalWeeklyTrackerSection = document.getElementById('global-weekly-tracker-section');
-export const globalWeekDaysIndicators = document.getElementById('global-week-days-indicators');
-export const globalDayIndicatorElements = document.querySelectorAll('#global-weekly-tracker-section .day-indicator');
