@@ -18,6 +18,17 @@ import {
 // --- Funções Públicas (API do Módulo) ---
 
 /**
+ * Inicializa o módulo. Como este módulo é primariamente para exibição e suas
+ * interações (cliques nos itens) são gerenciadas pelo orquestrador,
+ * esta função atualmente não precisa configurar listeners internos.
+ */
+export function init() {
+    // Nenhuma inicialização de listener necessária neste momento.
+    // A função existe para manter a consistência arquitetural com outros módulos de UI.
+}
+
+
+/**
  * Renderiza os painéis de leituras atrasadas e próximas.
  * (IMPLEMENTAÇÃO FUTURA: A lógica complexa de `displayScheduledReadings` do script antigo virá para cá)
  *
