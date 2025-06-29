@@ -16,7 +16,7 @@ import * as authUI from './ui/auth-ui.js';
 import * as headerUI from './ui/header-ui.js';
 import * as modalsUI from './ui/modals-ui.js';
 import * as planCreationUI from './ui/plan-creation-ui.js';
-import *a s perseverancePanelUI from './ui/perseverance-panel-ui.js';
+import * as perseverancePanelUI from './ui/perseverance-panel-ui.js'; // **** CORREÇÃO AQUI ****
 import * as weeklyTrackerUI from './ui/weekly-tracker-ui.js';
 import * as readingPlanUI from './ui/reading-plan-ui.js';
 // O sidePanelsUI foi criado, mas sua lógica complexa será implementada futuramente.
@@ -32,7 +32,7 @@ import {
     distributeChaptersOverReadingDays,
     sortChaptersCanonically
 } from './utils/chapter-helpers.js';
-import { getCurrentUTCDateString, dateDiffInDays } from './utils/date-helpers.js';
+import { getCurrentUTCDateString, dateDiffInDays, getUTCWeekId } from './utils/date-helpers.js';
 import { getEffectiveDateForDay } from './utils/plan-logic-helpers.js';
 import { FAVORITE_ANNUAL_PLAN_CONFIG } from './config/plan-templates.js';
 
@@ -70,6 +70,7 @@ const appState = {
  * @param {import("firebase/auth").User | null} user - O objeto do usuário ou null.
  */
 async function handleAuthStateChange(user) {
+    authUI.hideLoading(); // Garante que o loading da autenticação seja sempre removido
     if (user) {
         // --- Usuário LOGADO ---
         appState.currentUser = user;
@@ -129,9 +130,10 @@ async function loadInitialUserData(user) {
  * @param {string} password - A senha do usuário.
  */
 async function handleLogin(email, password) {
+    authUI.showLoading();
     try {
         await authService.login(email, password);
-        // O `onAuthStateChanged` cuidará da atualização da UI.
+        // O `onAuthStateChanged` cuidará da atualização da UI e de esconder o loading.
     } catch (error) {
         console.error("Falha no login:", error);
         authUI.hideLoading();
@@ -145,10 +147,11 @@ async function handleLogin(email, password) {
  * @param {string} password - A senha para o novo usuário.
  */
 async function handleSignup(email, password) {
+    authUI.showLoading();
     try {
         await authService.signup(email, password);
         alert("Cadastro realizado com sucesso! Você já está logado.");
-        // O `onAuthStateChanged` cuidará da atualização da UI.
+        // O `onAuthStateChanged` cuidará da atualização da UI e de esconder o loading.
     } catch (error) {
         console.error("Falha no cadastro:", error);
         authUI.hideLoading();
@@ -248,6 +251,7 @@ async function handleCreatePlan(formData) {
             }
             totalReadingDays = Math.max(1, readingDaysInPeriod);
         } else { // end-date
+            if (!formData.endDate) throw new Error("A data final é obrigatória para este método de duração.");
             const calendarDuration = dateDiffInDays(startDate, formData.endDate) + 1;
             let readingDaysInPeriod = 0;
             let tempDate = new Date(startDate + 'T00:00:00Z');
@@ -319,7 +323,7 @@ async function handleChapterToggle(chapterName, isRead) {
         let interactionUpdates = {};
         
         if (isRead && appState.userInfo.lastStreakInteractionDate !== todayStr) {
-            const daysDiff = appState.userInfo.lastStreakInteractionDate ? dateDiffInDays(appState.userInfo.lastStreakInteraction-date, todayStr) : Infinity;
+            const daysDiff = appState.userInfo.lastStreakInteractionDate ? dateDiffInDays(appState.userInfo.lastStreakInteractionDate, todayStr) : Infinity;
             appState.userInfo.currentStreak = (daysDiff === 1) ? appState.userInfo.currentStreak + 1 : 1;
             appState.userInfo.longestStreak = Math.max(appState.userInfo.longestStreak, appState.userInfo.currentStreak);
             appState.userInfo.lastStreakInteractionDate = todayStr;
@@ -335,6 +339,9 @@ async function handleChapterToggle(chapterName, isRead) {
         const currentWeekId = getUTCWeekId();
         if (appState.weeklyInteractions?.weekId !== currentWeekId) {
             appState.userInfo.globalWeeklyInteractions = { weekId: currentWeekId, interactions: {} };
+        }
+        if (!appState.userInfo.globalWeeklyInteractions.interactions) {
+            appState.userInfo.globalWeeklyInteractions.interactions = {};
         }
         appState.userInfo.globalWeeklyInteractions.interactions[todayStr] = true;
         interactionUpdates.globalWeeklyInteractions = appState.userInfo.globalWeeklyInteractions;
@@ -397,29 +404,33 @@ async function handleDeletePlan(planId) {
     if (!planToDelete) return;
 
     if (confirm(`Tem certeza que deseja excluir o plano "${planToDelete.name}"? Esta ação não pode ser desfeita.`)) {
-        readingPlanUI.showLoading();
+        modalsUI.showLoading('manage-plans-modal'); // Mostra o loading no modal
         try {
             await planService.deletePlan(appState.currentUser.uid, planId);
 
             // Se o plano deletado era o ativo, define o próximo da lista como ativo
+            const remainingPlans = appState.userPlans.filter(p => p.id !== planId);
             if (appState.activePlanId === planId) {
-                const remainingPlans = appState.userPlans.filter(p => p.id !== planId);
                 const newActivePlanId = remainingPlans.length > 0 ? remainingPlans[0].id : null;
                 await planService.setActivePlan(appState.currentUser.uid, newActivePlanId);
             }
             
             alert(`Plano "${planToDelete.name}" excluído com sucesso.`);
-            modalsUI.close('manage-plans-modal');
             await loadInitialUserData(appState.currentUser); // Recarrega tudo
             
             // Renderiza com o novo estado
             headerUI.render(appState.currentUser, appState.userPlans, appState.activePlanId);
             readingPlanUI.render(appState.currentReadingPlan);
             await displayScheduledReadings();
+            
+            // Se o modal estava aberto, fecha-o
+            modalsUI.close('manage-plans-modal');
 
         } catch (error) {
             console.error("Erro ao deletar plano:", error);
-            readingPlanUI.showError(`Erro ao deletar: ${error.message}`);
+            modalsUI.showError('manage-plans-modal', `Erro ao deletar: ${error.message}`);
+        } finally {
+            modalsUI.hideLoading('manage-plans-modal');
         }
     }
 }
@@ -431,7 +442,6 @@ async function handleDeletePlan(planId) {
  * Abre e popula o modal de gerenciamento de planos.
  */
 function handleManagePlans() {
-    modalsUI.hideLoading('manage-plans-modal');
     modalsUI.populateManagePlans(appState.userPlans, appState.activePlanId);
     modalsUI.open('manage-plans-modal');
 }
@@ -453,6 +463,7 @@ async function handleCreateFavoritePlanSet() {
             const planMap = distributeChaptersOverReadingDays(chaptersToRead, totalReadingDays);
             const startDate = getCurrentUTCDateString();
             const endDate = getEffectiveDateForDay({ startDate, allowedDays: config.allowedDays }, totalReadingDays);
+            if (!endDate) throw new Error(`Não foi possível calcular a data final para ${config.name}`);
             
             const planData = {
                 name: config.name,
@@ -465,6 +476,9 @@ async function handleCreateFavoritePlanSet() {
                 allowedDays: config.allowedDays,
                 readLog: {},
                 dailyChapterReadStatus: {},
+                googleDriveLink: null,
+                recalculationBaseDay: null,
+                recalculationBaseDate: null,
             };
             await planService.saveNewPlan(appState.currentUser.uid, planData);
         }
@@ -476,7 +490,7 @@ async function handleCreateFavoritePlanSet() {
         }
         
         alert("Conjunto de planos favoritos criado com sucesso!");
-        modalsUI.close('manage-plans-modal');
+        
         await loadInitialUserData(appState.currentUser);
         
         headerUI.render(appState.currentUser, appState.userPlans, appState.activePlanId);
@@ -488,6 +502,7 @@ async function handleCreateFavoritePlanSet() {
         modalsUI.showError('manage-plans-modal', `Erro: ${error.message}`);
     } finally {
         modalsUI.hideLoading('manage-plans-modal');
+        modalsUI.close('manage-plans-modal');
     }
 }
 
@@ -495,37 +510,17 @@ async function handleCreateFavoritePlanSet() {
  * Exibe as leituras atrasadas e próximas (lógica temporariamente aqui).
  */
 async function displayScheduledReadings() {
-    sidePanelsUI.show();
-    const overdueList = [];
-    const upcomingList = [];
-    const todayStr = getCurrentUTCDateString();
-    
-    for (const plan of appState.userPlans) {
-        if (!plan.plan || plan.currentDay > Object.keys(plan.plan).length) continue;
-        
-        const scheduledDate = getEffectiveDateForDay(plan, plan.currentDay);
-        if (scheduledDate && scheduledDate < todayStr) {
-            overdueList.push({ ...plan, scheduledDate });
-        }
-        
-        for (let i = 0; i < 3 && (plan.currentDay + i <= Object.keys(plan.plan).length); i++) {
-            const upcomingDate = getEffectiveDateForDay(plan, plan.currentDay + i);
-            if (upcomingDate && upcomingDate >= todayStr) {
-                if (!upcomingList.some(item => item.id === plan.id && item.scheduledDate === upcomingDate)) {
-                    upcomingList.push({ ...plan, scheduledDate: upcomingDate, dayInPlan: plan.currentDay + i });
-                }
-            }
-        }
+    if (!appState.currentUser) {
+        sidePanelsUI.hide();
+        return;
     }
     
-    // Simplificado - a lógica de renderização completa seria movida para side-panels-ui.js
-    overdueReadingsListDiv.innerHTML = overdueList.length > 0 
-        ? overdueList.map(p => `<div>Plano Atrasado: ${p.name}</div>`).join('') 
-        : '<p>Nenhuma leitura atrasada.</p>';
-        
-    upcomingReadingsListDiv.innerHTML = upcomingList.length > 0 
-        ? upcomingList.slice(0, 3).map(p => `<div>Próxima Leitura (${p.scheduledDate}): ${p.name}</div>`).join('')
-        : '<p>Nenhuma leitura próxima.</p>';
+    // A lógica de calcular as leituras atrasadas/próximas...
+    // Esta parte se tornará mais complexa e eventualmente será movida para seu próprio helper.
+    // Por enquanto, uma implementação simples para visualização.
+    
+    // Renderiza os painéis (que no momento estão vazios ou com placeholders)
+    sidePanelsUI.render(appState.userPlans, appState.activePlanId, handleSwitchPlan);
 }
 
 
@@ -557,13 +552,14 @@ function initApplication() {
         onCompleteDay: handleCompleteDay,
         onChapterToggle: handleChapterToggle,
         onDeletePlan: handleDeletePlan,
-        onRecalculate: () => modalsUI.open('recalculate-modal'),
-        onShowStats: () => modalsUI.open('stats-modal'),
-        onShowHistory: () => modalsUI.open('history-modal'),
+        onRecalculate: () => { modalsUI.resetRecalculateForm(); modalsUI.open('recalculate-modal'); },
+        onShowStats: () => { modalsUI.displayStats({}); modalsUI.open('stats-modal'); }, // A lógica de cálculo virá depois
+        onShowHistory: () => { modalsUI.displayHistory(appState.currentReadingPlan?.readLog); modalsUI.open('history-modal'); },
     });
     
     perseverancePanelUI.init();
     weeklyTrackerUI.init();
+    sidePanelsUI.init(); // Inicializa o módulo, mesmo que a renderização seja simples por enquanto
     
     modalsUI.init({
         onSwitchPlan: handleSwitchPlan,
