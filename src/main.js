@@ -16,11 +16,9 @@ import * as authUI from './ui/auth-ui.js';
 import * as headerUI from './ui/header-ui.js';
 import * as modalsUI from './ui/modals-ui.js';
 import * as planCreationUI from './ui/plan-creation-ui.js';
-import * as perseverancePanelUI from './ui/perseverance-panel-ui.js'; // **** CORREÇÃO AQUI ****
+import * as perseverancePanelUI from './ui/perseverance-panel-ui.js';
 import * as weeklyTrackerUI from './ui/weekly-tracker-ui.js';
 import * as readingPlanUI from './ui/reading-plan-ui.js';
-// O sidePanelsUI foi criado, mas sua lógica complexa será implementada futuramente.
-// Por enquanto, a lógica de renderização reside em `displayScheduledReadings` aqui no main.js.
 import * as sidePanelsUI from './ui/side-panels-ui.js';
 
 // Helpers e Configurações
@@ -82,8 +80,17 @@ async function handleAuthStateChange(user) {
         headerUI.render(user, appState.userPlans, appState.activePlanId);
         perseverancePanelUI.render(appState.userInfo);
         weeklyTrackerUI.render(appState.weeklyInteractions);
-        readingPlanUI.render(appState.currentReadingPlan);
-        await displayScheduledReadings();
+        
+        // **MELHORIA ARQUITETURAL APLICADA AQUI**
+        // Calcula a data efetiva ANTES de chamar a renderização da UI.
+        if (appState.currentReadingPlan) {
+            const effectiveDate = getEffectiveDateForDay(appState.currentReadingPlan, appState.currentReadingPlan.currentDay);
+            readingPlanUI.render(appState.currentReadingPlan, effectiveDate);
+        } else {
+            readingPlanUI.render(null, null);
+        }
+        
+        sidePanelsUI.render(appState.userPlans, appState.activePlanId, handleSwitchPlan);
 
         if (!appState.activePlanId && appState.userPlans.length === 0) {
             planCreationUI.show(true);
@@ -185,8 +192,16 @@ async function handleSwitchPlan(planId) {
         
         // Renderiza tudo novamente com o novo estado
         headerUI.render(appState.currentUser, appState.userPlans, appState.activePlanId);
-        readingPlanUI.render(appState.currentReadingPlan);
-        await displayScheduledReadings();
+        
+        // **MELHORIA ARQUITETURAL APLICADA AQUI**
+        if (appState.currentReadingPlan) {
+            const effectiveDate = getEffectiveDateForDay(appState.currentReadingPlan, appState.currentReadingPlan.currentDay);
+            readingPlanUI.render(appState.currentReadingPlan, effectiveDate);
+        } else {
+            readingPlanUI.render(null, null);
+        }
+        
+        sidePanelsUI.render(appState.userPlans, appState.activePlanId, handleSwitchPlan);
 
     } catch (error) {
         console.error("Erro ao trocar de plano:", error);
@@ -292,8 +307,16 @@ async function handleCreatePlan(formData) {
         
         // Renderiza a UI com o novo estado
         headerUI.render(appState.currentUser, appState.userPlans, appState.activePlanId);
-        readingPlanUI.render(appState.currentReadingPlan);
-        await displayScheduledReadings();
+
+        // **MELHORIA ARQUITETURAL APLICADA AQUI**
+        if (appState.currentReadingPlan) {
+            const effectiveDate = getEffectiveDateForDay(appState.currentReadingPlan, appState.currentReadingPlan.currentDay);
+            readingPlanUI.render(appState.currentReadingPlan, effectiveDate);
+        } else {
+            readingPlanUI.render(null, null);
+        }
+        
+        sidePanelsUI.render(appState.userPlans, appState.activePlanId, handleSwitchPlan);
 
     } catch (error) {
         console.error("Erro ao criar plano:", error);
@@ -381,8 +404,16 @@ async function handleCompleteDay(planId) {
         
         // Atualiza estado local e recarrega
         await loadInitialUserData(appState.currentUser);
-        readingPlanUI.render(appState.currentReadingPlan);
-        await displayScheduledReadings();
+        
+        // **MELHORIA ARQUITETURAL APLICADA AQUI**
+        if (appState.currentReadingPlan) {
+            const effectiveDate = getEffectiveDateForDay(appState.currentReadingPlan, appState.currentReadingPlan.currentDay);
+            readingPlanUI.render(appState.currentReadingPlan, effectiveDate);
+        } else {
+            readingPlanUI.render(null, null);
+        }
+        
+        sidePanelsUI.render(appState.userPlans, appState.activePlanId, handleSwitchPlan);
 
         if (newDay > Object.keys(plan).length) {
             setTimeout(() => alert(`Parabéns! Você concluiu o plano "${appState.currentReadingPlan.name}"!`), 100);
@@ -420,8 +451,16 @@ async function handleDeletePlan(planId) {
             
             // Renderiza com o novo estado
             headerUI.render(appState.currentUser, appState.userPlans, appState.activePlanId);
-            readingPlanUI.render(appState.currentReadingPlan);
-            await displayScheduledReadings();
+            
+            // **MELHORIA ARQUITETURAL APLICADA AQUI**
+            if (appState.currentReadingPlan) {
+                const effectiveDate = getEffectiveDateForDay(appState.currentReadingPlan, appState.currentReadingPlan.currentDay);
+                readingPlanUI.render(appState.currentReadingPlan, effectiveDate);
+            } else {
+                readingPlanUI.render(null, null);
+            }
+
+            sidePanelsUI.render(appState.userPlans, appState.activePlanId, handleSwitchPlan);
             
             // Se o modal estava aberto, fecha-o
             modalsUI.close('manage-plans-modal');
@@ -494,8 +533,16 @@ async function handleCreateFavoritePlanSet() {
         await loadInitialUserData(appState.currentUser);
         
         headerUI.render(appState.currentUser, appState.userPlans, appState.activePlanId);
-        readingPlanUI.render(appState.currentReadingPlan);
-        await displayScheduledReadings();
+
+        // **MELHORIA ARQUITETURAL APLICADA AQUI**
+        if (appState.currentReadingPlan) {
+            const effectiveDate = getEffectiveDateForDay(appState.currentReadingPlan, appState.currentReadingPlan.currentDay);
+            readingPlanUI.render(appState.currentReadingPlan, effectiveDate);
+        } else {
+            readingPlanUI.render(null, null);
+        }
+
+        sidePanelsUI.render(appState.userPlans, appState.activePlanId, handleSwitchPlan);
 
     } catch (error) {
         console.error("Erro ao criar planos favoritos:", error);
@@ -505,24 +552,6 @@ async function handleCreateFavoritePlanSet() {
         modalsUI.close('manage-plans-modal');
     }
 }
-
-/**
- * Exibe as leituras atrasadas e próximas (lógica temporariamente aqui).
- */
-async function displayScheduledReadings() {
-    if (!appState.currentUser) {
-        sidePanelsUI.hide();
-        return;
-    }
-    
-    // A lógica de calcular as leituras atrasadas/próximas...
-    // Esta parte se tornará mais complexa e eventualmente será movida para seu próprio helper.
-    // Por enquanto, uma implementação simples para visualização.
-    
-    // Renderiza os painéis (que no momento estão vazios ou com placeholders)
-    sidePanelsUI.render(appState.userPlans, appState.activePlanId, handleSwitchPlan);
-}
-
 
 // --- 5. INICIALIZAÇÃO DA APLICAÇÃO ---
 
@@ -559,7 +588,7 @@ function initApplication() {
     
     perseverancePanelUI.init();
     weeklyTrackerUI.init();
-    sidePanelsUI.init(); // Inicializa o módulo, mesmo que a renderização seja simples por enquanto
+    sidePanelsUI.init();
     
     modalsUI.init({
         onSwitchPlan: handleSwitchPlan,
