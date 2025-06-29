@@ -151,9 +151,12 @@ export function populateManagePlans(plans, activePlanId) {
             ? `<small>${formatUTCDateStringToBrasilian(plan.startDate)} - ${formatUTCDateStringToBrasilian(plan.endDate)}</small>`
             : '<small style="color: red;">Datas inválidas</small>';
         
+        // ÍCONE SVG SIMPLIFICADO PARA O MODAL (SUBSTITUIU O <img>)
         const driveLinkHTML = plan.googleDriveLink
             ? `<a href="${plan.googleDriveLink}" target="_blank" class="manage-drive-link" title="Abrir link do Drive" onclick="event.stopPropagation();">
-                 <img src="drive_icon.png" alt="Drive" style="width:20px; height:auto;">
+                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20px" height="20px">
+                    <path d="M18.2,7.3H12l-2-2H5.3C4.6,5.3,4,5.9,4,6.6v10.8C4,18.1,4.6,18.7,5.3,18.7h12.9c0.7,0,1.3-0.6,1.3-1.3V8.6C19.5,7.9,18.9,7.3,18.2,7.3z"/>
+                 </svg>
                </a>`
             : '';
 
@@ -259,10 +262,13 @@ export function init(callbacks) {
 
     // Listeners específicos para ações dentro dos modais
     managePlansModal.addEventListener('click', (e) => {
-        if (e.target.matches('.activate-plan-btn')) {
-            state.callbacks.onSwitchPlan?.(e.target.dataset.planId);
-        } else if (e.target.matches('.delete-plan-btn')) {
-            state.callbacks.onDeletePlan?.(e.target.dataset.planId);
+        const activateButton = e.target.closest('.activate-plan-btn');
+        const deleteButton = e.target.closest('.delete-plan-btn');
+
+        if (activateButton) {
+            state.callbacks.onSwitchPlan?.(activateButton.dataset.planId);
+        } else if (deleteButton) {
+            state.callbacks.onDeletePlan?.(deleteButton.dataset.planId);
         }
     });
 
