@@ -28,7 +28,6 @@ import {
 
 // Importa funções auxiliares
 import { formatUTCDateStringToBrasilian } from '../utils/date-helpers.js';
-import { getEffectiveDateForDay } from '../utils/plan-logic-helpers.js'; // Assumindo que esta lógica complexa foi movida
 
 // --- Estado Interno do Módulo ---
 let state = {
@@ -122,17 +121,17 @@ function _renderDailyReading() {
 
 /**
  * Atualiza o cabeçalho da leitura diária com a data e o dia do plano.
+ * @param {string|null} effectiveDate - A data de leitura efetiva, já calculada.
  */
-function _renderDailyHeader() {
-    const { plan, currentDay, name, startDate, endDate } = state.currentPlan;
+function _renderDailyHeader(effectiveDate) {
+    const { plan, currentDay, name } = state.currentPlan;
     const totalReadingDaysInPlan = Object.keys(plan || {}).length;
     const isCompleted = currentDay > totalReadingDaysInPlan;
 
     if (isCompleted) {
         dailyReadingHeaderDiv.innerHTML = `<p style="font-weight: bold; color: var(--success-color);">Parabéns!</p><p>Plano "${name || ''}" concluído!</p>`;
     } else {
-        const currentDateOfReadingStr = getEffectiveDateForDay(state.currentPlan, currentDay);
-        const formattedDate = currentDateOfReadingStr ? formatUTCDateStringToBrasilian(currentDateOfReadingStr) : "[Data Inválida]";
+        const formattedDate = formatUTCDateStringToBrasilian(effectiveDate);
         dailyReadingHeaderDiv.innerHTML = `<p style="margin-bottom: 5px;"><strong style="color: var(--primary-action); font-size: 1.1em;">${formattedDate}</strong><span style="font-size: 0.9em; color: var(--text-color-muted); margin-left: 10px;">(Dia ${currentDay} de ${totalReadingDaysInPlan})</span></p>`;
     }
 }
@@ -185,8 +184,9 @@ export function init(callbacks) {
 /**
  * Renderiza toda a seção do plano de leitura ativo com base nos dados fornecidos.
  * @param {object|null} activePlan - O objeto do plano ativo, ou null se não houver nenhum.
+ * @param {string|null} effectiveDate - A data de leitura efetiva pré-calculada para o dia atual.
  */
-export function render(activePlan) {
+export function render(activePlan, effectiveDate) {
     state.currentPlan = activePlan;
     hideError();
     hideLoading();
@@ -210,7 +210,7 @@ export function render(activePlan) {
 
     // Renderiza as partes internas
     _renderProgressBar();
-    _renderDailyHeader();
+    _renderDailyHeader(effectiveDate); // Passa a data pré-calculada
     _renderDailyReading();
     
     // Habilita/desabilita botões de ação
