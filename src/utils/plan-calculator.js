@@ -85,6 +85,10 @@ export function recalculatePlanToTargetDate(plan, targetEndDate, todayStr) {
         recalculationBaseDate: todayStr,
     };
 
+    // --- INÍCIO DA ADIÇÃO DO LOG ---
+    console.log('[DIAGNÓSTICO 1/4] plan-calculator.js: Objeto do plano pronto para ser retornado. Verifique a "endDate".', JSON.parse(JSON.stringify(updatedPlan)));
+    // --- FIM DA ADIÇÃO DO LOG ---
+
     return { recalculatedPlan: updatedPlan, newPace };
 }
 
