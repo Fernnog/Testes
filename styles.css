@@ -973,112 +973,6 @@ fieldset:disabled { opacity: 0.5; pointer-events: none; }
     margin-top: 20px;
 }
 
-/* --- Media Queries (Ajustes Responsivos) --- */
-@media (max-width: 768px) {
-     main { max-width: 100%; }
-     section, .enhanced-panel, .plan-card { padding: 20px; }
-     section h2, section h3, .plan-card .plan-card-title { font-size: 1.4em; }
-     #overdue-readings h2, #upcoming-readings h2 { font-size: 1.3em; }
-     .modal-content { padding: 25px; max-width: calc(100% - 30px); }
-     header h1 { font-size: 1.4em; }
-     .header-content { align-items: center; }
-     .user-status-container { gap: 5px;} #user-email { max-width: 100px;} #logout-button { padding: 5px 10px; font-size: 0.8em; }
-     .upcoming-readings-container { grid-template-columns: 1fr; }
-     .plan-card .drive-link-icon { width: 26px; height: 26px; padding: 3px; border-radius: 5px; }
-    .weekly-tracker-container .day-indicator { min-width: 38px; min-height: 65px; }
-    .weekly-tracker-container .day-indicator.current-day-highlight { padding: 6px 4px; }
-    .weekly-tracker-container .day-marker { width: 30px; height: 30px; }
-    .weekly-tracker-container .day-marker::after { font-size: 16px; }
-     .plan-card .daily-reading-header-display { padding: 12px 15px; }
-     .plan-card .daily-reading-chapters-list-display { padding: 8px 15px 15px 15px; }
-     .plan-card .daily-chapter-item { padding: 8px 0; font-size: 1em; }
-     .plan-card .daily-chapter-item input[type="checkbox"] { width: 18px; height: 18px; margin-right: 12px; }
-
-    .reassessment-grid-container {
-        grid-template-columns: 1fr; 
-        gap: 20px;
-    }
-    .reassessment-day-column {
-        min-height: auto;
-    }
-}
-
-@media (max-width: 600px) {
-    body { font-size: 15px; }
-    header { flex-direction: column; align-items: center; padding: 15px; text-align: center; position: static; min-height: auto; }
-    header img#header-logo { --new-logo-size: 60px; height: var(--new-logo-size); width: var(--new-logo-size); --new-logo-border: 5px; --new-logo-padding: 3px; border-width: var(--new-logo-border); padding: var(--new-logo-padding); box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25); margin-bottom: 15px; }
-    .header-content { width: 100%; align-items: center; } header h1 { font-size: 1.3em; margin: 0 0 5px 0; }
-    .user-status-container { width: 100%; margin-top: 10px; flex-direction: column; gap: 8px; }
-    #user-email { max-width: 90%; text-align: center; } #logout-button { width: auto; padding: 8px 15px; }
-    main { margin: 15px auto; padding: 0 10px; }
-    section, .enhanced-panel, .plan-card { padding: 15px; margin-bottom: 20px; }
-    section h2, section h3, .plan-card .plan-card-title { font-size: 1.3em; }
-    #overdue-readings h2, #upcoming-readings h2 { font-size: 1.2em; }
-    .modal-content { padding: 20px; max-width: calc(100% - 20px); } .modal h2 { font-size: 1.4em; }
-    .plan-card .plan-actions { flex-direction: column; gap: 8px; } .plan-card .plan-actions button { width: 100%; margin: 0; min-width: auto; }
-    input[type="email"], input[type="password"], input[type="number"], input[type="text"], input[type="date"], input[type="url"], select { padding: 10px 14px; min-height: 44px; }
-    select[multiple] { height: 140px; }
-    fieldset label { display: block; margin-right: 0; margin-bottom: 10px; }
-    .modal fieldset label:has(#new-pace-input){ flex-wrap: wrap; justify-content: space-between; }
-    #new-pace-input { margin-top: 5px; width: 100% !important; text-align: center; }
-    #periodicity-options .checkbox-group { justify-content: space-around; gap: 8px; }
-    #periodicity-options .checkbox-group label { font-size: 0.85em; padding: 4px 6px; }
-    #global-weekly-tracker-section.enhanced-panel { padding: 15px 10px; }
-    .weekly-tracker-container .week-days { gap: 4px; }
-    .weekly-tracker-container .day-indicator { min-width: 30px; min-height: 60px; flex-basis: calc(100% / 7 - 5px); border-radius: calc(var(--base-border-radius) / 2); }
-    .weekly-tracker-container .day-indicator.current-day-highlight { padding: 5px 3px; }
-    .weekly-tracker-container .day-label { font-size: 0.65em; margin-bottom: 4px;}
-    .weekly-tracker-container .day-marker { width: 26px; height: 26px; }
-    .weekly-tracker-container .day-marker::after { font-size: 13px; }
-    .plan-card .daily-reading-header-display { padding: 10px 15px; font-size: 1em; }
-    .plan-card .daily-reading-chapters-list-display { padding: 5px 15px 15px 15px; }
-    .plan-card .daily-chapter-item { padding: 6px 0; font-size: 0.95em; }
-    .plan-card .daily-chapter-item input[type="checkbox"] { width: 16px; height: 16px; margin-right: 10px; }
-    .plan-card .drive-link-icon { width: 24px; height: 24px; padding: 3px; border-radius: 5px; }
-    .overdue-reading-item, .upcoming-reading-item { padding: 12px; }
-    .overdue-date, .upcoming-date { font-size: 1em; }
-    .perseverance-header h2 { font-size: 1.3em; }
-    
-    .milestone-icon { font-size: 1.8em; }
-    .milestone-item .icon { font-size: 1.8em; }
-    .milestone-item .counter { font-size: 0.9em; }
-
-    .progress-bar { height: 26px; }
-    .progress-percentage-left { font-size: 0.8em; left: 10px; }
-    .milestone-legend { font-size: 0.75em; }
-    
-    .stats-chart-container {
-        height: 220px;
-        padding: 10px;
-    }
-
-    #plan-reassessment-section {
-        padding: 15px;
-    }
-    
-    .reassessment-legend-item {
-        width: 100%;
-        justify-content: flex-start;
-    }
-    
-    /* Ajustes para os botões de reavaliação em telas pequenas */
-    .reassessment-header {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    .reassessment-header h2 {
-        text-align: center;
-        margin-bottom: 15px;
-    }
-    .reassessment-actions {
-        flex-direction: column;
-        gap: 8px;
-    }
-    .reassessment-actions button {
-        width: 100%;
-        margin: 0;
-    }
-}
 /* --- START OF ADDITION: Estilos para o Explorador de Livros da Bíblia --- */
 .explorer-grid-container {
     display: grid;
@@ -1188,3 +1082,135 @@ fieldset:disabled { opacity: 0.5; pointer-events: none; }
     cursor: help;
 }
 /* --- END OF ADDITION --- */
+
+/* 
+================================================================================
+  INÍCIO: Animação de Feedback de UI (Prioridade 2)
+================================================================================
+*/
+.recalculated-highlight {
+    animation: recalc-flash 2.5s ease-out forwards;
+}
+
+@keyframes recalc-flash {
+    0% {
+        box-shadow: var(--box-shadow);
+        border-color: var(--primary-action);
+    }
+    30% {
+        box-shadow: 0 0 0 5px rgba(var(--success-color-rgb), 0.4), var(--box-shadow-lg);
+        border-color: var(--success-color);
+    }
+    100% {
+        box-shadow: var(--box-shadow-lg);
+        border-color: var(--primary-action);
+    }
+}
+/* --- FIM DA ADIÇÃO --- */
+
+/* --- Media Queries (Ajustes Responsivos) --- */
+@media (max-width: 768px) {
+     main { max-width: 100%; }
+     section, .enhanced-panel, .plan-card { padding: 20px; }
+     section h2, section h3, .plan-card .plan-card-title { font-size: 1.4em; }
+     #overdue-readings h2, #upcoming-readings h2 { font-size: 1.3em; }
+     .modal-content { padding: 25px; max-width: calc(100% - 30px); }
+     header h1 { font-size: 1.4em; }
+     .header-content { align-items: center; }
+     .user-status-container { gap: 5px;} #user-email { max-width: 100px;} #logout-button { padding: 5px 10px; font-size: 0.8em; }
+     .upcoming-readings-container { grid-template-columns: 1fr; }
+     .plan-card .drive-link-icon { width: 26px; height: 26px; padding: 3px; border-radius: 5px; }
+    .weekly-tracker-container .day-indicator { min-width: 38px; min-height: 65px; }
+    .weekly-tracker-container .day-indicator.current-day-highlight { padding: 6px 4px; }
+    .weekly-tracker-container .day-marker { width: 30px; height: 30px; }
+    .weekly-tracker-container .day-marker::after { font-size: 16px; }
+     .plan-card .daily-reading-header-display { padding: 12px 15px; }
+     .plan-card .daily-reading-chapters-list-display { padding: 8px 15px 15px 15px; }
+     .plan-card .daily-chapter-item { padding: 8px 0; font-size: 1em; }
+     .plan-card .daily-chapter-item input[type="checkbox"] { width: 18px; height: 18px; margin-right: 12px; }
+
+    .reassessment-grid-container {
+        grid-template-columns: 1fr; 
+        gap: 20px;
+    }
+    .reassessment-day-column {
+        min-height: auto;
+    }
+}
+
+@media (max-width: 600px) {
+    body { font-size: 15px; }
+    header { flex-direction: column; align-items: center; padding: 15px; text-align: center; position: static; min-height: auto; }
+    header img#header-logo { --new-logo-size: 60px; height: var(--new-logo-size); width: var(--new-logo-size); --new-logo-border: 5px; --new-logo-padding: 3px; border-width: var(--new-logo-border); padding: var(--new-logo-padding); box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25); margin-bottom: 15px; }
+    .header-content { width: 100%; align-items: center; } header h1 { font-size: 1.3em; margin: 0 0 5px 0; }
+    .user-status-container { width: 100%; margin-top: 10px; flex-direction: column; gap: 8px; }
+    #user-email { max-width: 90%; text-align: center; } #logout-button { width: auto; padding: 8px 15px; }
+    main { margin: 15px auto; padding: 0 10px; }
+    section, .enhanced-panel, .plan-card { padding: 15px; margin-bottom: 20px; }
+    section h2, section h3, .plan-card .plan-card-title { font-size: 1.3em; }
+    #overdue-readings h2, #upcoming-readings h2 { font-size: 1.2em; }
+    .modal-content { padding: 20px; max-width: calc(100% - 20px); } .modal h2 { font-size: 1.4em; }
+    .plan-card .plan-actions { flex-direction: column; gap: 8px; } .plan-card .plan-actions button { width: 100%; margin: 0; min-width: auto; }
+    input[type="email"], input[type="password"], input[type="number"], input[type="text"], input[type="date"], input[type="url"], select { padding: 10px 14px; min-height: 44px; }
+    select[multiple] { height: 140px; }
+    fieldset label { display: block; margin-right: 0; margin-bottom: 10px; }
+    .modal fieldset label:has(#new-pace-input){ flex-wrap: wrap; justify-content: space-between; }
+    #new-pace-input { margin-top: 5px; width: 100% !important; text-align: center; }
+    #periodicity-options .checkbox-group { justify-content: space-around; gap: 8px; }
+    #periodicity-options .checkbox-group label { font-size: 0.85em; padding: 4px 6px; }
+    #global-weekly-tracker-section.enhanced-panel { padding: 15px 10px; }
+    .weekly-tracker-container .week-days { gap: 4px; }
+    .weekly-tracker-container .day-indicator { min-width: 30px; min-height: 60px; flex-basis: calc(100% / 7 - 5px); border-radius: calc(var(--base-border-radius) / 2); }
+    .weekly-tracker-container .day-indicator.current-day-highlight { padding: 5px 3px; }
+    .weekly-tracker-container .day-label { font-size: 0.65em; margin-bottom: 4px;}
+    .weekly-tracker-container .day-marker { width: 26px; height: 26px; }
+    .weekly-tracker-container .day-marker::after { font-size: 13px; }
+    .plan-card .daily-reading-header-display { padding: 10px 15px; font-size: 1em; }
+    .plan-card .daily-reading-chapters-list-display { padding: 5px 15px 15px 15px; }
+    .plan-card .daily-chapter-item { padding: 6px 0; font-size: 0.95em; }
+    .plan-card .daily-chapter-item input[type="checkbox"] { width: 16px; height: 16px; margin-right: 10px; }
+    .plan-card .drive-link-icon { width: 24px; height: 24px; padding: 3px; border-radius: 5px; }
+    .overdue-reading-item, .upcoming-reading-item { padding: 12px; }
+    .overdue-date, .upcoming-date { font-size: 1em; }
+    .perseverance-header h2 { font-size: 1.3em; }
+    
+    .milestone-icon { font-size: 1.8em; }
+    .milestone-item .icon { font-size: 1.8em; }
+    .milestone-item .counter { font-size: 0.9em; }
+
+    .progress-bar { height: 26px; }
+    .progress-percentage-left { font-size: 0.8em; left: 10px; }
+    .milestone-legend { font-size: 0.75em; }
+    
+    .stats-chart-container {
+        height: 220px;
+        padding: 10px;
+    }
+
+    #plan-reassessment-section {
+        padding: 15px;
+    }
+    
+    .reassessment-legend-item {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    /* Ajustes para os botões de reavaliação em telas pequenas */
+    .reassessment-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .reassessment-header h2 {
+        text-align: center;
+        margin-bottom: 15px;
+    }
+    .reassessment-actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+    .reassessment-actions button {
+        width: 100%;
+        margin: 0;
+    }
+}
