@@ -53,7 +53,7 @@ export async function fetchUserInfo(userId, userEmail) {
 }
 
 /**
- * Busca a lista completa de planos de leitura de um usuário, ordenados por data de criação.
+ * Busca a lista completa de planos de leitura de um usuário, ordenados por data de modificação.
  * @param {string} userId - O UID do usuário.
  * @returns {Promise<Array<object>>} Uma promessa que resolve para um array de objetos de plano, cada um com seu 'id'.
  * @throws {Error} Se o userId não for fornecido.
@@ -61,8 +61,8 @@ export async function fetchUserInfo(userId, userEmail) {
 export async function fetchUserPlans(userId) {
     if (!userId) throw new Error("userId é obrigatório para buscar os planos.");
     const plansCollectionRef = collection(db, 'users', userId, 'plans');
-    // Ordena os planos pela data de criação, do mais novo para o mais antigo, para exibição lógica na UI.
-    const q = query(plansCollectionRef, orderBy("createdAt", "desc"));
+    // Ordena os planos pela data de modificação, do mais recente para o mais antigo, para exibição lógica na UI.
+    const q = query(plansCollectionRef, orderBy("modifiedAt", "desc"));
     const userPlansList = [];
     const querySnapshot = await getDocs(q);
     querySnapshot.forEach((docSnap) => {
@@ -74,7 +74,7 @@ export async function fetchUserPlans(userId) {
 // --- Funções de Escrita de Dados (Create, Update, Delete) ---
 
 /**
- * Salva um novo plano de leitura no Firestore, adicionando um timestamp de criação.
+ * Salva um novo plano de leitura no Firestore, adicionando timestamps de criação e modificação.
  * @param {string} userId - O UID do usuário.
  * @param {object} planData - O objeto contendo todos os dados do novo plano.
  * @returns {Promise<string>} Uma promessa que resolve para o ID do novo plano criado.
@@ -86,13 +86,14 @@ export async function saveNewPlan(userId, planData) {
     const dataToSave = {
         ...planData,
         createdAt: serverTimestamp(),
+        modifiedAt: serverTimestamp(),
     };
     const newPlanDocRef = await addDoc(plansCollectionRef, dataToSave);
     return newPlanDocRef.id;
 }
 
 /**
- * Atualiza campos específicos de um plano existente (ex: nome, ícone, link).
+ * Atualiza campos específicos de um plano existente e o timestamp de modificação.
  * @param {string} userId - O UID do usuário.
  * @param {string} planId - O ID do plano a ser atualizado.
  * @param {object} updatedData - Um objeto com os campos a serem atualizados. Ex: { name, icon }.
@@ -102,7 +103,11 @@ export async function saveNewPlan(userId, planData) {
 export async function updatePlan(userId, planId, updatedData) {
     if (!userId || !planId) throw new Error("userId e planId são obrigatórios para atualizar o plano.");
     const planDocRef = doc(db, 'users', userId, 'plans', planId);
-    await updateDoc(planDocRef, updatedData);
+    const dataToUpdate = {
+        ...updatedData,
+        modifiedAt: serverTimestamp(),
+    };
+    await updateDoc(planDocRef, dataToUpdate);
 }
 
 /**
@@ -132,7 +137,7 @@ export async function setActivePlan(userId, planId) {
 }
 
 /**
- * Atualiza o status de leitura de um capítulo individual dentro de um plano.
+ * Atualiza o status de leitura de um capítulo individual e o timestamp de modificação do plano.
  * @param {string} userId - O UID do usuário.
  * @param {string} planId - O ID do plano que está sendo atualizado.
  * @param {string} chapterName - O nome do capítulo (ex: "Gênesis 1").
@@ -143,9 +148,9 @@ export async function setActivePlan(userId, planId) {
 export async function updateChapterStatus(userId, planId, chapterName, isRead) {
     if (!userId || !planId) throw new Error("userId e planId são obrigatórios.");
     const planDocRef = doc(db, 'users', userId, 'plans', planId);
-    // Usa a notação de ponto para atualizar um campo dentro de um mapa (objeto) de forma eficiente.
     const updatePayload = {
-        [`dailyChapterReadStatus.${chapterName}`]: isRead
+        [`dailyChapterReadStatus.${chapterName}`]: isRead,
+        modifiedAt: serverTimestamp(),
     };
     await updateDoc(planDocRef, updatePayload);
 }
@@ -164,7 +169,7 @@ export async function updateUserInteractions(userId, interactionUpdates) {
 }
 
 /**
- * Avança o plano para o próximo dia, registra os capítulos lidos no log e limpa os status diários.
+ * Avança o plano para o próximo dia, registra os capítulos lidos, limpa os status diários e atualiza o timestamp de modificação.
  * @param {string} userId - O UID do usuário.
  * @param {string} planId - O ID do plano.
  * @param {number} newDay - O novo número do dia atual do plano.
@@ -179,13 +184,14 @@ export async function advanceToNextDay(userId, planId, newDay, dateMarkedStr, ch
     const dataToUpdate = {
         currentDay: newDay,
         dailyChapterReadStatus: {}, // Limpa os checkboxes para o novo dia.
-        [`readLog.${dateMarkedStr}`]: chaptersReadForLog // Adiciona ao log de leituras.
+        [`readLog.${dateMarkedStr}`]: chaptersReadForLog, // Adiciona ao log de leituras.
+        modifiedAt: serverTimestamp(),
     };
     await updateDoc(planDocRef, dataToUpdate);
 }
 
 /**
- * Salva um plano de leitura recalculado.
+ * Salva um plano de leitura recalculado, incluindo um timestamp de modificação.
  * Esta função SUBSTITUI COMPLETAMENTE o documento do plano existente com os novos dados fornecidos.
  * A lógica de criar o histórico de recálculo deve ser feita no chamador (ex: main.js)
  * antes de invocar esta função.
@@ -198,7 +204,9 @@ export async function advanceToNextDay(userId, planId, newDay, dateMarkedStr, ch
 export async function saveRecalculatedPlan(userId, planId, updatedPlanData) {
     if (!userId || !planId) throw new Error("userId e planId são obrigatórios.");
     const planDocRef = doc(db, 'users', userId, 'plans', planId);
-    // Usamos setDoc aqui porque estamos substituindo todo o documento do plano com novos dados,
-    // mas preservando seu ID original.
-    await setDoc(planDocRef, updatedPlanData);
+    const dataToSave = {
+        ...updatedPlanData,
+        modifiedAt: serverTimestamp(),
+    };
+    await setDoc(planDocRef, dataToSave);
 }
