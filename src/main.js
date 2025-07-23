@@ -48,7 +48,7 @@ import {
     createNewPlanButton,
     createFavoritePlanButton,
     reassessPlansButton,
-    exploreBibleButton, 
+    exploreBibleButton, // Botão para a nova funcionalidade
     planStructureFieldset
 } from './ui/dom-elements.js';
 
@@ -129,41 +129,45 @@ function renderAllPlanCards() {
     const todayStr = getCurrentUTCDateString();
 
     appState.userPlans.forEach(plan => {
-         effectiveDatesMap[plan.id] = getEffectiveDateForDay(plan, plan.currentDay);
+        try {
+            effectiveDatesMap[plan.id] = getEffectiveDateForDay(plan, plan.currentDay);
 
-        const totalReadingDaysInPlan = Object.keys(plan.plan || {}).length;
-        const isCompleted = plan.currentDay > totalReadingDaysInPlan;
-        
-        if (!isCompleted) {
-            const logEntries = plan.readLog || {};
-            const chaptersReadFromLog = Object.values(logEntries).reduce((sum, chapters) => sum + (Array.isArray(chapters) ? chapters.length : 0), 0);
+            const totalReadingDaysInPlan = Object.keys(plan.plan || {}).length;
+            const isCompleted = plan.currentDay > totalReadingDaysInPlan;
             
-            const daysWithReading = Object.keys(logEntries).filter(date => Array.isArray(logEntries[date]) && logEntries[date].length > 0).length;
-            const avgPace = daysWithReading > 0 ? (chaptersReadFromLog / daysWithReading) : 0;
+            if (!isCompleted) {
+                const logEntries = plan.readLog || {};
+                const chaptersReadFromLog = Object.values(logEntries).reduce((sum, chapters) => sum + (Array.isArray(chapters) ? chapters.length : 0), 0);
+                
+                const daysWithReading = Object.keys(logEntries).filter(date => Array.isArray(logEntries[date]) && logEntries[date].length > 0).length;
+                const avgPace = daysWithReading > 0 ? (chaptersReadFromLog / daysWithReading) : 0;
 
-            if (avgPace > 0) {
-                const remainingChapters = plan.totalChapters - chaptersReadFromLog;
-                const remainingReadingDays = Math.ceil(remainingChapters / avgPace);
-                
-                const projectionPlan = {
-                    startDate: todayStr,
-                    allowedDays: plan.allowedDays,
-                    recalculationBaseDate: null, 
-                    recalculationBaseDay: null
-                };
-                const forecastDateStr = getEffectiveDateForDay(projectionPlan, remainingReadingDays);
-                
-                let colorClass = 'forecast-neutral';
-                if (forecastDateStr && plan.endDate) {
-                    if (forecastDateStr < plan.endDate) {
-                        colorClass = 'forecast-ahead';
-                    } else if (forecastDateStr > plan.endDate) {
-                        colorClass = 'forecast-behind';
+                if (avgPace > 0) {
+                    const remainingChapters = plan.totalChapters - chaptersReadFromLog;
+                    const remainingReadingDays = Math.ceil(remainingChapters / avgPace);
+                    
+                    const projectionPlan = {
+                        startDate: todayStr,
+                        allowedDays: plan.allowedDays,
+                        recalculationBaseDate: null,
+                        recalculationBaseDay: null
+                    };
+                    const forecastDateStr = getEffectiveDateForDay(projectionPlan, remainingReadingDays);
+                    
+                    let colorClass = 'forecast-neutral';
+                    if (forecastDateStr && plan.endDate) {
+                        if (forecastDateStr < plan.endDate) {
+                            colorClass = 'forecast-ahead';
+                        } else if (forecastDateStr > plan.endDate) {
+                            colorClass = 'forecast-behind';
+                        }
                     }
+                    
+                    forecastsMap[plan.id] = { forecastDateStr, colorClass };
                 }
-                
-                forecastsMap[plan.id] = { forecastDateStr, colorClass };
             }
+        } catch (error) {
+            console.error(`Falha ao processar a previsão para o plano "${plan.name}" (ID: ${plan.id}). O plano pode ter dados inválidos (ex: startDate, allowedDays).`, error);
         }
     });
     
@@ -561,6 +565,7 @@ async function handleConfirmSync(basePlanId, targetDate, plansToSyncIds) {
 
         for (const planId of plansToSyncIds) {
             const originalPlan = appState.userPlans.find(p => p.id === planId);
+            
             const result = planCalculator.recalculatePlanToTargetDate(originalPlan, targetDate, todayStr);
 
             if (!result) {
@@ -587,18 +592,6 @@ async function handleConfirmSync(basePlanId, targetDate, plansToSyncIds) {
         alert("Planos sincronizados com sucesso!");
         modalsUI.close('sync-plans-modal');
         await loadInitialUserData(appState.currentUser);
-        
-        // Melhoria de UX (Prioridade 2)
-        plansToSyncIds.forEach(planId => {
-            const cardToHighlight = document.getElementById(`plan-card-${planId}`);
-            if (cardToHighlight) {
-                cardToHighlight.classList.add('recalculated-highlight');
-                setTimeout(() => {
-                    cardToHighlight.classList.remove('recalculated-highlight');
-                }, 3000); // Efeito dura 3 segundos
-            }
-        });
-
         renderAllPlanCards();
         handleReassessPlansRequest();
 
@@ -687,7 +680,6 @@ async function handleRecalculate(option, newPaceValue, startDateOption, specific
         alert("Plano recalculado com sucesso!");
         modalsUI.close('recalculate-modal');
         await loadInitialUserData(appState.currentUser);
-        
         renderAllPlanCards();
         sidePanelsUI.render(appState.userPlans, {
             onSwitchPlan: handleSwitchPlan,
@@ -698,15 +690,6 @@ async function handleRecalculate(option, newPaceValue, startDateOption, specific
             }
         });
         floatingNavigatorUI.render(appState.userPlans, appState.activePlanId);
-
-        // Melhoria de UX (Prioridade 2)
-        const cardToHighlight = document.getElementById(`plan-card-${planId}`);
-        if (cardToHighlight) {
-            cardToHighlight.classList.add('recalculated-highlight');
-            setTimeout(() => {
-                cardToHighlight.classList.remove('recalculated-highlight');
-            }, 3000); // Efeito dura 3 segundos
-        }
 
     } catch (error) {
         modalsUI.showError('recalculate-modal', `Erro: ${error.message}`);
@@ -785,18 +768,12 @@ function handleShowStats(planId) {
     }
 
     const chartData = { idealLine: [], actualProgress: [] };
-    
-    // --- INÍCIO DA CORREÇÃO (Prioridade 1) ---
-    // A fonte da verdade para a data final é a propriedade 'endDate' do plano.
-    const finalEndDate = plan.endDate;
+    const finalEndDate = plan.endDate; // Usa a data final salva como fonte da verdade.
     
     chartData.idealLine.push({ x: plan.startDate, y: 0 });
-    
-    // Apenas adiciona o ponto final à linha ideal se a data existir.
-    if(finalEndDate) {
+    if(finalEndDate) { // Verifica se a data final existe e é válida antes de usar.
         chartData.idealLine.push({ x: finalEndDate, y: plan.totalChapters });
     }
-    // --- FIM DA CORREÇÃO ---
     
     chartData.actualProgress.push({ x: plan.startDate, y: 0 });
     const sortedLog = Object.entries(logEntries).sort((a, b) => a[0].localeCompare(b[0]));
