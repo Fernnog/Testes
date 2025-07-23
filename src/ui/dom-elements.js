@@ -34,14 +34,14 @@ export const createNewPlanButton = document.getElementById('create-new-plan-butt
 export const createFavoritePlanButton = document.getElementById('create-favorite-plan-button');
 
 export const planCreationSection = document.getElementById('plan-creation');
-export const planCreationTitle = document.getElementById('plan-creation-title'); // NOVO
-export const editingPlanIdInput = document.getElementById('editing-plan-id'); // NOVO
+export const planCreationTitle = document.getElementById('plan-creation-title');
+export const editingPlanIdInput = document.getElementById('editing-plan-id');
 export const planErrorDiv = document.getElementById('plan-error');
 export const planLoadingCreateDiv = document.getElementById('plan-loading-create');
 export const planNameInput = document.getElementById('plan-name');
-export const googleDriveLinkInput = document.getElementById('google-drive-link'); // NOVO
-export const iconSelectorContainer = document.getElementById('icon-selector-container'); // NOVO
-export const planStructureFieldset = document.getElementById('plan-structure-fieldset'); // NOVO
+export const googleDriveLinkInput = document.getElementById('google-drive-link');
+export const iconSelectorContainer = document.getElementById('icon-selector-container');
+export const planStructureFieldset = document.getElementById('plan-structure-fieldset');
 export const creationMethodRadios = document.querySelectorAll('input[name="creation-method"]');
 export const intervalOptionsDiv = document.getElementById('interval-options');
 export const startBookSelect = document.getElementById("start-book-select");
@@ -51,7 +51,7 @@ export const endChapterInput = document.getElementById("end-chapter-input");
 export const selectionOptionsDiv = document.getElementById('selection-options');
 export const booksSelect = document.getElementById("books-select");
 export const chaptersInput = document.getElementById("chapters-input");
-export const bookSuggestionsDatalist = document.getElementById("book-suggestions"); // NOVO
+export const bookSuggestionsDatalist = document.getElementById("book-suggestions");
 export const durationMethodRadios = document.querySelectorAll('input[name="duration-method"]');
 export const daysOptionDiv = document.getElementById('days-option');
 export const daysInput = document.getElementById("days-input");
@@ -102,6 +102,9 @@ export const recalculateErrorDiv = document.getElementById('recalculate-error');
 export const recalculateLoadingDiv = document.getElementById('recalculate-loading');
 export const newPaceInput = document.getElementById('new-pace-input');
 export const confirmRecalculateButton = document.getElementById('confirm-recalculate');
+// INÍCIO DA ALTERAÇÃO: Adicionados os elementos para recálculo inteligente e preview (Prioridades 2 e 3)
+export const recalcSpecificDateInput = document.getElementById('recalc-specific-date-input'); // Elemento para data específica
+// FIM DA ALTERAÇÃO
 
 // Modal de Estatísticas
 export const statsModal = document.getElementById('stats-modal');
@@ -120,7 +123,6 @@ export const historyLoadingDiv = document.getElementById('history-loading');
 export const historyErrorDiv = document.getElementById('history-error');
 export const historyListDiv = document.getElementById('history-list');
 
-// INÍCIO DA ALTERAÇÃO: Adicionados os novos elementos do Modal de Sincronização
 // Modal de Sincronização
 export const syncModal = document.getElementById('sync-plans-modal');
 export const syncErrorDiv = document.getElementById('sync-error');
@@ -129,9 +131,7 @@ export const syncBasePlanSelect = document.getElementById('sync-base-plan-select
 export const syncTargetDateDisplay = document.getElementById('sync-target-date-display');
 export const syncPlansToAdjustList = document.getElementById('sync-plans-to-adjust-list');
 export const confirmSyncButton = document.getElementById('confirm-sync-button');
-// FIM DA ALTERAÇÃO
 
-// --- INÍCIO DA ALTERAÇÃO: Adicionados os novos elementos da Prioridade 1 ---
 // Botão para abrir o explorador
 export const exploreBibleButton = document.getElementById('explore-bible-button');
 
@@ -143,14 +143,11 @@ export const explorerDetailView = document.getElementById('explorer-detail-view'
 export const explorerBackButton = document.getElementById('explorer-back-button');
 export const explorerDetailTitle = document.getElementById('explorer-detail-title');
 export const explorerChapterList = document.getElementById('explorer-chapter-list');
-// --- FIM DA ALTERAÇÃO ---
 
 
 // --- Seção de Reavaliação de Planos ---
 export const reassessPlansButton = document.getElementById('reassess-plans-button');
-// INÍCIO DA ALTERAÇÃO: Adicionado o novo botão de Sincronização
 export const syncPlansButton = document.getElementById('sync-plans-button');
-// FIM DA ALTERAÇÃO
 export const planReassessmentSection = document.getElementById('plan-reassessment-section');
 export const closeReassessmentButton = document.getElementById('close-reassessment-button');
 export const reassessmentGrid = document.getElementById('reassessment-grid');
