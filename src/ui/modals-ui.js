@@ -10,7 +10,7 @@ import {
     recalculateModal, recalculateErrorDiv, recalculateLoadingDiv,
     confirmRecalculateButton, newPaceInput,
     // INÍCIO DA ALTERAÇÃO (PRIORIDADE 3) - Novos elementos do DOM para preview
-    recalcPreviewEndDate, recalcPreviewPace,
+    recalcPreviewPace,
     recalcStartOptions, specificDateInput,
     // FIM DA ALTERAÇÃO (PRIORIDADE 3)
 
