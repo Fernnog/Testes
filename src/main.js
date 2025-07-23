@@ -40,7 +40,9 @@ import { getEffectiveDateForDay } from './utils/plan-logic-helpers.js';
 import { FAVORITE_ANNUAL_PLAN_CONFIG } from './config/plan-templates.js';
 import { FAVORITE_PLAN_ICONS } from './config/icon-config.js';
 import { buildPlanFromFormData } from './utils/plan-builder.js';
+// INÍCIO DA ALTERAÇÃO: Importação do novo módulo de cálculo
 import * as planCalculator from './utils/plan-calculator.js';
+// FIM DA ALTERAÇÃO
 
 // Elementos do DOM para ações principais
 import {
@@ -123,56 +125,58 @@ async function handleAuthStateChange(user) {
     }
 }
 
+// INÍCIO DA ALTERAÇÃO: Função corrigida para calcular a previsão corretamente
 function renderAllPlanCards() {
     const effectiveDatesMap = {};
     const forecastsMap = {};
-    const todayStr = getCurrentUTCDateString();
+    const todayStr = getCurrentUTCDateString(); // Pega a data de hoje para projeção
 
     appState.userPlans.forEach(plan => {
-        try {
-            effectiveDatesMap[plan.id] = getEffectiveDateForDay(plan, plan.currentDay);
+         effectiveDatesMap[plan.id] = getEffectiveDateForDay(plan, plan.currentDay);
 
-            const totalReadingDaysInPlan = Object.keys(plan.plan || {}).length;
-            const isCompleted = plan.currentDay > totalReadingDaysInPlan;
+        const totalReadingDaysInPlan = Object.keys(plan.plan || {}).length;
+        const isCompleted = plan.currentDay > totalReadingDaysInPlan;
+        
+        if (!isCompleted) {
+            const logEntries = plan.readLog || {};
+            const chaptersReadFromLog = Object.values(logEntries).reduce((sum, chapters) => sum + (Array.isArray(chapters) ? chapters.length : 0), 0);
             
-            if (!isCompleted) {
-                const logEntries = plan.readLog || {};
-                const chaptersReadFromLog = Object.values(logEntries).reduce((sum, chapters) => sum + (Array.isArray(chapters) ? chapters.length : 0), 0);
-                
-                const daysWithReading = Object.keys(logEntries).filter(date => Array.isArray(logEntries[date]) && logEntries[date].length > 0).length;
-                const avgPace = daysWithReading > 0 ? (chaptersReadFromLog / daysWithReading) : 0;
+            // Para calcular o ritmo, consideramos os dias em que houve leituras registradas
+            const daysWithReading = Object.keys(logEntries).filter(date => Array.isArray(logEntries[date]) && logEntries[date].length > 0).length;
+            const avgPace = daysWithReading > 0 ? (chaptersReadFromLog / daysWithReading) : 0;
 
-                if (avgPace > 0) {
-                    const remainingChapters = plan.totalChapters - chaptersReadFromLog;
-                    const remainingReadingDays = Math.ceil(remainingChapters / avgPace);
-                    
-                    const projectionPlan = {
-                        startDate: todayStr,
-                        allowedDays: plan.allowedDays,
-                        recalculationBaseDate: null,
-                        recalculationBaseDay: null
-                    };
-                    const forecastDateStr = getEffectiveDateForDay(projectionPlan, remainingReadingDays);
-                    
-                    let colorClass = 'forecast-neutral';
-                    if (forecastDateStr && plan.endDate) {
-                        if (forecastDateStr < plan.endDate) {
-                            colorClass = 'forecast-ahead';
-                        } else if (forecastDateStr > plan.endDate) {
-                            colorClass = 'forecast-behind';
-                        }
+            if (avgPace > 0) {
+                const remainingChapters = plan.totalChapters - chaptersReadFromLog;
+                // Calcula quantos DIAS DE LEITURA (sessões) faltam com base no ritmo
+                const remainingReadingDays = Math.ceil(remainingChapters / avgPace);
+                
+                // Monta um objeto de "plano de projeção" para calcular a data final
+                const projectionPlan = {
+                    startDate: todayStr,
+                    allowedDays: plan.allowedDays,
+                    recalculationBaseDate: null, // Ignora recálculos passados para projeção
+                    recalculationBaseDay: null
+                };
+                // Usa a função correta que respeita os dias permitidos
+                const forecastDateStr = getEffectiveDateForDay(projectionPlan, remainingReadingDays);
+                
+                let colorClass = 'forecast-neutral';
+                if (forecastDateStr && plan.endDate) {
+                    if (forecastDateStr < plan.endDate) {
+                        colorClass = 'forecast-ahead';
+                    } else if (forecastDateStr > plan.endDate) {
+                        colorClass = 'forecast-behind';
                     }
-                    
-                    forecastsMap[plan.id] = { forecastDateStr, colorClass };
                 }
+                
+                forecastsMap[plan.id] = { forecastDateStr, colorClass };
             }
-        } catch (error) {
-            console.error(`Falha ao processar a previsão para o plano "${plan.name}" (ID: ${plan.id}). O plano pode ter dados inválidos (ex: startDate, allowedDays).`, error);
         }
     });
     
     readingPlanUI.renderAllPlanCards(appState.userPlans, appState.activePlanId, effectiveDatesMap, forecastsMap);
 }
+// FIM DA ALTERAÇÃO
 
 async function loadInitialUserData(user) {
     try {
@@ -553,6 +557,7 @@ function handleSyncPlansRequest() {
     modalsUI.displaySyncOptions(eligiblePlans, handleConfirmSync);
 }
 
+// INÍCIO DA ALTERAÇÃO: Função refatorada para usar o módulo de cálculo
 async function handleConfirmSync(basePlanId, targetDate, plansToSyncIds) {
     modalsUI.showLoading('sync-modal');
     modalsUI.hideError('sync-modal');
@@ -566,6 +571,7 @@ async function handleConfirmSync(basePlanId, targetDate, plansToSyncIds) {
         for (const planId of plansToSyncIds) {
             const originalPlan = appState.userPlans.find(p => p.id === planId);
             
+            // Usa o novo módulo de cálculo centralizado
             const result = planCalculator.recalculatePlanToTargetDate(originalPlan, targetDate, todayStr);
 
             if (!result) {
@@ -574,6 +580,7 @@ async function handleConfirmSync(basePlanId, targetDate, plansToSyncIds) {
             }
             let { recalculatedPlan } = result;
             
+            // Adiciona informações específicas da sincronização ao histórico
             if (!recalculatedPlan.recalculationHistory) recalculatedPlan.recalculationHistory = [];
             recalculatedPlan.recalculationHistory.push({
                 date: todayStr,
@@ -601,7 +608,9 @@ async function handleConfirmSync(basePlanId, targetDate, plansToSyncIds) {
         modalsUI.hideLoading('sync-modal');
     }
 }
+// FIM DA ALTERAÇÃO
 
+// --- INÍCIO DA ALTERAÇÃO (PRIORIDADE 1) ---
 async function handleRecalculate(option, newPaceValue, startDateOption, specificDate) {
     const planId = document.getElementById('confirm-recalculate').dataset.planId;
     const planToRecalculate = appState.userPlans.find(p => p.id === planId);
@@ -674,12 +683,22 @@ async function handleRecalculate(option, newPaceValue, startDateOption, specific
         });
 
         const planToSave = { ...recalculatedPlan };
-        delete planToSave.id;
+        delete planToSave.id; // Não salvamos o ID dentro do documento
+        
         await planService.saveRecalculatedPlan(appState.currentUser.uid, planId, planToSave);
         
-        alert("Plano recalculado com sucesso!");
-        modalsUI.close('recalculate-modal');
-        await loadInitialUserData(appState.currentUser);
+        // --- INÍCIO DA CORREÇÃO DEFINITIVA ---
+        // 1. Encontre o índice do plano no estado local.
+        const planIndex = appState.userPlans.findIndex(p => p.id === planId);
+        if (planIndex !== -1) {
+            // 2. Atualize o plano diretamente no estado local com os novos dados.
+            appState.userPlans[planIndex] = { ...recalculatedPlan, id: planId };
+        } else {
+            // Fallback: Se não encontrar (improvável), recarregue tudo.
+            await loadInitialUserData(appState.currentUser);
+        }
+
+        // 3. Agora, renderize todos os componentes com o estado local já atualizado.
         renderAllPlanCards();
         sidePanelsUI.render(appState.userPlans, {
             onSwitchPlan: handleSwitchPlan,
@@ -690,6 +709,10 @@ async function handleRecalculate(option, newPaceValue, startDateOption, specific
             }
         });
         floatingNavigatorUI.render(appState.userPlans, appState.activePlanId);
+        // --- FIM DA CORREÇÃO DEFINITIVA ---
+        
+        alert("Plano recalculado com sucesso!");
+        modalsUI.close('recalculate-modal');
 
     } catch (error) {
         modalsUI.showError('recalculate-modal', `Erro: ${error.message}`);
@@ -697,6 +720,7 @@ async function handleRecalculate(option, newPaceValue, startDateOption, specific
         modalsUI.hideLoading('recalculate-modal');
     }
 }
+// --- FIM DA ALTERAÇÃO (PRIORIDADE 1) ---
 
 
 // --- 5. FUNÇÕES DE MODAIS E OUTRAS AÇÕES ---
@@ -734,6 +758,7 @@ function handleShowBibleExplorer() {
     modalsUI.displayBibleExplorer(booksToIconsMap, allChaptersInPlans);
 }
 
+// INÍCIO DA ALTERAÇÃO: Função corrigida para calcular a previsão corretamente
 function handleShowStats(planId) {
     const plan = appState.userPlans.find(p => p.id === planId);
     if (!plan) return;
@@ -752,12 +777,14 @@ function handleShowStats(planId) {
     let forecastDateStr = '--';
     if (!isCompleted && avgPace > 0) {
         const remainingChapters = plan.totalChapters - chaptersReadFromLog;
+        // Calcula quantos DIAS DE LEITURA (sessões) faltam
         const remainingReadingDays = Math.ceil(remainingChapters / avgPace);
         
+        // Monta um "plano de projeção" para calcular a data final corretamente
         const projectionPlan = {
             startDate: getCurrentUTCDateString(),
             allowedDays: plan.allowedDays,
-            recalculationBaseDate: null,
+            recalculationBaseDate: null, // Ignora recálculos passados para projeção
             recalculationBaseDay: null
         };
         const forecastDate = getEffectiveDateForDay(projectionPlan, remainingReadingDays);
@@ -768,11 +795,10 @@ function handleShowStats(planId) {
     }
 
     const chartData = { idealLine: [], actualProgress: [] };
-    const finalEndDate = plan.endDate; // Usa a data final salva como fonte da verdade.
-    
+    const originalEndDate = getEffectiveDateForDay({ startDate: plan.startDate, allowedDays: plan.allowedDays }, Object.keys(plan.plan).length);
     chartData.idealLine.push({ x: plan.startDate, y: 0 });
-    if(finalEndDate) { // Verifica se a data final existe e é válida antes de usar.
-        chartData.idealLine.push({ x: finalEndDate, y: plan.totalChapters });
+    if(originalEndDate) {
+        chartData.idealLine.push({ x: originalEndDate, y: plan.totalChapters });
     }
     
     chartData.actualProgress.push({ x: plan.startDate, y: 0 });
@@ -802,6 +828,7 @@ function handleShowStats(planId) {
     modalsUI.displayStats(stats);
     modalsUI.open('stats-modal');
 }
+// FIM DA ALTERAÇÃO
 
 function handleShowHistory(planId) {
     const plan = appState.userPlans.find(p => p.id === planId);
