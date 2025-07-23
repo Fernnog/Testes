@@ -46,8 +46,11 @@ function _renderProgressBar(plan, forecastData) {
     if (isCompleted) {
         progressLabel = `Plano concluído!`;
     }
+    
+    // CORREÇÃO: Determina a data de início correta para exibição.
+    // Se houver uma data base de recálculo, ela tem prioridade.
+    const displayStartDate = plan.recalculationBaseDate || plan.startDate;
 
-    // NOVO: Gera a etiqueta de previsão se os dados existirem
     let forecastHTML = '';
     if (forecastData && forecastData.forecastDateStr) {
         const formattedForecastDate = formatUTCDateStringToBrasilian(forecastData.forecastDateStr);
@@ -61,7 +64,7 @@ function _renderProgressBar(plan, forecastData) {
     return `
         <div class="progress-container">
             <div class="progress-labels">
-                <span class="progress-text">${progressLabel} | 🎯 ${formatUTCDateStringToBrasilian(plan.startDate)} - ${formatUTCDateStringToBrasilian(plan.endDate)}</span>
+                <span class="progress-text">${progressLabel} | 🎯 ${formatUTCDateStringToBrasilian(displayStartDate)} - ${formatUTCDateStringToBrasilian(plan.endDate)}</span>
                 ${forecastHTML}
             </div>
             <div class="progress-bar-track">
@@ -70,6 +73,7 @@ function _renderProgressBar(plan, forecastData) {
         </div>
     `;
 }
+
 
 /**
  * Gera o HTML para a seção de leitura diária de um plano.
@@ -227,7 +231,6 @@ export function renderAllPlanCards(allPlans, activePlanId, effectiveDatesMap, fo
         const effectiveDate = effectiveDatesMap[plan.id];
         const forecastData = forecastsMap ? forecastsMap[plan.id] : null; // Pega a previsão para este plano
         
-        // --- INÍCIO DA ALTERAÇÃO ---
         planCard.innerHTML = `
             <div class="plan-header-info">
                 ${plan.icon ? `<div class="shield-wrapper"><span class="plan-card-icon">${plan.icon}</span></div>` : ''}
@@ -238,7 +241,6 @@ export function renderAllPlanCards(allPlans, activePlanId, effectiveDatesMap, fo
             ${_renderDailyReading(plan, effectiveDate)}
             ${_renderCardActions(plan)}
         `;
-        // --- FIM DA ALTERAÇÃO ---
         
         plansDisplaySection.appendChild(planCard);
     });
