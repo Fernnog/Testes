@@ -9,6 +9,9 @@ import {
     // Recálculo
     recalculateModal, recalculateErrorDiv, recalculateLoadingDiv,
     confirmRecalculateButton, newPaceInput,
+    // INÍCIO DA ALTERAÇÃO: Assumindo a existência de um novo elemento para a prévia
+    recalcPreviewInfo,
+    // FIM DA ALTERAÇÃO
     // Estatísticas
     statsModal, statsLoadingDiv, statsErrorDiv, statsContentDiv,
     statsActivePlanName, statsActivePlanProgress, statsTotalChapters,
@@ -37,6 +40,9 @@ import { getEffectiveDateForDay } from '../utils/plan-logic-helpers.js';
 let state = {
     callbacks: {
         onConfirmRecalculate: null,
+        // INÍCIO DA ALTERAÇÃO: Adicionado o novo callback para a prévia (Prioridade 2)
+        onRecalculatePreviewRequest: null,
+        // FIM DA ALTERAÇÃO
     },
 };
 
@@ -379,6 +385,23 @@ export function displaySyncOptions(plans, onConfirm) {
     open('sync-plans-modal');
 }
 
+// INÍCIO DA ALTERAÇÃO: Nova função para exibir a prévia (Prioridade 2)
+/**
+ * Exibe uma mensagem de prévia no modal de recálculo.
+ * @param {string} message - A mensagem a ser exibida.
+ * @param {boolean} isWarning - Se a mensagem deve ter um estilo de aviso.
+ */
+export function displayRecalculatePreview(message, isWarning = false) {
+    // A existência de `recalcPreviewInfo` é assumida via importação de `dom-elements.js`
+    const previewEl = document.getElementById('recalc-preview-info'); 
+    if (previewEl) {
+        previewEl.textContent = message;
+        previewEl.className = `recalc-preview ${isWarning ? 'warning' : ''}`;
+        previewEl.style.display = message ? 'block' : 'none';
+    }
+}
+// FIM DA ALTERAÇÃO
+
 /**
  * Reseta o formulário do modal de recálculo para o estado padrão.
  */
@@ -388,7 +411,7 @@ export function resetRecalculateForm() {
     if (extendOption) extendOption.checked = true;
     newPaceInput.value = '3';
 
-    // Reseta a opção de data de início (nova funcionalidade)
+    // Reseta a opção de data de início
     const todayOption = recalculateModal.querySelector('input[name="recalc-start-option"][value="today"]');
     if (todayOption) todayOption.checked = true;
     
@@ -396,9 +419,12 @@ export function resetRecalculateForm() {
     if (specificDateInput) {
         specificDateInput.style.display = 'none';
         specificDateInput.value = '';
-        // Prioridade 2: Impede a seleção de datas passadas
         specificDateInput.min = getCurrentUTCDateString();
     }
+    
+    // INÍCIO DA ALTERAÇÃO: Garante que a prévia seja limpa ao resetar (Prioridade 2)
+    displayRecalculatePreview('');
+    // FIM DA ALTERAÇÃO
     
     hideError('recalculate-modal');
 }
@@ -435,34 +461,53 @@ export function init(callbacks) {
         });
     }
 
-    // --- INÍCIO DAS ALTERAÇÕES NO MODAL DE RECÁLCULO ---
+    // --- LÓGICA DO MODAL DE RECÁLCULO (PRIORIDADES 1 e 2) ---
     
-    const recalcStartOptions = document.querySelectorAll('input[name="recalc-start-option"]');
+    const recalcForm = recalculateModal.querySelector('form'); // Encontra o formulário
     const specificDateInput = document.getElementById('recalc-specific-date-input');
 
-    if (recalcStartOptions.length > 0 && specificDateInput) {
-        recalcStartOptions.forEach(radio => {
-            radio.addEventListener('change', () => {
-                const isSpecificDate = radio.value === 'specific_date';
+    if (recalcForm) {
+        // Listener para alternar a visibilidade do campo de data específica
+        recalcForm.addEventListener('change', (e) => {
+            if (e.target.name === 'recalc-start-option') {
+                const isSpecificDate = e.target.value === 'specific_date';
                 specificDateInput.style.display = isSpecificDate ? 'inline-block' : 'none';
-                if(isSpecificDate) {
-                    specificDateInput.focus();
-                }
-            });
+                if(isSpecificDate) specificDateInput.focus();
+            }
+
+            // INÍCIO DA ALTERAÇÃO: Gatilho para a prévia (Prioridade 2)
+            const planId = confirmRecalculateButton.dataset.planId;
+            if (planId && state.callbacks.onRecalculatePreviewRequest) {
+                const option = recalcForm.querySelector('input[name="recalc-option"]:checked')?.value;
+                const newPace = parseInt(newPaceInput.value, 10);
+                const startDateOption = recalcForm.querySelector('input[name="recalc-start-option"]:checked')?.value;
+                const specificDateValue = specificDateInput.value;
+                
+                // Envia o estado atual do formulário para o orquestrador calcular a prévia
+                state.callbacks.onRecalculatePreviewRequest(planId, {
+                    option,
+                    newPace,
+                    startDateOption,
+                    specificDate: specificDateValue
+                });
+            }
+            // FIM DA ALTERAÇÃO
         });
     }
-
+    
+    // Listener para o botão de confirmação final
     confirmRecalculateButton.addEventListener('click', () => {
-        const option = document.querySelector('input[name="recalc-option"]:checked').value;
+        const planId = confirmRecalculateButton.dataset.planId;
+        if (!planId) return; // Sai se não houver plano selecionado
+
+        const option = recalcForm.querySelector('input[name="recalc-option"]:checked').value;
         const newPace = parseInt(newPaceInput.value, 10);
         
-        // Coleta dos novos dados de data de início
-        const startDateOption = document.querySelector('input[name="recalc-start-option"]:checked').value;
+        // Coleta dos dados de data de início (Prioridade 1)
+        const startDateOption = recalcForm.querySelector('input[name="recalc-start-option"]:checked').value;
         const specificDate = specificDateInput.value;
         
-        // Chamada do callback com a nova assinatura
-        state.callbacks.onConfirmRecalculate?.(option, newPace, startDateOption, specificDate);
+        // Chamada do callback com a assinatura corrigida e completa
+        state.callbacks.onConfirmRecalculate?.(option, newPace, startDateOption, specificDate, planId);
     });
-
-    // --- FIM DAS ALTERAÇÕES ---
 }
