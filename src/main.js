@@ -610,20 +610,24 @@ async function handleConfirmSync(basePlanId, targetDate, plansToSyncIds) {
 }
 // FIM DA ALTERAÇÃO
 
-// --- INÍCIO DA ALTERAÇÃO (PRIORIDADE 1) ---
+// --- INÍCIO DA VERSÃO COM LOGS DE DIAGNÓSTICO ---
 async function handleRecalculate(option, newPaceValue, startDateOption, specificDate) {
     const planId = document.getElementById('confirm-recalculate').dataset.planId;
-    const planToRecalculate = appState.userPlans.find(p => p.id === planId);
-    if (!appState.currentUser || !planToRecalculate) return;
+    if (!appState.currentUser || !planId) return;
+
+    console.log(`[DIAGNÓSTICO 0/4] main.js: Iniciando processo de recálculo para o plano ID: ${planId}`);
     
     modalsUI.showLoading('recalculate-modal');
     modalsUI.hideError('recalculate-modal');
 
     try {
+        const originalPlan = appState.userPlans.find(p => p.id === planId);
         let baseDateForCalc = getCurrentUTCDateString();
+        // Determina a data base para o recálculo com base na escolha do usuário
         switch (startDateOption) {
             case 'next_reading_day':
-                baseDateForCalc = getEffectiveDateForDay({ startDate: baseDateForCalc, allowedDays: planToRecalculate.allowedDays }, 1);
+                // Calcula qual seria o próximo dia de leitura a partir de hoje
+                baseDateForCalc = getEffectiveDateForDay({ startDate: baseDateForCalc, allowedDays: originalPlan.allowedDays }, 1);
                 break;
             case 'specific_date':
                 if (!specificDate || new Date(specificDate + 'T00:00:00Z') < new Date(getCurrentUTCDateString() + 'T00:00:00Z')) {
@@ -633,16 +637,17 @@ async function handleRecalculate(option, newPaceValue, startDateOption, specific
                 break;
             case 'today':
             default:
+                // Já está definido como hoje
                 break;
         }
 
         if (!baseDateForCalc) {
             throw new Error("Não foi possível determinar a data de início para o recálculo.");
         }
-
-        const originalPlan = { ...planToRecalculate };
+        
         let targetEndDate = null;
 
+        // 1. Determina a data final alvo com base na opção do usuário
         switch(option) {
             case 'new_pace':
                 if (!newPaceValue || newPaceValue < 1) throw new Error("O novo ritmo deve ser de pelo menos 1.");
@@ -663,7 +668,10 @@ async function handleRecalculate(option, newPaceValue, startDateOption, specific
             throw new Error("Não foi possível calcular uma nova data final para a opção selecionada.");
         }
 
+        // 2. Chama o módulo de cálculo central com a data alvo e a data base correta
         const result = planCalculator.recalculatePlanToTargetDate(originalPlan, targetEndDate, baseDateForCalc);
+
+        console.log('[DIAGNÓSTICO 2/4] main.js: Resultado recebido do plan-calculator. Verifique a "endDate".', JSON.parse(JSON.stringify(result)));
 
         if (!result) {
             const formattedDate = formatUTCDateStringToBrasilian(targetEndDate);
@@ -671,6 +679,7 @@ async function handleRecalculate(option, newPaceValue, startDateOption, specific
         }
         let { recalculatedPlan } = result;
 
+        // 3. Atualiza o histórico e salva o plano
         if (!recalculatedPlan.recalculationHistory) recalculatedPlan.recalculationHistory = [];
         recalculatedPlan.recalculationHistory.push({
             date: getCurrentUTCDateString(),
@@ -679,26 +688,19 @@ async function handleRecalculate(option, newPaceValue, startDateOption, specific
             chaptersReadAtPoint: Object.values(originalPlan.readLog || {}).reduce((sum, chapters) => sum + (Array.isArray(chapters) ? chapters.length : 0), 0),
             option: option,
             paceValue: option === 'new_pace' ? newPaceValue : null,
-            startDateOption: startDateOption,
+            startDateOption: startDateOption, // Guarda a opção de início
         });
 
         const planToSave = { ...recalculatedPlan };
-        delete planToSave.id; // Não salvamos o ID dentro do documento
-        
+        delete planToSave.id;
         await planService.saveRecalculatedPlan(appState.currentUser.uid, planId, planToSave);
         
-        // --- INÍCIO DA CORREÇÃO DEFINITIVA ---
-        // 1. Encontre o índice do plano no estado local.
         const planIndex = appState.userPlans.findIndex(p => p.id === planId);
         if (planIndex !== -1) {
-            // 2. Atualize o plano diretamente no estado local com os novos dados.
             appState.userPlans[planIndex] = { ...recalculatedPlan, id: planId };
-        } else {
-            // Fallback: Se não encontrar (improvável), recarregue tudo.
-            await loadInitialUserData(appState.currentUser);
+            console.log(`[DIAGNÓSTICO 4/4] main.js: Estado local (appState) foi atualizado. Renderização será chamada agora com estes dados.`);
         }
-
-        // 3. Agora, renderize todos os componentes com o estado local já atualizado.
+        
         renderAllPlanCards();
         sidePanelsUI.render(appState.userPlans, {
             onSwitchPlan: handleSwitchPlan,
@@ -709,18 +711,18 @@ async function handleRecalculate(option, newPaceValue, startDateOption, specific
             }
         });
         floatingNavigatorUI.render(appState.userPlans, appState.activePlanId);
-        // --- FIM DA CORREÇÃO DEFINITIVA ---
         
         alert("Plano recalculado com sucesso!");
         modalsUI.close('recalculate-modal');
 
     } catch (error) {
+        console.error("[ERRO NO RECÁLCULO]", error); // Adiciona um log de erro mais visível
         modalsUI.showError('recalculate-modal', `Erro: ${error.message}`);
     } finally {
         modalsUI.hideLoading('recalculate-modal');
     }
 }
-// --- FIM DA ALTERAÇÃO (PRIORIDADE 1) ---
+// --- FIM DA VERSÃO COM LOGS DE DIAGNÓSTICO ---
 
 
 // --- 5. FUNÇÕES DE MODAIS E OUTRAS AÇÕES ---
