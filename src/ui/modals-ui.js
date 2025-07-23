@@ -11,7 +11,7 @@ import {
     confirmRecalculateButton, newPaceInput,
     // INÍCIO DA ALTERAÇÃO (PRIORIDADE 3) - Novos elementos do DOM para preview
     recalcPreviewContainer, recalcPreviewEndDate, recalcPreviewPace,
-    recalcOptions, recalcStartOptions, specificDateInput,
+    recalcStartOptions, specificDateInput,
     // FIM DA ALTERAÇÃO (PRIORIDADE 3)
 
     // Estatísticas
