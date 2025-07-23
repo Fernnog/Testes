@@ -1,0 +1,1190 @@
+:root {
+    /* --- Paleta de Cores e Variáveis --- */
+    --gradient-start: #FF8C00; /* Laranja Vibrante */
+    --gradient-mid: #E6007E;   /* Magenta/Rosa */
+    --gradient-end: #00BFFF;   /* Azul Céu */
+    --primary-action: #8A2BE2; /* Roxo Azulado (Violeta) */
+    --primary-action-dark: #701ebd;
+    --primary-action-rgb: 138, 43, 226;
+    --accent-color: var(--gradient-start); /* Laranja como acento */
+    --accent-color-dark: #E07B00;
+    --accent-color-rgb: 255, 140, 0;
+    --background-light: #f8f7fc; /* Fundo quase branco, levemente roxo */
+    --background-card: #FFFFFF; /* Branco puro para cards */
+    --text-color-light: #ffffff;
+    --text-color-dark: #2a2a2a; /* Cor de texto principal (escuro) */
+    --text-color-muted: #6c757d; /* Cinza para textos secundários */
+    --border-color: #e8eaf6; /* Cor de borda suave */
+    --success-color: #28a745; /* Verde sucesso */
+    --success-color-dark: #1e7e34; /* Verde sucesso mais escuro para hover */
+    --success-color-rgb: 40, 167, 69;
+    --danger-color: #dc3545; /* Vermelho perigo */
+    --danger-color-dark: #bb2d3b;
+    --danger-color-rgb: 220, 53, 69; /* ADICIONADO PARA A MELHORIA */
+    --warning-bg-light: #fffbeb; /* Fundo aviso Atrasadas */
+    --warning-border-light: #fde68a; /* Borda aviso Atrasadas */
+    --warning-text-dark: #d97706; /* Texto aviso Atrasadas */
+    --warning-border-strong: #fcd34d; /* Borda H2 Atrasadas */
+    --warning-item-border: #ef4444; /* Borda item Atrasado */
+    --warning-item-text: #dc2626; /* Cor data Atrasada */
+    --drive-blue: #4285F4; /* Azul Google Drive */
+    --drive-blue-rgb: 66, 133, 244;
+    --drive-text-blue: #0b57d0; /* Azul texto link Drive */
+    --disabled-color: #e0e0e0; /* Cinza para desabilitado */
+    --disabled-text-color: #9e9e9e;
+    --marker-inactive-color: #f0f0f5; /* Cor de fundo marcador inativo (padrão) */
+    --marker-inactive-border: #dbe0e4;
+    --marker-active-bg: var(--primary-action); /* Fundo marcador ativo (lido) */
+    --marker-active-border: var(--gradient-mid); /* Borda marcador ativo (lido) */
+    --marker-active-shadow: rgba(var(--primary-action-rgb), 0.4); /* Sombra marcador ativo (lido) */
+    /* Cores para Dia Perdido */
+    --marker-missed-bg: #fee2e2; /* Fundo vermelho bem claro */
+    --marker-missed-border: #fca5a5; /* Borda vermelha clara */
+    --marker-missed-text: #b91c1c; /* Texto 'X' vermelho escuro */
+    --marker-missed-shadow: rgba(220, 53, 69, 0.2); /* Sombra sutil vermelha */
+
+    --font-sans-serif: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --box-shadow-sm: 0 2px 5px rgba(var(--primary-action-rgb), 0.08);
+    --box-shadow: 0 5px 15px rgba(var(--primary-action-rgb), 0.1);
+    --box-shadow-lg: 0 8px 25px rgba(var(--primary-action-rgb), 0.12);
+    --transition-fast: all 0.2s ease-in-out;
+    --transition-base: all 0.3s ease-in-out;
+    --input-height: 46px; /* Altura padrão para inputs */
+    --button-padding-y: 12px;
+    --button-padding-x: 22px;
+    --base-border-radius: 10px; /* Bordas mais arredondadas */
+    --header-logo-size: 40px;
+    --header-logo-border: 4px;
+    --header-logo-padding: 2px;
+
+    /* NOVAS VARIÁVEIS PARA PAINÉIS MELHORADOS */
+    --panel-border-gradient: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-mid) 50%, var(--primary-action) 100%);
+    --panel-border-width: 3px;
+    --panel-padding-enhanced: 25px;
+
+    /* VARIÁVEIS PARA O PAGINADOR FLUTUANTE (Melhoria de Arquitetura) */
+    --navigator-button-size: 58px;
+    --navigator-padding: 13px;
+    --navigator-gap: 16px;
+    --navigator-icon-size: 2rem;
+    --navigator-home-icon-size: 1.7rem;
+    --navigator-add-icon-size: 2.3rem;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+    font-family: var(--font-sans-serif);
+    line-height: 1.6;
+    margin: 0;
+    background-color: var(--background-light);
+    color: var(--text-color-dark);
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+}
+
+/* --- Header Simplificado --- */
+header {
+    background: linear-gradient(110deg, var(--gradient-start) 0%, var(--gradient-mid) 50%, var(--gradient-end) 100%);
+    color: var(--text-color-light);
+    padding: 10px 18px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    position: sticky;
+    top: 0;
+    z-index: 900;
+    min-height: 65px;
+}
+header img#header-logo {
+    height: var(--header-logo-size);
+    width: var(--header-logo-size);
+    border: var(--header-logo-border) solid white;
+    border-radius: 50%;
+    background-color: white;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+    padding: var(--header-logo-padding);
+    box-sizing: content-box;
+    object-fit: contain;
+    display: block;
+    flex-shrink: 0;
+    transition: all var(--transition-base);
+}
+.header-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    overflow: hidden;
+}
+header h1 {
+    margin: 0;
+    font-size: 1.5em;
+    font-weight: 700;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+    line-height: 1.2;
+}
+
+/* Área Status Usuário */
+.user-status-container {
+    text-align: right; font-size: 0.9em; color: var(--text-color-light);
+    white-space: nowrap; flex-shrink: 0; display: flex; align-items: center; gap: 10px;
+}
+#user-email {
+    opacity: 0.95; overflow: hidden; text-overflow: ellipsis;
+    max-width: 150px; display: inline-block; vertical-align: middle; font-weight: 600;
+}
+#logout-button {
+    padding: 6px 12px; font-size: 0.85em; background-color: rgba(255, 255, 255, 0.2);
+    color: var(--text-color-light); border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: var(--base-border-radius); transition: var(--transition-fast);
+    box-shadow: none; font-weight: 600; flex-shrink: 0;
+}
+#logout-button:hover:not(:disabled) { background-color: rgba(255, 255, 255, 0.3); border-color: rgba(255, 255, 255, 0.8); transform: scale(1.05); }
+
+/* --- Main Content --- */
+main { max-width: 850px; margin: 25px auto; padding: 0 15px; }
+section {
+    margin-bottom: 25px;
+    padding: var(--panel-padding-enhanced);
+    background-color: var(--background-card);
+    border-radius: var(--base-border-radius);
+    box-shadow: var(--box-shadow);
+    transition: box-shadow var(--transition-base), transform var(--transition-base);
+}
+section:not(.enhanced-panel):hover {
+    box-shadow: var(--box-shadow-lg);
+}
+section h2, section h3 { 
+    color: var(--primary-action); 
+    margin-top: 0; 
+    font-size: 1.5em; 
+    font-weight: 700; 
+    transition: color var(--transition-fast);
+}
+
+/* --- ESTILOS PARA PAINÉIS MELHORADOS COM BORDA GRADIENTE E INTERAÇÃO UNIFICADA --- */
+.enhanced-panel {
+    background-color: var(--background-card); 
+    padding: var(--panel-padding-enhanced);
+    border-radius: var(--base-border-radius);
+    position: relative;
+    box-shadow: var(--box-shadow);
+    overflow: hidden;
+    /* Adicionada transição para o fundo e cor de texto */
+    transition: transform var(--transition-base), box-shadow var(--transition-base), background var(--transition-base), color var(--transition-base);
+}
+.enhanced-panel::before {
+    content: "";
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
+    z-index: -1;
+    margin: calc(-1 * var(--panel-border-width));
+    border-radius: inherit;
+    background: var(--panel-border-gradient);
+    transition: filter var(--transition-base);
+}
+.enhanced-panel:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--box-shadow-lg);
+    /* Efeito de fundo e cor de texto adicionado para unificar a experiência */
+    background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-mid) 50%, var(--primary-action) 100%);
+    color: var(--text-color-light);
+}
+.enhanced-panel:hover::before {
+    filter: brightness(1.15) saturate(1.1);
+}
+.enhanced-panel .perseverance-header h2,
+.enhanced-panel#global-weekly-tracker-section h3 {
+    padding-bottom: 12px;
+    border-bottom: 2px solid rgba(var(--primary-action-rgb), 0.2);
+    margin-bottom: 25px;
+    transition: border-bottom-color var(--transition-fast);
+}
+
+/* MELHORIA DE LEGIBILIDADE DOS TÍTULOS E TEXTOS NO HOVER */
+.enhanced-panel:hover h2,
+.enhanced-panel:hover h3 {
+    color: var(--text-color-light) !important;
+    border-bottom-color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.enhanced-panel:hover .milestone-legend,
+.enhanced-panel:hover .progress-percentage-left,
+.enhanced-panel:hover .day-label {
+    color: var(--text-color-light);
+}
+
+.enhanced-panel#overdue-readings:hover h2 {
+    color: var(--text-color-light) !important;
+    border-bottom-color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* CORREÇÃO: Garante que os marcadores 'missed' fiquem brancos no hover */
+.enhanced-panel:hover .day-indicator.missed-day .day-label {
+    color: var(--text-color-light);
+}
+.enhanced-panel:hover .day-indicator.missed-day .day-marker::after {
+    color: var(--text-color-light);
+}
+
+/* NOVO: Estilo para o dia atual quando o painel está em modo hover/clicado */
+.enhanced-panel:hover .day-indicator.current-day-highlight {
+    background-color: transparent; /* Remove o fundo roxo sólido */
+    border: 2px solid rgba(255, 255, 255, 0.85); /* Adiciona a borda branca translúcida */
+    box-shadow: none; /* Remove a sombra roxa que não é mais necessária */
+    padding: 6px 3px; /* Ajusta o padding para manter o alinhamento com a nova borda */
+}
+
+/* Garante que o texto do dia atual também fique branco no hover, sobrepondo outras regras */
+.enhanced-panel:hover .day-indicator.current-day-highlight .day-label {
+    color: var(--text-color-light);
+}
+
+/* --- Botões --- */
+button { padding: var(--button-padding-y) var(--button-padding-x); border: none; border-radius: var(--base-border-radius); cursor: pointer; font-size: 1em; font-weight: 600; transition: var(--transition-fast); margin: 5px; box-shadow: none; letter-spacing: 0.5px; line-height: 1.5; vertical-align: middle; min-height: var(--input-height); -webkit-tap-highlight-color: transparent; }
+button:disabled { background-color: var(--disabled-color); color: var(--disabled-text-color); cursor: not-allowed; opacity: 0.7; box-shadow: none; transform: none !important; }
+button:not(:disabled):hover { transform: translateY(-2px); box-shadow: var(--box-shadow-sm); }
+button:not(:disabled):active { transform: translateY(0px) scale(0.98); filter: brightness(0.95); box-shadow: none; }
+button:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(var(--primary-action-rgb), 0.4); }
+.button-primary { background-color: var(--primary-action); color: var(--text-color-light); }
+.button-primary:hover:not(:disabled) { background-color: var(--primary-action-dark); }
+.button-secondary { background-color: var(--accent-color); color: var(--text-color-dark); }
+.button-secondary:hover:not(:disabled) { background-color: var(--accent-color-dark); }
+.button-danger { background-color: var(--danger-color); color: var(--text-color-light); }
+.button-danger:hover:not(:disabled) { background-color: var(--danger-color-dark); }
+.button-special { background-color: var(--success-color); color: var(--text-color-light); }
+.button-special:hover:not(:disabled) { background-color: var(--success-color-dark); }
+.button-edit { background-color: #6c757d; color: var(--text-color-light); }
+.button-edit:hover:not(:disabled) { background-color: #5a6268; }
+
+/* --- Formulários --- */
+label { display: block; margin-bottom: 8px; font-weight: 600; color: var(--text-color-muted); font-size: 0.9em; }
+input[type="email"], input[type="password"], input[type="number"], input[type="text"], input[type="date"], input[type="url"], select { width: 100%; padding: 12px 16px; margin-bottom: 18px; border-radius: var(--base-border-radius); border: 1px solid var(--border-color); font-size: 1em; box-sizing: border-box; background-color: #fff; transition: border-color var(--transition-fast), box-shadow var(--transition-fast); line-height: 1.5; min-height: var(--input-height); color: var(--text-color-dark); }
+input::placeholder { color: #aaa; opacity: 1; }
+input:focus, select:focus { outline: none; border-color: var(--primary-action); box-shadow: 0 0 0 3px rgba(var(--primary-action-rgb), 0.2); }
+input[type="number"], input[type="date"] { width: auto; min-width: 130px; display: inline-block; vertical-align: middle; }
+#new-pace-input { width: 80px !important; padding: 10px 12px !important; font-size: 1em !important; margin-left: 8px !important; vertical-align: middle !important; display: inline-block !important; min-height: auto !important; }
+input[type="radio"], input[type="checkbox"] { margin-right: 8px; margin-left: 5px; vertical-align: middle; accent-color: var(--primary-action); width: auto; margin-bottom: 0; height: 18px; width: 18px; cursor: pointer; }
+fieldset label { display: inline-flex; align-items: center; margin-right: 15px; margin-bottom: 12px; font-weight: normal; color: var(--text-color-dark); cursor: pointer; font-size: 0.95em; }
+fieldset label input[type="radio"], fieldset label input[type="checkbox"] { margin-bottom: 0; }
+select[multiple] { height: 160px; padding: 10px; }
+fieldset { border: 1px solid var(--border-color); padding: 20px 25px; margin-bottom: 25px; border-radius: var(--base-border-radius); background-color: rgba(var(--primary-action-rgb), 0.02); }
+legend { font-weight: 700; color: var(--primary-action); padding: 0 10px; font-size: 1.15em; }
+hr { border: 0; height: 1px; background-color: var(--border-color); margin: 30px 0; }
+small { display: block; font-size: 0.85em; color: var(--text-color-muted); margin-top: -10px; margin-bottom: 15px; line-height: 1.4; }
+fieldset:disabled { opacity: 0.5; pointer-events: none; }
+
+/* --- Estilos para o Seletor de Ícones no Formulário --- */
+.icon-selector-fieldset { border-style: dashed; }
+.icon-selector-container { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; padding-top: 10px; }
+.icon-option { position: relative; }
+.icon-option input[type="radio"] { position: absolute; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+.icon-option .icon-label { display: flex; justify-content: center; align-items: center; width: 50px; height: 50px; border: 2px solid var(--border-color); border-radius: var(--base-border-radius); font-size: 2em; transition: var(--transition-fast); cursor: pointer; background-color: var(--background-light); }
+.icon-option input[type="radio"]:hover + .icon-label { transform: scale(1.1); border-color: var(--accent-color); }
+.icon-option input[type="radio"]:checked + .icon-label { border-color: var(--primary-action); background-color: rgba(var(--primary-action-rgb), 0.1); transform: scale(1.1); box-shadow: 0 0 0 3px rgba(var(--primary-action-rgb), 0.2); }
+.icon-option input[type="radio"]:focus-visible + .icon-label { box-shadow: 0 0 0 3px rgba(var(--primary-action-rgb), 0.4); }
+
+/* --- Autenticação --- */
+#auth-section { max-width: 450px; margin-left: auto; margin-right: auto; }
+#auth-section h2 { text-align: center; border-bottom: none; font-size: 1.6em; }
+#auth-section button { width: 100%; padding: 14px 20px; margin-top: 20px; font-size: 1.1em; }
+#auth-section p { text-align: center; margin-top: 20px; font-size: 0.9em; }
+#auth-section a { color: var(--accent-color); text-decoration: none; font-weight: 600; }
+#auth-section a:hover { text-decoration: underline; color: var(--accent-color-dark); }
+.error-message { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; padding: 12px 18px; border-radius: var(--base-border-radius); margin-bottom: 18px; font-size: 0.95em; text-align: left; }
+.loading-indicator { text-align: center; padding: 15px; font-style: italic; color: var(--text-color-muted); }
+
+/* --- Estilos para o container de botões de criação --- */
+.plan-creation-actions-container { display: flex; justify-content: center; align-items: center; gap: 15px; flex-wrap: wrap; padding: 10px 0; background-color: transparent; box-shadow: none; border: none; }
+#create-new-plan-button, #create-favorite-plan-button, #explore-bible-button { flex-grow: 1; max-width: 350px; }
+
+/* --- Estilos para a exibição de múltiplos planos --- */
+.plans-display-container { display: grid; grid-template-columns: 1fr; gap: 30px; background-color: transparent; padding: 0; box-shadow: none; border: none; margin-bottom: 25px; }
+
+/* Card de Plano reutilizável */
+.plan-card { padding: var(--panel-padding-enhanced); background-color: var(--background-card); border-radius: var(--base-border-radius); box-shadow: var(--box-shadow); transition: var(--transition-base); border: 3px solid transparent; }
+.plan-card:hover { box-shadow: var(--box-shadow-lg); transform: translateY(-2px); }
+.plan-card.active-plan { border-color: var(--primary-action); box-shadow: var(--box-shadow-lg); transform: translateY(-2px); }
+.plan-card .plan-header-info { align-items: center; display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 2px solid var(--accent-color); padding-bottom: 10px; flex-wrap: wrap; }
+.plan-card .plan-card-title { margin: 0; padding: 0; border: none; color: var(--primary-action); font-size: 1.5em; font-weight: 700; line-height: 1.3; }
+.plan-card .drive-link-icon { display: inline-flex; align-items: center; justify-content: center; line-height: 0; flex-shrink: 0; padding: 4px; border-radius: 6px; cursor: pointer; background-color: transparent; transition: transform var(--transition-fast), background-color var(--transition-fast), box-shadow var(--transition-fast); width: 28px; height: 28px; vertical-align: middle; }
+.plan-card .drive-link-icon:hover { transform: scale(1.5); background-color: var(--background-light); box-shadow: 0 2px 5px rgba(0, 0, 0, 0.12); }
+.plan-card .drive-link-icon img.drive-png-icon { display: block; width: 100%; height: auto; }
+
+.shield-wrapper {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 2px solid var(--border-color);
+    background-color: var(--background-light);
+    flex-shrink: 0; 
+    transition: border-color var(--transition-fast);
+}
+
+.plan-card:hover .shield-wrapper {
+    border-color: var(--accent-color);
+}
+.active-plan .shield-wrapper {
+    border-color: var(--primary-action);
+}
+
+.plan-card .plan-card-icon {
+    font-size: 1.5em;
+    margin-right: 0;
+    line-height: 1;
+}
+
+.overdue-plan-name .plan-icon,
+.upcoming-plan-name .plan-icon,
+.recalc-plan-name .plan-icon {
+    font-size: 1.2em;
+    line-height: 1;
+}
+
+.overdue-plan-name .shield-wrapper,
+.upcoming-plan-name .shield-wrapper,
+.recalc-plan-name .shield-wrapper {
+    width: 36px;
+    height: 36px;
+}
+
+
+/* Barra de Progresso (dentro de .plan-card) */
+.plan-card .progress-container { width: 100%; margin-bottom: 20px; }
+.plan-card .progress-bar-track { background-color: var(--marker-inactive-color); border-radius: var(--base-border-radius); height: 12px; overflow: hidden; border: 1px solid var(--border-color); width: 100%; }
+.plan-card .progress-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--primary-action), var(--gradient-mid)); transition: width 0.5s ease-out; border-radius: inherit; }
+
+.plan-card .progress-labels {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap; /* Permite quebrar a linha em telas pequenas */
+    gap: 5px 10px;
+    width: 100%;
+    margin-bottom: 8px;
+}
+
+.plan-card .progress-text {
+    display: block;
+    text-align: left; /* Alterado de 'center' */
+    margin-bottom: 0; /* Alterado de '5px' */
+    font-size: 0.9em;
+    color: var(--text-color-muted);
+    font-weight: 600;
+    flex-grow: 1; /* Faz com que ele tente ocupar o máximo de espaço */
+}
+
+.plan-card .forecast-date {
+    font-size: 0.8em;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 12px;
+    white-space: nowrap; /* Impede que o texto quebre */
+    flex-shrink: 0; /* Impede que a etiqueta seja esmagada */
+}
+
+.plan-card .forecast-ahead {
+    background-color: rgba(var(--success-color-rgb), 0.1);
+    color: var(--success-color-dark);
+    border: 1px solid rgba(var(--success-color-rgb), 0.2);
+}
+
+.plan-card .forecast-behind {
+    background-color: rgba(var(--danger-color-rgb), 0.1);
+    color: var(--danger-color);
+    border: 1px solid rgba(var(--danger-color-rgb), 0.2);
+}
+
+.plan-card .forecast-neutral {
+    background-color: rgba(var(--accent-color-rgb), 0.1);
+    color: var(--accent-color-dark);
+    border: 1px solid rgba(var(--accent-color-rgb), 0.2);
+}
+
+
+/* Leitura Diária e Ações (dentro de .plan-card) */
+.plan-card .daily-reading-header-display { font-size: 1.1em; padding: 15px 20px; margin: 20px 0 0 0; background-color: var(--background-card); border-left: 6px solid; border-image: linear-gradient(to bottom, var(--primary-action), var(--gradient-mid)) 1; color: var(--text-color-dark); border-radius: var(--base-border-radius) var(--base-border-radius) 0 0; box-shadow: var(--box-shadow-sm); line-height: 1.7; }
+.plan-card .daily-reading-header-display p { margin: 0; }
+.plan-card .daily-reading-chapters-list-display { padding: 10px 20px 20px 20px; margin: 0 0 25px 0; background-color: var(--background-card); border-left: 6px solid var(--border-color); border-right: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-color-dark); border-radius: 0 0 var(--base-border-radius) var(--base-border-radius); box-shadow: var(--box-shadow-sm); }
+.plan-card .daily-chapter-item { position: relative; display: flex; align-items: center; padding: 10px 0; border-bottom: 1px dashed var(--border-color); font-size: 1.05em; }
+.plan-card .daily-chapter-item:last-child { border-bottom: none; padding-bottom: 0; }
+.plan-card .daily-chapter-item input[type="checkbox"] { width: 20px; height: 20px; margin-right: 15px; accent-color: var(--primary-action); cursor: pointer; flex-shrink: 0; }
+.plan-card .daily-chapter-item label { margin-bottom: 0; font-weight: normal; color: var(--text-color-dark); flex-grow: 1; cursor: pointer; }
+.plan-card .daily-chapter-item input[type="checkbox"]:checked + label { text-decoration: line-through; color: var(--text-color-muted); }
+.plan-card .plan-actions { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.plan-card .plan-actions button { flex-grow: 1; min-width: 150px; }
+
+.save-feedback {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: rgba(var(--success-color-rgb), 0.1);
+    color: var(--success-color-dark);
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: 600;
+    animation: fade-out-up 1.5s ease-out forwards;
+    pointer-events: none; 
+}
+
+@keyframes fade-out-up {
+    0% {
+        opacity: 1;
+        transform: translateY(-50%);
+    }
+    80% {
+        opacity: 1;
+        transform: translateY(-60%);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-80%);
+    }
+}
+
+
+/* --- Estilos Periodicidade na Criação --- */
+#periodicity-options .checkbox-group { display: flex; flex-wrap: wrap; gap: 10px 15px; margin-top: 10px; justify-content: flex-start; }
+#periodicity-options .checkbox-group label { display: inline-flex; align-items: center; cursor: pointer; font-weight: normal; color: var(--text-color-dark); margin-bottom: 0; margin-right: 0; font-size: 0.9em; padding: 5px 8px; border: 1px solid transparent; border-radius: var(--base-border-radius); transition: background-color var(--transition-fast), border-color var(--transition-fast); }
+#periodicity-options .checkbox-group label:hover { background-color: var(--background-light); }
+#periodicity-options input[type="checkbox"] { margin-right: 6px; width: 16px; height: 16px; accent-color: var(--primary-action); }
+
+/* --- Modais --- */
+.modal { position: fixed; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(30, 30, 50, 0.7); display: none; justify-content: center; align-items: center; z-index: 1000; opacity: 0; visibility: hidden; transition: opacity var(--transition-base), visibility 0s linear var(--transition-base); padding: 15px; backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+.modal[style*="display: flex"] { opacity: 1; visibility: visible; transition: opacity var(--transition-base); }
+.modal-content { background-color: var(--background-card); padding: 30px; border-radius: var(--base-border-radius); width: 100%; max-width: 550px; position: relative; box-shadow: var(--box-shadow-lg); transform: scale(0.95) translateY(10px); transition: transform var(--transition-base), opacity var(--transition-base); opacity: 0; }
+.modal[style*="display: flex"] .modal-content { transform: scale(1) translateY(0); opacity: 1; }
+.modal-content-scrollable { max-height: 80vh; overflow-y: auto; }
+.close-button { position: absolute; top: 10px; right: 15px; font-size: 32px; font-weight: 300; color: var(--text-color-muted); background: none; border: none; padding: 5px; line-height: 1; cursor: pointer; transition: color var(--transition-fast), transform var(--transition-fast); }
+.close-button:hover { color: var(--danger-color); transform: rotate(90deg); }
+.modal h2 { margin-top: 0; margin-bottom: 20px; color: var(--primary-action); font-size: 1.5em; text-align: center; }
+.modal p { text-align: center; color: var(--text-color-muted); margin-bottom: 25px; }
+.modal fieldset { margin-top: 20px; border-color: var(--border-color); background: none; padding: 15px 20px; }
+.modal fieldset legend { font-size: 1.1em; }
+.modal fieldset label { display: block; margin-bottom: 15px; margin-right: 0; }
+.modal fieldset label:has(#new-pace-input) { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
+.modal button#confirm-recalculate { margin-top: 25px; float: right; width: auto; }
+.modal .modal-content::after { content: ""; display: table; clear: both; }
+
+#stats-content p, #history-list p { text-align: left; color: var(--text-color-dark); margin-bottom: 10px; }
+#stats-content strong { color: var(--primary-action); }
+#stats-content hr { margin: 15px 0; }
+#stats-content small { display: block; margin-top: 15px; font-size: 0.85em; color: var(--text-color-muted); text-align: center; }
+.history-list-container { max-height: 45vh; overflow-y: auto; padding-right: 10px; }
+.history-entry { margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px dashed var(--border-color); }
+.history-entry:last-child { border-bottom: none; }
+.history-date { font-weight: bold; color: var(--primary-action); display: block; margin-bottom: 5px; }
+.history-chapters { font-size: 0.95em; color: var(--text-color-muted); word-wrap: break-word; line-height: 1.5; }
+
+.stats-chart-container {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    height: 280px; /* Altura inicial, pode ser ajustada */
+    margin: 25px 0;
+    padding: 15px;
+    background-color: var(--background-light);
+    border-radius: var(--base-border-radius);
+    border: 1px solid var(--border-color);
+}
+
+/* --- Estilos Seção Leituras Atrasadas e Próximas --- */
+#overdue-readings h2 { color: var(--warning-text-dark); border-bottom: 2px solid var(--warning-border-strong); font-size: 1.4em; margin-bottom: 15px; padding-bottom: 10px; }
+.enhanced-panel#overdue-readings h2 { color: var(--warning-text-dark) !important; border-bottom-color: var(--warning-border-strong) !important; }
+.overdue-readings-container { display: grid; grid-template-columns: 1fr; gap: 15px; margin-top: 15px; }
+.overdue-reading-item { background-color: var(--background-card); padding: 15px; border-radius: var(--base-border-radius); border: 1px solid var(--border-color); border-left: 5px solid var(--warning-item-border); box-shadow: var(--box-shadow-sm); transition: transform var(--transition-fast), box-shadow var(--transition-fast); cursor: pointer; display: flex; flex-direction: column; gap: 8px; }
+.overdue-reading-item:hover { transform: translateY(-3px); box-shadow: var(--box-shadow); }
+.overdue-date { font-weight: 700; font-size: 1.1em; color: var(--warning-item-text); margin-bottom: 0; border-bottom: 1px solid var(--border-color); padding-bottom: 5px; }
+.overdue-plan-name { font-weight: 600; font-size: 0.95em; color: var(--text-color-dark); margin-bottom: 0; display: flex; align-items: center; gap: 8px; }
+.overdue-chapters { font-size: 0.9em; color: var(--text-color-muted); line-height: 1.5; word-break: break-word; }
+
+.recalc-suggestion-item {
+    background-color: var(--warning-bg-light);
+    padding: 18px;
+    border-radius: var(--base-border-radius);
+    border: 2px dashed var(--warning-border-strong);
+    box-shadow: none;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+.recalc-suggestion-item:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--box-shadow);
+    border-style: solid;
+}
+.recalc-suggestion-item .recalc-plan-name {
+    font-weight: 700;
+    font-size: 1.1em;
+    color: var(--warning-text-dark);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.recalc-suggestion-item .recalc-suggestion-text {
+    font-size: 0.95em;
+    color: var(--text-color-muted);
+    line-height: 1.5;
+    max-width: 90%;
+    margin: 0;
+}
+.recalc-suggestion-item .recalc-suggestion-button {
+    margin: 5px 0 0 0;
+    background-color: var(--primary-action);
+    color: var(--text-color-light);
+    width: auto;
+    padding: 10px 20px;
+}
+.recalc-suggestion-item .recalc-suggestion-button:hover:not(:disabled) {
+    background-color: var(--primary-action-dark);
+    transform: translateY(-2px);
+}
+
+#upcoming-readings h2 { border-bottom: 2px solid var(--primary-action); font-size: 1.4em; margin-bottom: 15px; padding-bottom: 10px; }
+.upcoming-readings-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 15px; }
+.upcoming-reading-item { background-color: var(--background-card); padding: 15px; border-radius: var(--base-border-radius); border: 1px solid var(--border-color); box-shadow: var(--box-shadow-sm); transition: transform var(--transition-fast), box-shadow var(--transition-fast); cursor: pointer; display: flex; flex-direction: column; gap: 8px; }
+.upcoming-reading-item:hover { transform: translateY(-3px); box-shadow: var(--box-shadow); }
+.upcoming-date { font-weight: 700; font-size: 1.1em; color: var(--primary-action); margin-bottom: 0; border-bottom: 1px solid var(--border-color); padding-bottom: 5px; }
+.upcoming-plan-name { font-weight: 600; font-size: 0.95em; color: var(--text-color-dark); margin-bottom: 0; display: flex; align-items: center; gap: 8px; }
+.upcoming-chapters { font-size: 0.9em; color: var(--text-color-muted); line-height: 1.5; word-break: break-word; }
+
+
+/* --- Painel de Perseverança Aprimorado --- */
+.perseverance-header h2 { text-align: center; color: var(--primary-action); margin-top: 0; font-size: 1.4em; font-weight: 700; }
+.milestone-icons-area { display: flex; justify-content: space-around; align-items: center; margin-bottom: 20px; min-height: 45px; }
+.milestone-icon { font-size: 2.2em; display: inline-block; transition: transform 0.3s ease-out, text-shadow 0.3s ease-out; cursor: default; }
+.milestone-icon.achieved { transform: scale(1.1); -webkit-animation: icon-pop 0.4s; animation: icon-pop 0.4s; text-shadow: 0 3px 8px rgba(var(--primary-action-rgb), 0.35); }
+@keyframes icon-pop { 0% { transform: scale(0.5); opacity: 0; } 70% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1.1); } }
+.perseverance-bar-container { width: 100%; margin-bottom: 12px; }
+.progress-bar { position: relative; height: 28px; background-color: var(--marker-inactive-color); border: 1px solid var(--border-color); border-radius: var(--base-border-radius); overflow: hidden; }
+.progress { position: absolute; top: 0; left: 0; height: 100%; width: 0; border-radius: var(--base-border-radius); background: linear-gradient(135deg, var(--gradient-start), var(--gradient-mid), var(--gradient-end)); transition: width 1.2s cubic-bezier(0.25, 1, 0.5, 1); overflow: hidden; }
+.progress-shine-overlay { position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0) 100%); animation: shineEffect 4s infinite linear; }
+@keyframes shineEffect { from { left: -100%; } to { left: 100%; } }
+.progress-percentage-left { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-color-light); font-weight: 600; font-size: 0.9em; text-shadow: 1px 1px 2px rgba(0,0,0,0.4); z-index: 2; transition: color var(--transition-fast); }
+.milestone-legend { text-align: center; font-size: 0.85em; color: var(--text-color-muted); transition: color var(--transition-fast); }
+.milestone-legend span { white-space: nowrap; }
+
+#cumulative-milestones-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.milestone-item {
+    display: inline-flex;
+    align-items: baseline;
+    line-height: 1;
+}
+
+.milestone-item .icon {
+    font-size: 2.2em;
+    display: inline-block;
+    transition: transform 0.3s ease-out, text-shadow 0.3s ease-out;
+}
+
+.milestone-item .counter {
+    font-size: 1.1em;
+    font-weight: 700;
+    color: var(--primary-action);
+    margin-left: 2px;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+}
+
+.milestone-item .icon.achieved {
+    transform: scale(1.1);
+    -webkit-animation: icon-pop 0.4s;
+    animation: icon-pop 0.4s;
+    text-shadow: 0 3px 8px rgba(var(--primary-action-rgb), 0.35);
+}
+
+/* Painel de Progresso Semanal */
+#global-weekly-tracker-section h3 { margin-top: 0; margin-bottom: 20px; text-align: center; color: var(--primary-action); font-size: 1.2em; font-weight: 700; transition: color var(--transition-fast); }
+.weekly-tracker-container .week-days { display: flex; justify-content: space-around; align-items: center; text-align: center; flex-wrap: wrap; gap: 8px; }
+.weekly-tracker-container .day-indicator { display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: default; flex-basis: calc(100% / 7 - 10px); min-width: 42px; min-height: 70px; transition: transform var(--transition-fast), background-color var(--transition-fast); border-radius: calc(var(--base-border-radius) / 1.5); }
+.weekly-tracker-container .day-indicator.current-day-highlight { background-color: rgba(var(--primary-action-rgb), 0.15); padding: 8px 5px; box-shadow: 0 2px 4px rgba(var(--primary-action-rgb), 0.1); transform: scale(1.03); }
+.weekly-tracker-container .day-indicator.current-day-highlight .day-label { color: var(--primary-action); font-weight: 700; }
+.weekly-tracker-container .day-label { font-size: 0.75em; font-weight: 600; color: var(--text-color-muted); margin-bottom: 6px; text-transform: uppercase; transition: color var(--transition-fast); }
+.weekly-tracker-container .day-marker { width: 32px; height: 32px; border-radius: 50%; background-color: var(--marker-inactive-color); border: 2px solid var(--marker-inactive-border); display: flex; justify-content: center; align-items: center; color: var(--text-color-light); font-weight: bold; transition: var(--transition-base); position: relative; }
+.weekly-tracker-container .day-marker::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 18px; font-weight: bold; line-height: 1; transition: color var(--transition-fast); }
+.weekly-tracker-container .day-indicator.active .day-marker { background: linear-gradient(135deg, var(--primary-action), var(--gradient-mid)); border-color: transparent; color: var(--text-color-light); box-shadow: 0 0 12px var(--marker-active-shadow); transform: scale(1.1); }
+.weekly-tracker-container .day-indicator.active .day-marker::after { content: '✓'; color: var(--text-color-light); text-shadow: 1px 1px 1px rgba(0,0,0,0.2); }
+.weekly-tracker-container .day-indicator.missed-day .day-marker { background-color: var(--marker-missed-bg); border-color: var(--marker-missed-border); box-shadow: 0 0 8px var(--marker-missed-shadow); transform: scale(1.05); }
+.weekly-tracker-container .day-indicator.missed-day .day-marker::after { content: '✕'; color: var(--marker-missed-text); text-shadow: none; }
+.weekly-tracker-container .day-indicator.missed-day .day-label { color: var(--marker-missed-text); }
+
+/* --- Estilos do Paginador Flutuante (Dock) --- */
+#floating-navigator {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(0);
+    z-index: 950;
+    background-color: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    padding: var(--navigator-padding);
+    box-shadow: 0 -2px 15px rgba(0, 0, 0, 0.12);
+    border-radius: 65px;
+    display: flex;
+    align-items: center;
+    gap: var(--navigator-gap);
+    transition: opacity 0.4s ease, visibility 0.4s ease, transform 0.4s ease;
+    opacity: 0;
+    visibility: hidden;
+}
+#floating-navigator.visible {
+    opacity: 1;
+    visibility: visible;
+}
+#floating-navigator.hidden-at-bottom {
+    transform: translateX(-50%) translateY(calc(100% + 25px));
+    opacity: 0;
+    visibility: hidden;
+}
+#floating-navigator .nav-button {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: var(--navigator-button-size);
+    height: var(--navigator-button-size);
+    border: 2px solid var(--border-color);
+    border-radius: 50%;
+    text-decoration: none;
+    color: var(--text-color-dark);
+    font-size: var(--navigator-icon-size);
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+    background-color: #fff;
+    box-shadow: var(--box-shadow-sm);
+    padding: 0;
+    line-height: 1;
+}
+#floating-navigator .nav-button:hover {
+    transform: scale(1.1);
+    box-shadow: var(--box-shadow);
+    border-color: var(--accent-color);
+}
+#floating-navigator .nav-button.home-button {
+    font-size: var(--navigator-home-icon-size);
+    font-weight: bold;
+    color: var(--text-color-dark);
+    border-color: var(--border-color);
+}
+#floating-navigator .nav-button.home-button:hover {
+    border-color: var(--accent-color);
+}
+#floating-navigator .nav-button.add-plan-button {
+    color: var(--text-color-light);
+    background-color: var(--success-color);
+    border-color: transparent;
+    font-size: var(--navigator-add-icon-size);
+    font-weight: bold;
+}
+#floating-navigator .nav-button.add-plan-button:hover {
+    background-color: var(--success-color-dark);
+}
+
+#floating-navigator .nav-button.active-nav {
+    border-color: var(--primary-action);
+    transform: scale(1.1);
+    box-shadow: 0 0 0 3px rgba(var(--primary-action-rgb), 0.3);
+}
+
+/* 
+================================================================================
+  REGRAS DE CSS PARA A FUNCIONALIDADE DE REAVALIAÇÃO E SINCRONIZAÇÃO (ALTERAÇÕES)
+================================================================================
+*/
+
+#plan-reassessment-section {
+    border-top: 5px solid var(--primary-action);
+}
+
+.reassessment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 10px;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 15px;
+}
+
+.reassessment-header h2 {
+    margin: 0;
+    flex-grow: 1; /* Permite que o título ocupe o espaço restante */
+}
+
+/* NOVO: Container para os botões de ação na reavaliação */
+.reassessment-actions {
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0; /* Impede que os botões quebrem linha facilmente */
+}
+
+.reassessment-description {
+    text-align: center;
+    color: var(--text-color-muted);
+    font-size: 0.95em;
+    margin-bottom: 25px;
+}
+
+.reassessment-grid-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 15px; 
+    margin-bottom: 30px;
+}
+
+.reassessment-day-column {
+    background-color: var(--background-light);
+    border-radius: var(--base-border-radius);
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    min-height: 150px;
+    display: flex;
+    flex-direction: column;
+    transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.reassessment-day-header {
+    text-align: center;
+    font-weight: 700;
+    color: var(--primary-action);
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.day-entries {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.reassessment-plan-entry {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: var(--background-card);
+    padding: 8px;
+    border-radius: calc(var(--base-border-radius) / 1.5);
+    box-shadow: var(--box-shadow-sm);
+    cursor: pointer;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast);
+    border-left: 4px solid var(--accent-color);
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.reassessment-plan-entry:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: var(--box-shadow);
+}
+
+.reassessment-plan-entry .plan-icon {
+    font-size: 1.5em;
+}
+
+.reassessment-plan-entry .chapter-count {
+    font-weight: 600;
+    color: var(--text-color-dark);
+    font-size: 0.9em;
+}
+
+.reassessment-legend-container {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border-color);
+}
+
+.reassessment-legend-container h3 {
+    text-align: center;
+    color: var(--text-color-muted);
+    font-size: 1em;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+#reassessment-legend-list {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 15px;
+}
+
+.reassessment-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9em;
+}
+
+/* Estilos para Drag & Drop e UX */
+.reassessment-day-header .total-load {
+    display: block;
+    font-size: 0.8em;
+    font-weight: normal;
+    color: var(--text-color-muted);
+    margin-top: 4px;
+}
+
+.reassessment-day-column.overload {
+    background-color: var(--warning-bg-light);
+    border-color: var(--warning-item-border);
+}
+
+.reassessment-day-column.overload .reassessment-day-header {
+    color: var(--warning-item-text);
+}
+
+.reassessment-plan-entry.dragging {
+    opacity: 0.4;
+    transform: scale(0.95);
+    box-shadow: 0 8px 25px rgba(var(--primary-action-rgb), 0.2);
+}
+
+.reassessment-day-column.over {
+    background-color: rgba(var(--primary-action-rgb), 0.1);
+    border-style: dashed;
+    border-color: var(--primary-action);
+}
+
+.touch-ghost {
+    position: absolute;
+    pointer-events: none;
+    z-index: 1100;
+    opacity: 0.8;
+    transform: translate(-50%, -50%) scale(1.05);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: var(--background-card);
+    padding: 8px;
+    border-radius: calc(var(--base-border-radius) / 1.5);
+    box-shadow: var(--box-shadow-lg);
+    border-left: 4px solid var(--accent-color);
+}
+
+/* 
+================================================================================
+  INÍCIO: NOVOS ESTILOS PARA O MODAL DE SINCRONIZAÇÃO
+================================================================================
+*/
+.sync-plans-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    max-height: 250px;
+    overflow-y: auto;
+    padding: 10px;
+    background-color: var(--background-light);
+    border: 1px solid var(--border-color);
+    border-radius: var(--base-border-radius);
+}
+
+.sync-plan-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background-color: var(--background-card);
+    border: 1px solid var(--border-color);
+    border-radius: calc(var(--base-border-radius) / 1.5);
+    transition: background-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+/* Torna o item clicável para marcar/desmarcar o checkbox */
+.sync-plan-item {
+    cursor: pointer;
+}
+
+.sync-plan-item:hover {
+    background-color: rgba(var(--primary-action-rgb), 0.05);
+    box-shadow: var(--box-shadow-sm);
+}
+
+.sync-plan-item input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    pointer-events: none; /* O clique é gerenciado pelo label pai */
+}
+
+.sync-plan-info {
+    flex-grow: 1;
+}
+
+.sync-plan-info strong {
+    display: block;
+    color: var(--text-color-dark);
+}
+
+.sync-plan-info small {
+    color: var(--text-color-muted);
+    font-size: 0.85em;
+    margin: 0;
+}
+
+#sync-target-date-display {
+    color: var(--primary-action);
+    font-weight: 700;
+    font-size: 1.1em;
+}
+
+/* Estilo para a pré-visualização do novo ritmo (Melhoria de UX) */
+.sync-new-pace-preview {
+    display: block;
+    margin-top: 5px;
+    font-weight: 600;
+    color: var(--accent-color-dark);
+    font-size: 0.85em;
+}
+
+.sync-new-pace-preview.intense {
+    color: var(--danger-color);
+}
+
+.modal button#confirm-sync-button {
+    float: right;
+    margin-top: 20px;
+}
+
+/* --- Media Queries (Ajustes Responsivos) --- */
+@media (max-width: 768px) {
+     main { max-width: 100%; }
+     section, .enhanced-panel, .plan-card { padding: 20px; }
+     section h2, section h3, .plan-card .plan-card-title { font-size: 1.4em; }
+     #overdue-readings h2, #upcoming-readings h2 { font-size: 1.3em; }
+     .modal-content { padding: 25px; max-width: calc(100% - 30px); }
+     header h1 { font-size: 1.4em; }
+     .header-content { align-items: center; }
+     .user-status-container { gap: 5px;} #user-email { max-width: 100px;} #logout-button { padding: 5px 10px; font-size: 0.8em; }
+     .upcoming-readings-container { grid-template-columns: 1fr; }
+     .plan-card .drive-link-icon { width: 26px; height: 26px; padding: 3px; border-radius: 5px; }
+    .weekly-tracker-container .day-indicator { min-width: 38px; min-height: 65px; }
+    .weekly-tracker-container .day-indicator.current-day-highlight { padding: 6px 4px; }
+    .weekly-tracker-container .day-marker { width: 30px; height: 30px; }
+    .weekly-tracker-container .day-marker::after { font-size: 16px; }
+     .plan-card .daily-reading-header-display { padding: 12px 15px; }
+     .plan-card .daily-reading-chapters-list-display { padding: 8px 15px 15px 15px; }
+     .plan-card .daily-chapter-item { padding: 8px 0; font-size: 1em; }
+     .plan-card .daily-chapter-item input[type="checkbox"] { width: 18px; height: 18px; margin-right: 12px; }
+
+    .reassessment-grid-container {
+        grid-template-columns: 1fr; 
+        gap: 20px;
+    }
+    .reassessment-day-column {
+        min-height: auto;
+    }
+}
+
+@media (max-width: 600px) {
+    body { font-size: 15px; }
+    header { flex-direction: column; align-items: center; padding: 15px; text-align: center; position: static; min-height: auto; }
+    header img#header-logo { --new-logo-size: 60px; height: var(--new-logo-size); width: var(--new-logo-size); --new-logo-border: 5px; --new-logo-padding: 3px; border-width: var(--new-logo-border); padding: var(--new-logo-padding); box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25); margin-bottom: 15px; }
+    .header-content { width: 100%; align-items: center; } header h1 { font-size: 1.3em; margin: 0 0 5px 0; }
+    .user-status-container { width: 100%; margin-top: 10px; flex-direction: column; gap: 8px; }
+    #user-email { max-width: 90%; text-align: center; } #logout-button { width: auto; padding: 8px 15px; }
+    main { margin: 15px auto; padding: 0 10px; }
+    section, .enhanced-panel, .plan-card { padding: 15px; margin-bottom: 20px; }
+    section h2, section h3, .plan-card .plan-card-title { font-size: 1.3em; }
+    #overdue-readings h2, #upcoming-readings h2 { font-size: 1.2em; }
+    .modal-content { padding: 20px; max-width: calc(100% - 20px); } .modal h2 { font-size: 1.4em; }
+    .plan-card .plan-actions { flex-direction: column; gap: 8px; } .plan-card .plan-actions button { width: 100%; margin: 0; min-width: auto; }
+    input[type="email"], input[type="password"], input[type="number"], input[type="text"], input[type="date"], input[type="url"], select { padding: 10px 14px; min-height: 44px; }
+    select[multiple] { height: 140px; }
+    fieldset label { display: block; margin-right: 0; margin-bottom: 10px; }
+    .modal fieldset label:has(#new-pace-input){ flex-wrap: wrap; justify-content: space-between; }
+    #new-pace-input { margin-top: 5px; width: 100% !important; text-align: center; }
+    #periodicity-options .checkbox-group { justify-content: space-around; gap: 8px; }
+    #periodicity-options .checkbox-group label { font-size: 0.85em; padding: 4px 6px; }
+    #global-weekly-tracker-section.enhanced-panel { padding: 15px 10px; }
+    .weekly-tracker-container .week-days { gap: 4px; }
+    .weekly-tracker-container .day-indicator { min-width: 30px; min-height: 60px; flex-basis: calc(100% / 7 - 5px); border-radius: calc(var(--base-border-radius) / 2); }
+    .weekly-tracker-container .day-indicator.current-day-highlight { padding: 5px 3px; }
+    .weekly-tracker-container .day-label { font-size: 0.65em; margin-bottom: 4px;}
+    .weekly-tracker-container .day-marker { width: 26px; height: 26px; }
+    .weekly-tracker-container .day-marker::after { font-size: 13px; }
+    .plan-card .daily-reading-header-display { padding: 10px 15px; font-size: 1em; }
+    .plan-card .daily-reading-chapters-list-display { padding: 5px 15px 15px 15px; }
+    .plan-card .daily-chapter-item { padding: 6px 0; font-size: 0.95em; }
+    .plan-card .daily-chapter-item input[type="checkbox"] { width: 16px; height: 16px; margin-right: 10px; }
+    .plan-card .drive-link-icon { width: 24px; height: 24px; padding: 3px; border-radius: 5px; }
+    .overdue-reading-item, .upcoming-reading-item { padding: 12px; }
+    .overdue-date, .upcoming-date { font-size: 1em; }
+    .perseverance-header h2 { font-size: 1.3em; }
+    
+    .milestone-icon { font-size: 1.8em; }
+    .milestone-item .icon { font-size: 1.8em; }
+    .milestone-item .counter { font-size: 0.9em; }
+
+    .progress-bar { height: 26px; }
+    .progress-percentage-left { font-size: 0.8em; left: 10px; }
+    .milestone-legend { font-size: 0.75em; }
+    
+    .stats-chart-container {
+        height: 220px;
+        padding: 10px;
+    }
+
+    #plan-reassessment-section {
+        padding: 15px;
+    }
+    
+    .reassessment-legend-item {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    /* Ajustes para os botões de reavaliação em telas pequenas */
+    .reassessment-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .reassessment-header h2 {
+        text-align: center;
+        margin-bottom: 15px;
+    }
+    .reassessment-actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+    .reassessment-actions button {
+        width: 100%;
+        margin: 0;
+    }
+}
+/* --- START OF ADDITION: Estilos para o Explorador de Livros da Bíblia --- */
+.explorer-grid-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.explorer-book-card {
+    padding: 15px 10px;
+    text-align: center;
+    font-weight: 600;
+    background-color: var(--background-light);
+    border: 2px solid var(--border-color);
+    border-radius: var(--base-border-radius);
+    cursor: pointer;
+    transition: var(--transition-fast);
+    font-size: 0.9em;
+    -webkit-user-select: none;
+    user-select: none;
+    /* --- MODIFICAÇÕES --- */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 80px;
+}
+
+.explorer-book-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--box-shadow);
+}
+
+.explorer-book-card.in-plan {
+    border-color: var(--primary-action);
+    background-color: rgba(var(--primary-action-rgb), 0.08);
+    color: var(--primary-action);
+}
+
+.explorer-detail-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+#explorer-back-button {
+    padding: 8px 16px;
+    margin: 0;
+    min-height: auto;
+    flex-shrink: 0;
+}
+
+#explorer-detail-title {
+    margin: 0;
+    font-size: 1.5em;
+}
+
+.explorer-list-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    gap: 10px;
+    max-height: 60vh;
+    overflow-y: auto;
+    padding: 10px;
+    background-color: var(--background-light);
+    border-radius: var(--base-border-radius);
+}
+
+.explorer-chapter-item {
+    padding: 10px;
+    text-align: center;
+    background-color: var(--background-card);
+    border: 1px solid var(--border-color);
+    border-radius: calc(var(--base-border-radius) / 1.5);
+}
+
+.explorer-chapter-item.in-plan {
+    font-weight: bold;
+    color: var(--primary-action);
+    border-color: var(--primary-action);
+    background-color: rgba(var(--primary-action-rgb), 0.08);
+}
+
+/* NOVO: Contêiner para os ícones dentro do card */
+.book-card-icons-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px;
+    margin-top: 8px; /* Espaçamento do nome do livro */
+    min-height: 20px; /* Garante espaço mesmo que vazio */
+}
+
+/* NOVO: Estilo para cada ícone de plano marcador */
+.plan-marker-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    font-size: 14px;
+    border-radius: 50%;
+    background-color: var(--background-card);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border: 1px solid var(--border-color);
+    /* Permite tooltips (ver melhoria de UX) */
+    cursor: help;
+}
+/* --- END OF ADDITION --- */
