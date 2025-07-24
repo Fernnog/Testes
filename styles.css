@@ -318,6 +318,8 @@ fieldset:disabled { opacity: 0.5; pointer-events: none; }
 .plan-card .plan-header-info { align-items: center; display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 2px solid var(--accent-color); padding-bottom: 10px; flex-wrap: wrap; }
 .plan-card .plan-card-title { margin: 0; padding: 0; border: none; color: var(--primary-action); font-size: 1.5em; font-weight: 700; line-height: 1.3; }
 
+/* Ícone do Google Drive no cabeçalho do card foi removido visualmente daqui */
+
 .shield-wrapper {
     display: inline-flex;
     align-items: center;
@@ -411,12 +413,81 @@ fieldset:disabled { opacity: 0.5; pointer-events: none; }
     border: 1px solid rgba(var(--accent-color-rgb), 0.2);
 }
 
+/* --- INÍCIO DA ALTERAÇÃO: Seção do Link Google Drive no Card --- */
+.drive-link-section {
+    margin: 20px 0;
+    padding: 0;
+}
+
+.drive-divider {
+    border: 0;
+    height: 1px;
+    background-color: var(--accent-color);
+    opacity: 0.5;
+    margin: 0;
+}
+
+.drive-link-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 15px 10px;
+    text-decoration: none;
+    border-radius: var(--base-border-radius);
+    transition: background-color var(--transition-fast);
+    margin-top: 15px;
+}
+
+.drive-link-content:hover {
+    background-color: rgba(var(--drive-blue-rgb), 0.08);
+}
+
+/* O "escudo" para o ícone do Drive */
+.drive-icon-wrapper {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px; /* Quadrado com cantos arredondados */
+    background-color: rgba(var(--drive-blue-rgb), 0.1);
+    border: 2px solid rgba(var(--drive-blue-rgb), 0.2);
+    flex-shrink: 0; 
+    transition: background-color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.drive-link-content:hover .drive-icon-wrapper {
+    background-color: rgba(var(--drive-blue-rgb), 0.15);
+    border-color: rgba(var(--drive-blue-rgb), 0.4);
+    transform: scale(1.05); /* Adiciona um leve zoom para melhor feedback */
+}
+
+/* Ícone dentro do escudo */
+.drive-icon-wrapper .drive-png-icon {
+    width: 22px; 
+    height: 22px;
+}
+
+/* Garante que o ícone não tenha estilos de dimensão conflitantes */
+.drive-link-content .drive-png-icon {
+    width: auto;
+    height: auto;
+}
+
+.drive-link-content .drive-link-text {
+    font-size: 0.95em;
+    font-weight: 600;
+    color: var(--drive-text-blue);
+    line-height: 1.4;
+}
+/* --- FIM DA ALTERAÇÃO --- */
+
 
 /* Leitura Diária e Ações (dentro de .plan-card) */
 .plan-card .daily-reading-header-display {
     font-size: 1.1em;
-    padding: 20px 20px 15px 20px;
-    margin: 0;
+    padding: 15px 20px;
+    margin: 0; /* Margem superior zerada pois a seção do Drive agora controla o espaçamento */
     background-color: var(--background-card);
     border-left: 6px solid;
     border-image: linear-gradient(to bottom, var(--primary-action), var(--gradient-mid)) 1;
@@ -424,7 +495,10 @@ fieldset:disabled { opacity: 0.5; pointer-events: none; }
     border-radius: var(--base-border-radius) var(--base-border-radius) 0 0;
     box-shadow: var(--box-shadow-sm);
     line-height: 1.7;
+    /* --- INÍCIO DA ALTERAÇÃO: Adiciona a segunda linha divisória --- */
     border-top: 1px solid var(--accent-color);
+    padding-top: 20px;
+    /* --- FIM DA ALTERAÇÃO --- */
 }
 .plan-card .daily-reading-header-display p { margin: 0; }
 .plan-card .daily-reading-chapters-list-display { padding: 10px 20px 20px 20px; margin: 0 0 25px 0; background-color: var(--background-card); border-left: 6px solid var(--border-color); border-right: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-color-dark); border-radius: 0 0 var(--base-border-radius) var(--base-border-radius); box-shadow: var(--box-shadow-sm); }
@@ -1128,6 +1202,7 @@ fieldset:disabled { opacity: 0.5; pointer-events: none; }
      .header-content { align-items: center; }
      .user-status-container { gap: 5px;} #user-email { max-width: 100px;} #logout-button { padding: 5px 10px; font-size: 0.8em; }
      .upcoming-readings-container { grid-template-columns: 1fr; }
+     .plan-card .drive-link-icon { width: 26px; height: 26px; padding: 3px; border-radius: 5px; }
     .weekly-tracker-container .day-indicator { min-width: 38px; min-height: 65px; }
     .weekly-tracker-container .day-indicator.current-day-highlight { padding: 6px 4px; }
     .weekly-tracker-container .day-marker { width: 30px; height: 30px; }
@@ -1177,6 +1252,11 @@ fieldset:disabled { opacity: 0.5; pointer-events: none; }
     .plan-card .daily-reading-chapters-list-display { padding: 5px 15px 15px 15px; }
     .plan-card .daily-chapter-item { padding: 6px 0; font-size: 0.95em; }
     .plan-card .daily-chapter-item input[type="checkbox"] { width: 16px; height: 16px; margin-right: 10px; }
+    
+    /* Ajuste no novo link do Drive para mobile */
+    .drive-icon-wrapper { width: 36px; height: 36px; }
+    .drive-icon-wrapper .drive-png-icon { width: 20px; height: 20px; }
+    
     .overdue-reading-item, .upcoming-reading-item { padding: 12px; }
     .overdue-date, .upcoming-date { font-size: 1em; }
     .perseverance-header h2 { font-size: 1.3em; }
@@ -1219,65 +1299,5 @@ fieldset:disabled { opacity: 0.5; pointer-events: none; }
     .reassessment-actions button {
         width: 100%;
         margin: 0;
-    }
-}
-
-/* 
-================================================================================
-  INÍCIO: NOVOS ESTILOS PARA SEÇÃO DE LINK DO GOOGLE DRIVE
-================================================================================
-*/
-.drive-link-section {
-    margin: 20px 0;
-    padding: 0;
-}
-
-.drive-divider {
-    border: 0;
-    height: 1px;
-    background-color: var(--accent-color);
-    opacity: 0.5;
-    margin: 0;
-}
-
-.drive-link-content {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 15px 10px;
-    text-decoration: none;
-    border-radius: var(--base-border-radius);
-    transition: background-color var(--transition-fast);
-    margin-top: 15px; /* Espaçamento após a primeira linha */
-}
-
-.drive-link-content:hover {
-    background-color: rgba(var(--drive-blue-rgb), 0.08);
-}
-
-.drive-link-content .drive-png-icon {
-    width: 28px;
-    height: 28px;
-    flex-shrink: 0;
-}
-
-.drive-link-content .drive-link-text {
-    font-size: 0.95em;
-    font-weight: 600;
-    color: var(--drive-text-blue);
-    line-height: 1.4;
-}
-
-@media (max-width: 768px) {
-    .plan-card .drive-link-icon {
-        width: 26px;
-        height: 26px;
-    }
-}
-
-@media (max-width: 600px) {
-    .plan-card .drive-link-icon {
-        width: 24px;
-        height: 24px;
     }
 }
