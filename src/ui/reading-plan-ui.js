@@ -140,6 +140,28 @@ function _renderCardActions(plan) {
     `;
 }
 
+/**
+ * [NOVO] Gera o HTML para a seção do link do Google Drive.
+ * @private
+ * @param {object} plan - O objeto do plano.
+ * @returns {string} A string HTML da seção ou uma string vazia.
+ */
+function _renderDriveLinkSection(plan) {
+    if (!plan.googleDriveLink) {
+        return '';
+    }
+    
+    return `
+        <div class="drive-link-section">
+            <hr class="drive-divider">
+            <a href="${plan.googleDriveLink}" target="_blank" class="drive-link-content">
+                <img src="drive_icon.png" alt="Ícone Google Drive" class="drive-png-icon">
+                <span class="drive-link-text">Acesse o material de apoio</span>
+            </a>
+        </div>
+    `;
+}
+
 
 // --- Funções Públicas ---
 
@@ -229,15 +251,15 @@ export function renderAllPlanCards(allPlans, activePlanId, effectiveDatesMap, fo
         }
 
         const effectiveDate = effectiveDatesMap[plan.id];
-        const forecastData = forecastsMap ? forecastsMap[plan.id] : null; // Pega a previsão para este plano
+        const forecastData = forecastsMap ? forecastsMap[plan.id] : null;
         
         planCard.innerHTML = `
             <div class="plan-header-info">
                 ${plan.icon ? `<div class="shield-wrapper"><span class="plan-card-icon">${plan.icon}</span></div>` : ''}
                 <h2 class="plan-card-title">${plan.name || 'Plano sem nome'}</h2>
-                ${plan.googleDriveLink ? `<a href="${plan.googleDriveLink}" target="_blank" class="drive-link-icon" title="Abrir link do Drive"><img src="drive_icon.png" alt="Ícone Google Drive" class="drive-png-icon"></a>` : ''}
             </div>
             ${_renderProgressBar(plan, forecastData)}
+            ${_renderDriveLinkSection(plan)}
             ${_renderDailyReading(plan, effectiveDate)}
             ${_renderCardActions(plan)}
         `;
