@@ -8,7 +8,7 @@ Este projeto é uma aplicação web interativa que permite aos usuários criar, 
 
 O projeto foi arquitetado com uma **estrutura de módulos JavaScript (ESM)**, focando em separação de responsabilidades, manutenibilidade e escalabilidade.
 
-## Estrutura de Arquivos [ATUALIZADO]
+## Estrutura de Arquivos
 
 O projeto é organizado na seguinte estrutura de diretórios, promovendo a separação de responsabilidades e a manutenibilidade:
 
@@ -36,38 +36,45 @@ O projeto é organizado na seguinte estrutura de diretórios, promovendo a separ
     │   ├── reading-plan-ui.js # Lógica da UI para renderizar os cards de todos os planos
     │   ├── side-panels-ui.js # Lógica da UI dos painéis de leituras atrasadas e próximas
     │   ├── floating-navigator-ui.js # Lógica da UI do navegador/dock flutuante
-    │   └── plan-reassessment-ui.js # **[NOVO]** Lógica da UI para o Quadro de Carga Semanal (Reavaliação de Planos)
+    │   └── plan-reassessment-ui.js # Lógica da UI para o Quadro de Carga Semanal
     │
     └── utils/ # Funções puras e utilitárias
         ├── chapter-helpers.js # Funções para gerar e manipular capítulos
         ├── date-helpers.js # Funções para formatar e calcular datas
         ├── plan-logic-helpers.js # Lógica para calcular a data efetiva de um dia de leitura
-        └── plan-builder.js # Lógica de negócios para construir um objeto de plano completo a partir dos dados do formulário
+        ├── plan-builder.js # Lógica de negócios para construir um objeto de plano
+        ├── plan-calculator.js # Lógica para recálculos de ritmo e datas
+        └── plan-aggregator.js # Lógica para agregar dados de múltiplos planos
 
-## Funcionalidades Principais [ATUALIZADO]
+## Funcionalidades Principais
 
 *   **Autenticação de Usuários:** Cadastro e login seguros usando Firebase Authentication.
 *   **Gerenciamento de Múltiplos Planos:** Crie, edite, gerencie e delete múltiplos planos de leitura em uma interface moderna baseada em cards.
-*   **Reavaliação Inteligente de Planos:** **[NOVO]** Visualize a distribuição de capítulos de todos os seus planos em um "Quadro de Carga Semanal". Remaneje a carga de leitura entre os dias da semana de forma intuitiva, arrastando e soltando (Drag & Drop) os planos para balancear seus estudos.
+*   **Explorador da Bíblia:** Uma visão geral de todos os livros da Bíblia, destacando quais estão incluídos em seus planos e permitindo explorar os capítulos.
+*   **Reavaliação e Sincronização:**
+    *   **Quadro de Carga Semanal:** Visualize a distribuição de capítulos de todos os seus planos e remaneje a carga de leitura entre os dias da semana com Drag & Drop.
+    *   **Sincronização de Término:** Ajuste múltiplos planos para terminarem na mesma data com um clique.
 *   **Navegação Rápida:** Um *dock* flutuante permite alternar instantaneamente entre os seus planos de leitura.
-*   **Criação Rápida:** Gere um conjunto de três planos anuais estruturados com um único clique.
-*   **Criação de Planos Personalizados:** Defina conteúdo por intervalo, seleção de livros/capítulos avulsos e configure a duração e a periodicidade (dias da semana).
+*   **Criação Rápida e Personalizada:**
+    *   Gere um conjunto de três planos anuais estruturados com um único clique.
+    *   Crie planos totalmente personalizados por intervalo, seleção de livros/capítulos ou ritmo desejado.
 *   **Acompanhamento de Progresso Detalhado:**
-    *   Leitura diária com checkboxes individuais por capítulo.
-    *   Painel de **Perseverança** que rastreia a sequência de dias de leitura consecutivos (streak).
+    *   Checkboxes individuais por capítulo e feedback de salvamento instantâneo.
+    *   Painel de **Perseverança** que rastreia sua sequência de dias de leitura (streak).
     *   Painel de **Interações Semanais** com um resumo visual da sua atividade.
-    *   Visualização de leituras atrasadas e próximas em todos os seus planos.
-*   **Recálculo de Plano:** Ajuste dinamicamente o ritmo de um plano ativo sem perder o progresso.
-*   **Histórico e Estatísticas:** Acesse o histórico de leituras concluídas e veja estatísticas sobre seu progresso para cada plano.
-*   **Interface Responsiva:** Design moderno e otimizado para dispositivos móveis (Mobile-First).
+    *   Painéis inteligentes que mostram leituras atrasadas e próximas.
+*   **Análise e Recálculo:**
+    *   Recalcule um plano para se ajustar a um novo ritmo ou a uma nova data final.
+    *   Acesse o histórico de leituras e veja estatísticas detalhadas, incluindo um gráfico de progresso.
+*   **Interface Responsiva:** Design moderno e otimizado para dispositivos móveis.
 
 ## Tech Stack
 
 *   **Frontend:** HTML5, CSS3, JavaScript (ES6 Modules)
 *   **Backend & Database:** Firebase
-    *   Firebase Authentication (Autenticação por Email/Senha)
-    *   Cloud Firestore (Banco de Dados NoSQL em tempo real)
-*   **Fontes:** Google Fonts (Inter)
+    *   Firebase Authentication
+    *   Cloud Firestore
+*   **Bibliotecas:** Chart.js (para gráficos de estatísticas)
 
 ## Configuração do Firebase
 
@@ -86,11 +93,8 @@ Para executar este projeto localmente, você precisará configurar seu próprio 
     service cloud.firestore {
       match /databases/{database}/documents {
         match /users/{userId} {
-          // Permite que um usuário autenticado leia e escreva em seu próprio documento de usuário
-          // (para activePlanId, dados de streak, etc.)
           allow read, write: if request.auth != null && request.auth.uid == userId;
 
-          // Permite que um usuário autenticado gerencie seus próprios planos de leitura
           match /plans/{planId} {
             allow read, create, update, delete: if request.auth != null && request.auth.uid == userId;
           }
@@ -103,15 +107,17 @@ Para executar este projeto localmente, você precisará configurar seu próprio 
 
 1.  Clone este repositório.
 2.  Configure suas credenciais do Firebase em **`src/config/firebase-config.js`**.
-3.  Publique as Regras de Segurança do Firestore no seu projeto Firebase.
-4.  Abra o arquivo `index.html` no seu navegador. **É recomendado usar um servidor local simples**, como a extensão "Live Server" no VS Code, pois os navegadores podem restringir o uso de Módulos ES6 (`import`/`export`) abertos diretamente do sistema de arquivos (`file://`).
+3.  Publique as Regras de Segurança do Firestore.
+4.  Abra o arquivo `index.html` em seu navegador. **É recomendado usar um servidor local**, como a extensão "Live Server" no VS Code, pois os navegadores podem restringir o uso de Módulos ES6 (`import`/`export`) abertos diretamente do sistema de arquivos (`file://`).
 
-## Uso [ATUALIZADO]
+## Uso
 
-1.  **Cadastro/Login:** Crie uma conta ou faça login para acessar seus planos.
-2.  **Criação de Planos:** Após o login, você verá botões para "Criar Novo Plano (Genérico)" ou "Criar Plano Favorito Anual".
-3.  **Interface Principal:** Seus planos de leitura são exibidos como cards individuais. O plano ativo é destacado com uma borda roxa.
-4.  **Navegação:** Use o **dock flutuante** na parte inferior da tela para pular rapidamente para qualquer um dos seus planos.
-5.  **Reavaliar e Balancear:** **[NOVO]** Clique em **"Reavaliar Planos"** para visualizar o Quadro de Carga Semanal. Arraste e solte os cards de plano entre os dias da semana para ajustar a distribuição da sua leitura. Você também pode clicar em um card para editar os dias da semana através de checkboxes.
-6.  **Acompanhamento:** Dentro de cada card, marque os capítulos lidos nos checkboxes e clique em "Concluir Leituras e Avançar" para registrar seu progresso. Isso atualizará seus painéis de perseverança e atividade semanal.
-7.  **Ações do Plano:** Cada card possui botões para **Editar** (nome e ícone), **Recalcular** o ritmo, ver **Estatísticas**, acessar o **Histórico** de leitura e **Excluir** o plano.
+1.  **Cadastro/Login:** Crie uma conta ou faça login.
+2.  **Visão Geral:** Após o login, você verá os botões de ação principais e, abaixo, seus planos de leitura em formato de cards.
+3.  **Ações Principais:** Use os botões no topo para:
+    *   **Criar um Novo Plano:** Configurar um plano do zero.
+    *   **Explorar a Bíblia:** Ver a cobertura dos seus planos.
+    *   **Reavaliar Planos:** Acessar o quadro de carga semanal para balancear e sincronizar seus planos.
+    *   **Criar Plano Favorito:** Gerar o conjunto de planos anuais.
+4.  **Navegação:** Use o **dock flutuante** na parte inferior para pular rapidamente para qualquer um dos seus planos.
+5.  **Acompanhamento:** Dentro de cada card, marque os capítulos lidos e clique em "Concluir Leituras e Avançar" para registrar seu progresso.
