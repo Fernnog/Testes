@@ -11,8 +11,7 @@ import {
     sendPasswordResetEmail,
     GoogleAuthProvider,       // <-- IMPORTAÇÃO ADICIONADA
     signInWithPopup,          // <-- IMPORTAÇÃO ADICIONADA
-    getAdditionalUserInfo,    // <-- IMPORTAÇÃO ADICIONADA
-    OAuthProvider              // <-- IMPORTAÇÃO ADICIONADA (Para extrair o token)
+    getAdditionalUserInfo    // <-- IMPORTAÇÃO ADICIONADA
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
 /**
@@ -44,7 +43,7 @@ export async function signUpWithEmailPassword(email, password) {
  * @returns {Promise<import("firebase/auth").UserCredential>} - Uma promessa que resolve com as credenciais do usuário em caso de sucesso.
  * @throws {Error} - Lança um erro em caso de falha na autenticação.
  */
-export async function signInWithEmailPassword(email, password) {
+export async function signInWithEmailAndPassword(email, password) {
     return await signInWithEmailAndPassword(auth, email, password);
 }
 
