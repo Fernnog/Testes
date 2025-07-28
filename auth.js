@@ -8,7 +8,11 @@ import {
     onAuthStateChanged, 
     createUserWithEmailAndPassword, 
     signInWithEmailAndPassword, 
-    sendPasswordResetEmail 
+    sendPasswordResetEmail,
+    GoogleAuthProvider,       // <-- IMPORTAÇÃO ADICIONADA
+    signInWithPopup,          // <-- IMPORTAÇÃO ADICIONADA
+    getAdditionalUserInfo,    // <-- IMPORTAÇÃO ADICIONADA
+    OAuthProvider              // <-- IMPORTAÇÃO ADICIONADA (Para extrair o token)
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
 /**
@@ -42,6 +46,38 @@ export async function signUpWithEmailPassword(email, password) {
  */
 export async function signInWithEmailPassword(email, password) {
     return await signInWithEmailAndPassword(auth, email, password);
+}
+
+/**
+ * (NOVA FUNÇÃO) Autentica um usuário com o Google e solicita permissão para o Google Drive.
+ * @returns {Promise<{user: import("firebase/auth").User, accessToken: string}>} - Resolve com o objeto do usuário e o token de acesso para a API do Google.
+ * @throws {Error} - Lança um erro se a permissão para o Drive for negada ou se o login falhar.
+ */
+export async function signInWithGoogle() {
+    const provider = new GoogleAuthProvider();
+    
+    // ** Ponto Crítico **
+    // Solicita a permissão para criar, editar e ver os arquivos que a APLICAÇÃO criou.
+    // Isso não dá acesso a outros arquivos do usuário.
+    provider.addScope('https://www.googleapis.com/auth/drive.file');
+
+    const result = await signInWithPopup(auth, provider);
+    
+    // Extrai o token de acesso OAuth necessário para fazer chamadas à API do Google Drive.
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    const accessToken = credential.accessToken;
+
+    // Confirma se a permissão foi realmente concedida.
+    const additionalInfo = getAdditionalUserInfo(result);
+    if (!additionalInfo.scope.includes('https://www.googleapis.com/auth/drive.file')) {
+        throw new Error("A permissão para acessar o Google Drive é necessária para o backup. Por favor, tente novamente e aprove a permissão.");
+    }
+    
+    if (!accessToken) {
+        throw new Error("Não foi possível obter o token de acesso do Google. Tente novamente.");
+    }
+
+    return { user: result.user, accessToken: accessToken };
 }
 
 /**
