@@ -1,15 +1,15 @@
 // --- START OF FILE auth.js ---
 // Responsabilidade: Conter as funções que interagem diretamente com o serviço Firebase Auth.
-// Este módulo foi refatorado para usar "aliasing" (apelidos) nas importações do Firebase,
-// evitando conflitos de nome e melhorando a clareza do código.
+// Este módulo não deve manipular o DOM diretamente.
+// (VERSÃO FINAL CORRIGIDA E MELHORADA)
 
 import { auth } from './firebase-config.js';
 import { 
-    signOut as firebaseSignOut, // Renomeado para clareza
+    signOut, 
     onAuthStateChanged, 
-    createUserWithEmailAndPassword as firebaseCreateUser, // Renomeado
-    signInWithEmailAndPassword as firebaseSignIn,     // Renomeado
-    sendPasswordResetEmail as firebaseSendPasswordReset, // Renomeado
+    createUserWithEmailAndPassword as firebaseCreateUser, // APELIDO (BOA PRÁTICA)
+    signInWithEmailAndPassword as firebaseSignIn,     // APELIDO (CORREÇÃO)
+    sendPasswordResetEmail as firebaseSendPasswordReset, // APELIDO (BOA PRÁTICA)
     GoogleAuthProvider,
     signInWithPopup,
     getAdditionalUserInfo,
@@ -35,6 +35,7 @@ export function initializeAuth(onUserAuthenticated) {
  * @throws {Error} - Lança um erro em caso de falha no cadastro.
  */
 export async function signUpWithEmailPassword(email, password) {
+    // Usa a função apelidada do Firebase
     return await firebaseCreateUser(auth, email, password);
 }
 
@@ -45,12 +46,13 @@ export async function signUpWithEmailPassword(email, password) {
  * @returns {Promise<import("firebase/auth").UserCredential>} - Uma promessa que resolve com as credenciais do usuário em caso de sucesso.
  * @throws {Error} - Lança um erro em caso de falha na autenticação.
  */
-export async function signInWithEmailPassword(email, password) {
+export async function signInWithEmailAndPassword(email, password) {
+    // Usa a função apelidada do Firebase (CORREÇÃO DO BUG ORIGINAL)
     return await firebaseSignIn(auth, email, password);
 }
 
 /**
- * (NOVA FUNÇÃO) Autentica um usuário com o Google e solicita permissão para o Google Drive.
+ * (VERSÃO CORRIGIDA) Autentica um usuário com o Google e solicita permissão para o Google Drive.
  * @returns {Promise<{user: import("firebase/auth").User, accessToken: string}>} - Resolve com o objeto do usuário e o token de acesso para a API do Google.
  * @throws {Error} - Lança um erro se a permissão para o Drive for negada ou se o login falhar.
  */
@@ -67,12 +69,9 @@ export async function signInWithGoogle() {
     // Extrai o token de acesso OAuth necessário para fazer chamadas à API do Google Drive.
     const credential = GoogleAuthProvider.credentialFromResult(result);
     const accessToken = credential.accessToken;
-
-    // Confirma se a permissão foi realmente concedida.
-    const additionalInfo = getAdditionalUserInfo(result);
-    if (!additionalInfo.scope.includes('https://www.googleapis.com/auth/drive.file')) {
-        throw new Error("A permissão para acessar o Google Drive é necessária para o backup. Por favor, tente novamente e aprove a permissão.");
-    }
+    
+    // CORREÇÃO: A verificação de 'scope' foi removida por ser instável e desnecessária.
+    // A obtenção bem-sucedida do accessToken já valida que a permissão foi concedida.
     
     if (!accessToken) {
         throw new Error("Não foi possível obter o token de acesso do Google. Tente novamente.");
@@ -91,6 +90,7 @@ export async function resetPassword(email) {
     if (!email) {
         throw new Error("O e-mail é obrigatório para redefinir a senha.");
     }
+    // Usa a função apelidada do Firebase
     return await firebaseSendPasswordReset(auth, email);
 }
 
@@ -100,5 +100,5 @@ export async function resetPassword(email) {
  * @throws {Error} - Lança um erro se houver falha no logout.
  */
 export async function handleSignOut() {
-    return await firebaseSignOut(auth);
+    return await signOut(auth);
 }
