@@ -1,6 +1,6 @@
 // ui.js
 // Responsável por toda a manipulação do DOM e renderização da interface.
-// ARQUITETURA REVISADA: Inclui formulários inline e sistema de notificações toast.
+// ARQUITETURA REVISADA: Inclui formulários inline, sistema de notificações toast e integração visual com Google Drive.
 
 // --- MÓDULOS ---
 import { formatDateForDisplay, formatDateToISO, timeElapsed, calculateMilestones } from './utils.js';
@@ -14,25 +14,20 @@ import { MILESTONES } from './config.js';
  * @param {'success' | 'error' | 'info'} type - O tipo de notificação, que define a cor.
  */
 export function showToast(message, type = 'success') {
-    // Remove qualquer toast existente para evitar sobreposição
     const existingToast = document.querySelector('.app-toast');
     if (existingToast) {
         existingToast.remove();
     }
 
-    // Cria o elemento toast
     const toast = document.createElement('div');
     toast.className = 'app-toast';
     toast.textContent = message;
-
-    // Adiciona uma classe de modificador para o tipo
     toast.classList.add(`toast--${type}`);
 
-    // Adiciona o botão de fechar para erros
     if (type === 'error') {
         const closeButton = document.createElement('button');
         closeButton.className = 'toast-close-btn';
-        closeButton.innerHTML = '×'; // Entidade HTML para o 'X'
+        closeButton.innerHTML = '×';
         closeButton.title = 'Fechar';
         closeButton.onclick = () => {
             toast.classList.remove('is-visible');
@@ -41,13 +36,11 @@ export function showToast(message, type = 'success') {
         toast.appendChild(closeButton);
     }
 
-    // Adiciona ao corpo e anima a entrada
     document.body.appendChild(toast);
     setTimeout(() => {
         toast.classList.add('is-visible');
     }, 10);
 
-    // Remove o toast automaticamente, a menos que seja um erro
     if (type !== 'error') {
         setTimeout(() => {
             toast.classList.remove('is-visible');
@@ -60,7 +53,6 @@ export function showToast(message, type = 'success') {
     }
 }
 
-
 /**
  * Verifica se uma data de prazo já expirou.
  * @param {Date} date - O objeto Date do prazo.
@@ -69,15 +61,12 @@ export function showToast(message, type = 'success') {
 function isDateExpired(date) {
     if (!date || !(date instanceof Date) || isNaN(date.getTime())) return false;
     const now = new Date();
-    // Compara apenas as datas, ignorando a hora, usando UTC para consistência.
     const todayUTCStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     return date.getTime() < todayUTCStart.getTime();
 }
 
 /**
- * (VERSÃO CORRIGIDA)
- * Gera o HTML para a lista de observações de um alvo,
- * incluindo ícones e placeholders para edição, controlados por uma flag.
+ * Gera o HTML para a lista de observações de um alvo.
  * @param {Array<object>} observations - O array de observações.
  * @param {string} parentTargetId - O ID do alvo principal.
  * @param {object} dailyTargetsData - Dados dos alvos diários para verificar status.
@@ -96,16 +85,13 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
         const sanitizedText = (obs.text || '').replace(/</g, "<").replace(/>/g, ">");
         
         if (obs.isSubTarget) {
-            // ----- RENDERIZA COMO UM SUB-ALVO -----
             const isResolved = obs.subTargetStatus === 'resolved';
             const subTargetId = `${parentTargetId}_${originalIndex}`;
             const hasBeenPrayedToday = (dailyTargetsData.completed || []).some(t => t.targetId === subTargetId);
-
             const prayButtonText = hasBeenPrayedToday ? '✓ Orado!' : 'Orei!';
             const prayButtonClass = `btn pray-button ${hasBeenPrayedToday ? 'prayed' : ''}`;
             const prayButtonDisabled = hasBeenPrayedToday ? 'disabled' : '';
             const subTargetPrayButton = `<button class="${prayButtonClass}" data-action="pray-sub-target" data-id="${parentTargetId}" data-obs-index="${originalIndex}" ${prayButtonDisabled}>${prayButtonText}</button>`;
-
             const hasSubObservations = Array.isArray(obs.subObservations) && obs.subObservations.length > 0;
             const demoteButtonDisabled = hasSubObservations ? 'disabled' : '';
             const demoteButtonTitle = hasSubObservations ? 'Não é possível reverter um sub-alvo que já possui observações.' : 'Reverter para observação comum';
@@ -115,7 +101,6 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
                 <button class="btn-small resolve" data-action="resolve-sub-target" data-id="${parentTargetId}" data-obs-index="${originalIndex}">Marcar Respondido</button>
             ` : `<span class="resolved-tag">Respondido</span>`;
 
-            // Ícones de edição agora são condicionais
             const editTitleIcon = isEditingEnabled ? ` <span class="edit-icon" data-action="edit-sub-target-title" data-id="${parentTargetId}" data-obs-index="${originalIndex}">✏️</span>` : '';
             const editDetailsIcon = isEditingEnabled ? ` <span class="edit-icon" data-action="edit-sub-target-details" data-id="${parentTargetId}" data-obs-index="${originalIndex}">✏️</span>` : '';
 
@@ -127,7 +112,6 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
                 sortedSubObs.forEach(subObs => {
                     const originalSubObsIndex = obs.subObservations.indexOf(subObs);
                     const sanitizedSubText = (subObs.text || '').replace(/</g, "<").replace(/>/g, ">");
-                    // Ícone de edição para sub-observação agora é condicional
                     const editSubObsIcon = isEditingEnabled ? ` <span class="edit-icon" data-action="edit-sub-observation" data-id="${parentTargetId}" data-obs-index="${originalIndex}" data-sub-obs-index="${originalSubObsIndex}">✏️</span>` : '';
                     subObservationsHTML += `
                         <div class="sub-observation-item">
@@ -153,8 +137,6 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
                     ${subObservationsHTML}
                 </div>`;
         } else {
-            // ----- RENDERIZA COMO UMA OBSERVAÇÃO NORMAL COM ÍCONE DE EDIÇÃO -----
-            // Ícone de edição agora é condicional
             const editIcon = isEditingEnabled ? ` <span class="edit-icon" data-action="edit-observation" data-id="${parentTargetId}" data-obs-index="${originalIndex}">✏️</span>` : '';
             html += `
                 <div class="observation-item">
@@ -169,30 +151,50 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
     return html + `</div>`;
 }
 
-// --- Template Engine de Alvos (Refatoração Arquitetônica) ---
+// --- Template Engine de Alvos ---
 
 /**
- * (VERSÃO CORRIGIDA)
- * Cria o HTML para um único alvo com base em uma configuração,
- * incluindo ícones e placeholders para edição, controlados por uma flag.
- * @param {object} target - O objeto do alvo de oração.
+ * MODIFICADO: Cria o HTML para um único alvo, agora incluindo o status de backup do Google Drive.
+ * @param {object} target - O objeto do alvo de oração. (Espera-se que contenha `googleDocId` e `driveStatus`).
  * @param {object} config - Configurações de exibição e ações.
  * @param {object} dailyTargetsData - Dados dos alvos diários para verificar status.
  * @returns {string} - O HTML do elemento do alvo.
  */
 function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
-    // Adiciona a flag de controle de edição a partir da configuração
     const isEditingEnabled = config.isEditingEnabled === true;
+    
+    // NOVO: Lógica para gerar o ícone de status do Google Drive
+    let driveStatusHTML = '';
+    if (config.showDriveStatus && target.googleDocId) {
+        let icon = '✓';
+        let title = 'Backup realizado com sucesso no Google Drive. Clique para abrir.';
+        let statusClass = 'synced';
+
+        // O estado dinâmico (syncing, error) sobrepõe o estado base "salvo".
+        if (target.driveStatus === 'syncing') {
+            icon = '...'; // Em um app real, isso seria um ícone de spinner animado
+            title = 'Sincronizando com o Google Drive...';
+            statusClass = 'syncing';
+        } else if (target.driveStatus === 'error') {
+            icon = '✗';
+            title = `Falha no backup: ${target.driveError || 'Erro desconhecido.'}.`;
+            statusClass = 'error';
+        }
+
+        // Se for um erro, não será um link clicável.
+        if (statusClass === 'error' || statusClass === 'syncing') {
+             driveStatusHTML = `<span class="drive-status-icon ${statusClass}" title="${title}">${icon}</span>`;
+        } else {
+             driveStatusHTML = `<a href="https://docs.google.com/document/d/${target.googleDocId}" target="_blank" class="drive-status-icon ${statusClass}" title="${title}">${icon}</a>`;
+        }
+    }
     
     const hasSubTargets = Array.isArray(target.observations) && target.observations.some(obs => obs.isSubTarget);
     const subTargetIndicatorIcon = hasSubTargets ? `<span class="sub-target-indicator" title="Este alvo contém sub-alvos">🔗</span>` : '';
-
     const creationTag = config.showCreationDate ? `<span class="creation-date-tag">Iniciado em: ${formatDateForDisplay(target.date)}</span>` : '';
     const categoryTag = config.showCategory && target.category ? `<span class="category-tag">${target.category}</span>` : '';
     const deadlineTag = config.showDeadline && target.hasDeadline && target.deadlineDate ? `<span class="deadline-tag ${isDateExpired(target.deadlineDate) ? 'expired' : ''}">Prazo: ${formatDateForDisplay(target.deadlineDate)}</span>` : '';
     const resolvedTag = config.showResolvedDate && target.resolved && target.resolutionDate ? `<span class="resolved-tag">Respondido em: ${formatDateForDisplay(target.resolutionDate)}</span>` : '';
-
-    // Ícones de edição agora são condicionais
     const editTitleIcon = isEditingEnabled ? ` <span class="edit-icon" data-action="edit-title" data-id="${target.id}">✏️</span>` : '';
     const editDetailsIcon = isEditingEnabled ? ` <span class="edit-icon" data-action="edit-details" data-id="${target.id}">✏️</span>` : '';
     
@@ -220,9 +222,7 @@ function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
     if (config.showActions) {
         const priorityButtonClass = `btn toggle-priority ${target.isPriority ? 'is-priority' : ''}`;
         const priorityButtonText = target.isPriority ? 'Remover Prioridade' : 'Marcar Prioridade';
-
         const resolveButton = config.showResolveButton ? `<button class="btn resolved" data-action="resolve" data-id="${target.id}">Respondido</button>` : '';
-        const resolveArchivedButton = config.showResolveArchivedButton ? `<button class="btn resolved" data-action="resolve-archived" data-id="${target.id}">Respondido</button>` : '';
         const archiveButton = config.showArchiveButton ? `<button class="btn archive" data-action="archive" data-id="${target.id}">Arquivar</button>` : '';
         const togglePriorityButton = config.showTogglePriorityButton ? `<button class="${priorityButtonClass}" data-action="toggle-priority" data-id="${target.id}">${priorityButtonText}</button>` : '';
         const addObservationButton = config.showAddObservationButton ? `<button class="btn add-observation" data-action="toggle-observation" data-id="${target.id}">Observação</button>` : '';
@@ -233,19 +233,17 @@ function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
 
         actionsHTML = `<div class="target-actions">
             ${resolveButton} ${archiveButton} ${togglePriorityButton} ${addObservationButton} 
-            ${editDeadlineButton} ${editCategoryButton} ${resolveArchivedButton} ${deleteButton} ${downloadButton}
+            ${editDeadlineButton} ${editCategoryButton} ${deleteButton} ${downloadButton}
         </div>`;
     }
 
-    // Passa a flag 'isEditingEnabled' para a função que renderiza as observações
     const observationsHTML = config.showObservations ? createObservationsHTML(target.observations, target.id, dailyTargetsData, isEditingEnabled) : '';
-    
     const formsHTML = config.showForms ? `
         <div id="observationForm-${target.id}" class="add-observation-form" style="display:none;"></div>
         <div id="editCategoryForm-${target.id}" class="edit-category-form" style="display:none;"></div>` : '';
 
     return `
-        <h3>${subTargetIndicatorIcon} ${creationTag} ${categoryTag} ${deadlineTag} ${resolvedTag} ${target.title || 'Sem Título'}${editTitleIcon}</h3>
+        <h3>${driveStatusHTML} ${subTargetIndicatorIcon} ${creationTag} ${categoryTag} ${deadlineTag} ${resolvedTag} ${target.title || 'Sem Título'}${editTitleIcon}</h3>
         ${detailsPara}
         ${mainActionHTML}
         ${elapsedTimePara}
@@ -258,7 +256,6 @@ function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
     `;
 }
 
-
 // --- Funções de Renderização de Listas de Alvos (Refatoradas) ---
 
 export function renderPriorityTargets(allActiveTargets, dailyTargetsData) {
@@ -270,18 +267,18 @@ export function renderPriorityTargets(allActiveTargets, dailyTargetsData) {
 
     if (priorityTargets.length === 0) {
         section.style.display = 'block';
-        container.innerHTML = `<p class="empty-message">Nenhum alvo prioritário definido. Você pode marcar um alvo como prioritário na lista de 'Ver Todos os Alvos'.</p>`;
+        container.innerHTML = `<p class="empty-message">Nenhum alvo prioritário definido.</p>`;
         return;
     }
 
     section.style.display = 'block';
     container.innerHTML = ''; 
 
-    // Edição desabilitada neste painel para focar na ação de orar
     const config = {
         showCreationDate: true, showCategory: true, showDeadline: true, showDetails: true,
         showObservations: true, showActions: false, showPrayButton: true,
-        isPriorityPanel: true, showForms: true, isEditingEnabled: false
+        isPriorityPanel: true, showForms: true, isEditingEnabled: false, 
+        showDriveStatus: true // NOVO: Habilita o status do Drive
     };
     
     priorityTargets.forEach(target => {
@@ -299,13 +296,13 @@ export function renderTargets(targets, total, page, perPage, dailyTargetsData) {
     if (targets.length === 0) {
         container.innerHTML = '<p>Nenhum alvo de oração encontrado com os filtros atuais.</p>';
     } else {
-        // Edição habilitada neste painel
         const config = {
             showCreationDate: true, showCategory: true, showDeadline: true, showDetails: true,
             showElapsedTime: true, showObservations: true, showActions: true,
             showResolveButton: true, showArchiveButton: true, showTogglePriorityButton: true,
             showAddObservationButton: true, showEditDeadlineButton: true, showEditCategoryButton: true,
-            showDownloadButton: true, showForms: true, showPrayButton: false, isEditingEnabled: true
+            showDownloadButton: true, showForms: true, showPrayButton: false, isEditingEnabled: true,
+            showDriveStatus: true // NOVO: Habilita o status do Drive
         };
         targets.forEach(target => {
             const div = document.createElement("div");
@@ -329,13 +326,12 @@ export function renderArchivedTargets(targets, total, page, perPage, dailyTarget
             div.className = `target archived ${target.resolved ? 'resolved' : ''}`;
             div.dataset.targetId = target.id;
             
-            // Edição habilitada neste painel
             const config = {
                 showCreationDate: true, showCategory: true, showResolvedDate: true,
                 showDetails: true, showArchivedDate: true, showObservations: true,
-                showActions: true, showResolveArchivedButton: !target.resolved,
-                showAddObservationButton: true, showDeleteButton: true,
-                showDownloadButton: true, showForms: true, isEditingEnabled: true
+                showActions: true, showDeleteButton: true,
+                showDownloadButton: true, showForms: true, isEditingEnabled: true,
+                showDriveStatus: true // NOVO: Habilita o status do Drive
             };
             div.innerHTML = createTargetHTML(target, config, dailyTargetsData);
             container.appendChild(div);
@@ -350,11 +346,11 @@ export function renderResolvedTargets(targets, total, page, perPage) {
     if (targets.length === 0) {
         container.innerHTML = '<p>Nenhum alvo respondido encontrado.</p>';
     } else {
-        // Edição habilitada neste painel
         const config = {
             showCategory: true, showResolvedDate: true, showTimeToResolution: true,
             showObservations: true, showActions: false, showDownloadButton: true,
-            showForms: true, isEditingEnabled: true
+            showForms: true, isEditingEnabled: true,
+            showDriveStatus: true // NOVO: Habilita o status do Drive
         };
         targets.forEach(target => {
             const div = document.createElement("div");
@@ -377,11 +373,11 @@ export function renderDailyTargets(pending, completed, dailyTargetsData) {
     }
 
     if (pending.length > 0) {
-        // Edição desabilitada neste painel para focar na ação de orar
         const config = {
             showCreationDate: true, showCategory: true, showDeadline: true, showDetails: true,
             showObservations: true, showActions: false, showPrayButton: true, 
-            showForms: true, isEditingEnabled: false
+            showForms: true, isEditingEnabled: false,
+            showDriveStatus: true // NOVO: Habilita o status do Drive
         };
         pending.forEach(target => {
             const div = document.createElement("div");
@@ -458,48 +454,33 @@ export function updatePerseveranceUI(data, isNewRecord = false) {
     }
     
     const achievedMilestones = calculateMilestones(consecutiveDays);
-
     iconsContainer.innerHTML = '';
 
     if (achievedMilestones.length > 0) {
         achievedMilestones.forEach(ms => {
             const group = document.createElement('div');
             group.className = 'milestone-group';
-
             const iconSpan = document.createElement('span');
             iconSpan.className = 'milestone-icon';
             iconSpan.textContent = ms.icon;
-            
             group.appendChild(iconSpan);
-
             if (ms.count > 1) {
                 const counterSpan = document.createElement('span');
                 counterSpan.className = 'milestone-counter';
                 counterSpan.textContent = `x${ms.count}`;
                 group.appendChild(counterSpan);
             }
-            
             iconsContainer.appendChild(group);
         });
     } else {
         iconsContainer.innerHTML = '<span class="milestone-legend" style="font-size: 1em;">Continue para conquistar seu primeiro marco! 🌱</span>';
-    }
-
-    if (recordDays > 0 && consecutiveDays >= recordDays) {
-        const crownIcon = document.createElement('span');
-        crownIcon.className = 'milestone-icon';
-        crownIcon.textContent = '👑';
-        iconsContainer.insertAdjacentElement('afterbegin', crownIcon);
     }
 }
 
 export function updateWeeklyChart(data) {
     const { interactions = {} } = data;
     const now = new Date();
-
     const localDayOfWeek = now.getDay(); 
-    const utcDayOfWeek = now.getUTCDay(); 
-    
     const firstDayOfWeek = new Date(now);
     firstDayOfWeek.setDate(now.getDate() - localDayOfWeek);
     firstDayOfWeek.setHours(0, 0, 0, 0);
@@ -524,8 +505,7 @@ export function updateWeeklyChart(data) {
 
         if (interactions[dateStringUTC]) {
             dayTick.classList.add('active'); 
-        } 
-        else if (i < utcDayOfWeek) { 
+        } else if (new Date() > currentTickDate) { 
             dayTick.classList.add('inactive'); 
         }
     }
@@ -546,18 +526,14 @@ export function showPanel(panelId) {
     const mainMenuElements = ['mainMenu', 'secondaryMenu'];
     const dailyRelatedElements = ['weeklyPerseveranceChart', 'perseveranceSection', 'sectionSeparator'];
 
-    // Oculta todos os painéis e elementos de menu/diários
     [...allPanels, ...mainMenuElements, ...dailyRelatedElements].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
     });
 
-    // A seção de autenticação é tratada separadamente pela função updateAuthUI.
-    // Mostra o painel solicitado
     const panelEl = document.getElementById(panelId);
     if (panelEl) panelEl.style.display = 'block';
 
-    // Mostra os menus se não estivermos na tela de autenticação
     const authSection = document.getElementById('authSection');
     if (!authSection || authSection.classList.contains('hidden')) {
         mainMenuElements.forEach(id => {
@@ -575,7 +551,6 @@ export function showPanel(panelId) {
         if(priorityEl) priorityEl.style.display = 'block';
     }
 }
-
 
 export function toggleAddObservationForm(targetId) {
     const formDiv = document.getElementById(`observationForm-${targetId}`);
@@ -630,28 +605,16 @@ export function toggleEditCategoryForm(targetId, currentCategory) {
     }
 }
 
-
-/**
- * (FUNÇÃO REFINADA)
- * Alterna a visibilidade e o conteúdo do formulário de edição para um campo específico.
- * @param {'Title'|'Details'|'Observation'|'SubTargetTitle'|'SubTargetDetails'|'SubObservation'|'Deadline'} type - O tipo de campo a ser editado.
- * @param {string} targetId - O ID do alvo.
- * @param {object} options - Opções como valor atual, índices, a ação de salvamento e o elemento clicado.
- */
 export function toggleEditForm(type, targetId, options = {}) {
-    // Adiciona eventTarget para sabermos qual elemento foi clicado
     const { currentValue = '', obsIndex = -1, subObsIndex = -1, saveAction, eventTarget } = options;
-
-    // Garante que todos os outros formulários de edição sejam fechados
     document.querySelectorAll('.inline-edit-form').forEach(form => form.remove());
     
-    let targetNode; // O elemento de referência para posicionar o formulário
-    let insertionPoint = 'appendChild'; // O método de inserção padrão
+    let targetNode;
+    let insertionPoint = 'appendChild';
 
-    // Determina o nó de referência e o método de inserção com base no tipo de edição
     if (type === 'Deadline' || type === 'Category') {
         targetNode = eventTarget.closest('.target-actions');
-        insertionPoint = 'afterend'; // Insere o formulário *depois* do contêiner de botões
+        insertionPoint = 'afterend';
     } else if (type === 'Title' || type === 'Details') {
         targetNode = document.querySelector(`[data-target-id="${targetId}"]`);
     } else if (type === 'Observation' || type === 'SubTargetTitle' || type === 'SubTargetDetails') {
@@ -665,51 +628,42 @@ export function toggleEditForm(type, targetId, options = {}) {
         return;
     }
 
-    // Cria o elemento do formulário
     const formDiv = document.createElement('div');
     formDiv.className = 'inline-edit-form';
+    let inputElement, removeButtonHTML = '';
 
-    // Variáveis para construir o HTML do formulário dinamicamente
-    let inputElement;
-    let removeButtonHTML = '';
-
-    // Gera o campo de input específico para o tipo 'Deadline'
     if (type === 'Deadline') {
         const currentDateValue = currentValue ? formatDateToISO(currentValue) : '';
         inputElement = `<label for="inline-deadline-${targetId}">Novo Prazo:</label><input type="date" id="inline-deadline-${targetId}" class="inline-edit-input" value="${currentDateValue}">`;
         removeButtonHTML = `<button type="button" class="btn-small remove-btn" data-action="remove-deadline" data-id="${targetId}">Remover Prazo</button>`;
-    } else { // Mantém a lógica existente para outros tipos
+    } else {
         const isTextarea = type.includes('Details') || type.includes('Observation');
         inputElement = isTextarea
             ? `<textarea class="inline-edit-textarea" placeholder="Digite aqui...">${currentValue}</textarea>`
             : `<input type="text" class="inline-edit-input" value="${currentValue}" placeholder="Digite o novo valor">`;
     }
     
-    // Constrói os atributos de dados para o botão de salvar
     const finalSaveAction = saveAction || `save-${type.toLowerCase().replace(' ', '-')}`;
     const obsIndexAttr = obsIndex > -1 ? `data-obs-index="${obsIndex}"` : '';
     const subObsIndexAttr = subObsIndex > -1 ? `data-sub-obs-index="${subObsIndex}"` : '';
 
-    // Monta o HTML interno do formulário
     formDiv.innerHTML = `
         ${inputElement}
         <div class="form-actions">
             ${removeButtonHTML}
-            <div style="margin-left: auto;"> <!-- Div espaçadora para empurrar os botões para a direita -->
+            <div style="margin-left: auto;">
                 <button type="button" class="btn-small cancel-btn" data-action="cancel-edit">Cancelar</button>
                 <button class="btn-small save-btn" data-action="${finalSaveAction}" data-id="${targetId}" ${obsIndexAttr} ${subObsIndexAttr}>Salvar</button>
             </div>
         </div>
     `;
 
-    // Insere o formulário no DOM
     if (insertionPoint === 'appendChild') {
         targetNode.appendChild(formDiv);
     } else {
         targetNode.insertAdjacentElement(insertionPoint, formDiv);
     }
     
-    // Foca no campo de input recém-criado
     const inputField = formDiv.querySelector('input, textarea');
     if (inputField) {
         inputField.focus();
@@ -717,28 +671,19 @@ export function toggleEditForm(type, targetId, options = {}) {
     }
 }
 
-
 export function showExpiredTargetsToast(expiredTargets) {
     const toast = document.getElementById('expiredToast');
     const messageEl = document.getElementById('expiredToastMessage');
     const closeBtn = document.getElementById('closeExpiredToast');
 
-    if (!toast || !messageEl || !closeBtn || expiredTargets.length === 0) {
-        return;
-    }
+    if (!toast || !messageEl || !closeBtn || expiredTargets.length === 0) return;
     
     const count = expiredTargets.length;
     messageEl.textContent = `Você tem ${count} alvo${count > 1 ? 's' : ''} com prazo vencido!`;
-    
     toast.classList.remove('hidden');
     
-    closeBtn.onclick = () => {
-        toast.classList.add('hidden');
-    };
-    
-    setTimeout(() => {
-        toast.classList.add('hidden');
-    }, 8000); 
+    closeBtn.onclick = () => toast.classList.add('hidden');
+    setTimeout(() => toast.classList.add('hidden'), 8000); 
 }
 
 export function toggleManualTargetModal(show) {
@@ -877,8 +822,7 @@ export function generateViewHTML(targets, pageTitle, selectedCategories = []) {
             .observations { margin-top: 10px; padding-left: 15px; border-left: 2px solid #eee; }
             .observation-item { font-size: 0.9em; }
             .view-separator-light { border: 0; border-top: 1px solid #eee; margin: 15px 0; }
-            .print-button { padding: 10px 18px; font-size: 14px; background-color: #7a5217; color: white; border: none; border-radius: 5px; cursor: pointer; transition: background-color 0.3s; }
-            .print-button:hover { background-color: #5f4012; }
+            .print-button { padding: 10px 18px; font-size: 14px; background-color: #7a5217; color: white; border: none; border-radius: 5px; cursor: pointer; }
             @media print { .no-print { display: none !important; } }
         </style>
         </head><body>
@@ -893,34 +837,17 @@ export function generateViewHTML(targets, pageTitle, selectedCategories = []) {
 }
 
 export function generatePerseveranceReportHTML(data) {
-    const MILESTONES_REPORT = [
-        { name: "Semente da Perseverança", days: 7, icon: "🌱" },
-        { name: "Chama da Devoção", days: 15, icon: "🔥" },
-        { name: "Estrela da Fidelidade", days: 30, icon: "⭐" },
-        { name: "Árvore da Constância", days: 100, icon: "🌳" },
-        { name: "Diamante da Oração", days: 300, icon: "💎" },
-        { name: "Sol da Eternidade", days: 1000, icon: "☀️" },
-    ];
-
-    let milestonesHTML = '';
-    if (data.consecutiveDays > 0) {
-        MILESTONES_REPORT.forEach(milestone => {
-            if (data.consecutiveDays >= milestone.days) {
-                milestonesHTML += `<li class="achieved">${milestone.icon} ${milestone.name} (${milestone.days} dias) - <strong>Atingido!</strong></li>`;
-            } else {
-                milestonesHTML += `<li class="pending">${milestone.icon} ${milestone.name} (${milestone.days} dias) - Faltam ${milestone.days - data.consecutiveDays} dia(s).</li>`;
-            }
-        });
-    } else {
-        milestonesHTML = '<li>Nenhuma sequência ativa para exibir marcos.</li>';
-    }
+    const milestonesHTML = MILESTONES.map(milestone => {
+        if (data.consecutiveDays >= milestone.days) {
+            return `<li class="achieved">${milestone.icon} ${milestone.name} (${milestone.days} dias) - <strong>Atingido!</strong></li>`;
+        } else {
+            return `<li class="pending">${milestone.icon} ${milestone.name} (${milestone.days} dias) - Faltam ${milestone.days - data.consecutiveDays} dia(s).</li>`;
+        }
+    }).join('');
 
     let historyHTML = '';
     if (data.interactionDates && data.interactionDates.length > 0) {
-        historyHTML = data.interactionDates.map(dateStr => {
-            const date = new Date(dateStr + 'T12:00:00Z');
-            return `<li>${date.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</li>`;
-        }).join('');
+        historyHTML = data.interactionDates.map(dateStr => `<li>${formatDateForDisplay(new Date(dateStr + 'T12:00:00Z'))}</li>`).join('');
     } else {
         historyHTML = '<li>Nenhuma interação registrada na semana atual.</li>';
     }
@@ -928,98 +855,28 @@ export function generatePerseveranceReportHTML(data) {
     return `
         <!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório de Perseverança Pessoal</title>
         <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f4f7f6; color: #333; }
-            .container { max-width: 750px; margin: 25px auto; padding: 20px 30px; background-color: #fff; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+            body { font-family: 'Segoe UI', sans-serif; margin: 25px; background-color: #f4f7f6; }
+            .container { max-width: 750px; margin: auto; padding: 30px; background-color: #fff; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
             h1 { text-align: center; color: #2c3e50; border-bottom: 2px solid #e29420; padding-bottom: 15px; margin-bottom: 25px; }
-            h2 { color: #34495e; border-bottom: 1px solid #eaeaea; padding-bottom: 8px; margin-top: 30px; }
-            .section { margin-bottom: 25px; }
+            h2 { color: #34495e; border-bottom: 1px solid #eaeaea; padding-bottom: 8px; }
             .stat-item { font-size: 1.1em; margin-bottom: 12px; }
-            .stat-item strong { color: #e29420; min-width: 150px; display: inline-block; }
             ul { list-style-type: none; padding-left: 0; }
-            li { background-color: #fdfdfd; border-left: 4px solid #ccc; margin-bottom: 8px; padding: 12px 15px; border-radius: 4px; transition: all 0.2s ease; }
-            li:hover { transform: translateX(5px); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+            li { background-color: #fdfdfd; border-left: 4px solid #ccc; margin-bottom: 8px; padding: 12px 15px; border-radius: 4px; }
             li.achieved { border-left-color: #27ae60; }
-            li.achieved strong { color: #27ae60; }
-            li.pending { border-left-color: #bdc3c7; opacity: 0.8; }
+            li.pending { opacity: 0.8; }
         </style>
         </head><body>
         <div class="container">
             <h1>Relatório de Perseverança Pessoal</h1>
-            <div class="section">
-                <h2>Resumo Geral</h2>
-                <div class="stat-item"><strong>Sequência Atual:</strong> ${data.consecutiveDays} dia(s) consecutivos</div>
-                <div class="stat-item"><strong>Recorde Pessoal:</strong> ${data.recordDays} dia(s)</div>
-                <div class="stat-item"><strong>Última Interação:</strong> ${data.lastInteractionDate}</div>
-            </div>
-            <div class="section">
-                <h2>Marcos da Sequência Atual</h2>
-                <ul>${milestonesHTML}</ul>
-            </div>
-            <div class="section">
-                <h2>Interações Recentes (Semana Atual)</h2>
-                <ul>${historyHTML}</ul>
-            </div>
+            <h2>Resumo Geral</h2>
+            <div class="stat-item"><strong>Sequência Atual:</strong> ${data.consecutiveDays} dia(s)</div>
+            <div class="stat-item"><strong>Recorde Pessoal:</strong> ${data.recordDays} dia(s)</div>
+            <div class="stat-item"><strong>Última Interação:</strong> ${data.lastInteractionDate}</div>
+            <h2>Marcos da Sequência Atual</h2>
+            <ul>${milestonesHTML}</ul>
+            <h2>Interações Recentes (Semana Atual)</h2>
+            <ul>${historyHTML}</ul>
         </div>
-        </body></html>
-    `;
-}
-
-export function generateInteractionReportHTML(allTargets, interactionMap) {
-    const reportData = allTargets.map(target => ({
-        title: target.title,
-        category: target.category || 'Sem Categoria',
-        creationDate: formatDateForDisplay(target.date),
-        count: interactionMap.get(target.id) || 0,
-        status: target.resolved ? 'Respondido' : (target.archived ? 'Arquivado' : 'Ativo')
-    }));
-
-    reportData.sort((a, b) => b.count - a.count);
-
-    let tableRowsHTML = reportData.map(item => `
-        <tr>
-            <td>${item.title}</td>
-            <td class="center">${item.count}</td>
-            <td>${item.category}</td>
-            <td>${item.creationDate}</td>
-            <td class="status-${item.status.toLowerCase()}">${item.status}</td>
-        </tr>
-    `).join('');
-
-    if (reportData.length === 0) {
-        tableRowsHTML = '<tr><td colspan="5">Nenhum alvo encontrado para gerar o relatório.</td></tr>';
-    }
-
-    return `
-        <!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório de Interação por Alvo</title>
-        <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; background-color: #f9f9f9; color: #333; }
-            h1 { text-align: center; color: #2c3e50; border-bottom: 2px solid #e29420; padding-bottom: 10px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-            th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; }
-            th { background-color: #e29420; color: white; }
-            tr:nth-child(even) { background-color: #fdfdfd; }
-            tr:hover { background-color: #f1f1f1; }
-            .center { text-align: center; font-weight: bold; font-size: 1.1em; }
-            .status-ativo { color: #2980b9; font-weight: bold; }
-            .status-arquivado { color: #7f8c8d; }
-            .status-respondido { color: #27ae60; font-weight: bold; }
-        </style>
-        </head><body>
-            <h1>Relatório de Interação por Alvo</h1>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Título do Alvo</th>
-                        <th class="center">Interações</th>
-                        <th>Categoria</th>
-                        <th>Data de Criação</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${tableRowsHTML}
-                </tbody>
-            </table>
         </body></html>
     `;
 }
@@ -1037,44 +894,42 @@ export function displayCompletionPopup() {
         if (popupVerseEl) {
             popupVerseEl.textContent = verses[Math.floor(Math.random() * verses.length)];
         }
-        const closeButton = popup.querySelector('#closePopup');
-        if (closeButton) {
-            closeButton.onclick = () => popup.style.display = 'none';
-        }
+        popup.querySelector('#closePopup').onclick = () => popup.style.display = 'none';
     }
 }
 
+/**
+ * MODIFICADO: Atualiza a UI de autenticação e o novo status do Drive.
+ * @param {object|null} user - O objeto do usuário do Firebase ou nulo.
+ * @param {string} message - Mensagem opcional para exibir (ex: erro, reset de senha).
+ * @param {boolean} isError - Se a mensagem é um erro.
+ */
 export function updateAuthUI(user, message = '', isError = false) {
     const authSection = document.getElementById('authSection');
     const userStatusTop = document.getElementById('userStatusTop');
+    const driveStatusTop = document.getElementById('driveStatusTop'); // NOVO
     const passwordResetMessageDiv = document.getElementById('passwordResetMessage');
-
-    // Elementos do formulário de auth que precisam ser limpos no logout
     const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
 
     if (user) {
-        // Esconde a seção de autenticação e mostra o status no topo
         authSection.classList.add('hidden');
         userStatusTop.textContent = `Logado: ${user.email}`;
         userStatusTop.style.display = 'inline-block';
-        
-        // Garante que a mensagem de reset de senha seja limpa
-        if(passwordResetMessageDiv) passwordResetMessageDiv.style.display = 'none';
-
+        if (passwordResetMessageDiv) passwordResetMessageDiv.style.display = 'none';
     } else {
-        // Mostra a seção de autenticação e esconde o status no topo
         authSection.classList.remove('hidden');
-        if(userStatusTop) {
+        if (userStatusTop) {
             userStatusTop.style.display = 'none';
             userStatusTop.textContent = '';
         }
-        
-        // Limpa os campos de input no logout
-        if(emailInput) emailInput.value = '';
-        if(passwordInput) passwordInput.value = '';
-
-        // Lógica para exibir mensagens de erro ou de reset
+        // NOVO: Esconde o status do Drive no logout
+        if (driveStatusTop) {
+            driveStatusTop.style.display = 'none';
+            driveStatusTop.textContent = '';
+        }
+        if (emailInput) emailInput.value = '';
+        if (passwordInput) passwordInput.value = '';
         if (message && passwordResetMessageDiv) {
             passwordResetMessageDiv.textContent = message;
             passwordResetMessageDiv.style.color = isError ? "red" : "green";
@@ -1082,5 +937,37 @@ export function updateAuthUI(user, message = '', isError = false) {
         } else if (passwordResetMessageDiv) {
             passwordResetMessageDiv.style.display = 'none';
         }
+    }
+}
+
+/**
+ * NOVO: Atualiza o indicador de status global do Google Drive.
+ * @param {'connected' | 'error' | 'syncing' | 'disconnected'} status - O estado da conexão.
+ * @param {string} [message] - Uma mensagem opcional.
+ */
+export function updateDriveStatusUI(status, message) {
+    const driveStatusTop = document.getElementById('driveStatusTop');
+    if (!driveStatusTop) return;
+
+    switch (status) {
+        case 'connected':
+            driveStatusTop.textContent = message || 'Drive Conectado ✓';
+            driveStatusTop.style.backgroundColor = '#0f9d58'; // Verde Drive
+            driveStatusTop.style.display = 'inline-block';
+            break;
+        case 'error':
+            driveStatusTop.textContent = message || 'Erro no Drive ✗';
+            driveStatusTop.style.backgroundColor = '#dc3545'; // Vermelho Erro
+            driveStatusTop.style.display = 'inline-block';
+            break;
+        case 'syncing':
+            driveStatusTop.textContent = message || 'Sincronizando...';
+            driveStatusTop.style.backgroundColor = '#f4b400'; // Amarelo Drive
+            driveStatusTop.style.display = 'inline-block';
+            break;
+        case 'disconnected':
+        default:
+            driveStatusTop.style.display = 'none';
+            break;
     }
 }
