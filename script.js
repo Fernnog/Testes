@@ -1,17 +1,34 @@
-// script.js (Orquestrador Principal da Aplicação - Versão Aprimorada)
-// ARQUITETURA REVISADA: Inclui gestão de prazos, handlers de ação refatorados e notificação para promover observações.
+// script.js (Orquestrador Principal da Aplicação - Versão COMPLETA com Backup no Google Drive)
+// ARQUITETURA REVISADA: Inclui gestão de prazos, handlers de ação refatorados, notificação para promover observações e integração com Google Drive.
 
 // --- MÓDULOS ---
 import { auth } from './firebase-config.js'; 
-import { onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+// ARQUITETO: Funções do auth.js foram centralizadas.
+import { 
+    initializeAuth, 
+    handleSignOut,
+    signInWithEmailPassword, // Mantido para o fluxo original
+    createUserWithEmailAndPassword, // Mantido para o fluxo original
+    signInWithGoogle, // Nova função importada
+    resetPassword // Função de reset de senha
+} from './auth.js';
 import * as Service from './firestore-service.js';
 import * as UI from './ui.js';
 import { initializeFloatingNav, updateFloatingNavVisibility } from './floating-nav.js';
-import { formatDateForDisplay, generateAndDownloadPdf } from './utils.js'; // <-- MODIFICADO: Importa a nova função de PDF
+import { formatDateForDisplay, generateAndDownloadPdf } from './utils.js';
+// ARQUITETO: Importação do novo serviço para o Google Drive.
+import * as GDS from './google-drive-service.js';
 
 // --- ESTADO DA APLICAÇÃO ---
 let state = {
     user: null,
+    // ARQUITETO: Adicionado estado para controlar a conexão com o Google Drive.
+    drive: {
+        connected: false,
+        error: null,
+        gapiReady: false,
+        token: null,
+    },
     prayerTargets: [],
     archivedTargets: [],
     resolvedTargets: [],
@@ -33,55 +50,9 @@ let state = {
 // =================================================================
 // === MELHORIA DE UX: Notificações Toast Não-Bloqueantes ===
 // =================================================================
-
-/**
- * Exibe uma notificação toast na tela.
- * @param {string} message - A mensagem a ser exibida.
- * @param {'success' | 'error' | 'info'} type - O tipo de notificação, que define a cor.
- */
 function showToast(message, type = 'success') {
-    // Cria o elemento toast
-    const toast = document.createElement('div');
-    toast.textContent = message;
-    
-    // Estilos base (injeta o CSS para não depender de alterações no arquivo .css)
-    toast.style.position = 'fixed';
-    toast.style.bottom = '20px';
-    toast.style.right = '20px';
-    toast.style.padding = '12px 20px';
-    toast.style.borderRadius = '5px';
-    toast.style.color = 'white';
-    toast.style.zIndex = '1050';
-    toast.style.opacity = '0';
-    toast.style.transition = 'opacity 0.3s, transform 0.3s';
-    toast.style.transform = 'translateY(20px)';
-    
-    // Estilos baseados no tipo
-    if (type === 'success') {
-        toast.style.backgroundColor = '#28a745'; // Verde
-    } else if (type === 'error') {
-        toast.style.backgroundColor = '#dc3545'; // Vermelho
-    } else { // 'info' e outros
-        toast.style.backgroundColor = '#17a2b8'; // Azul (pode ser trocado por amarelo se desejado)
-    }
-
-    // Adiciona ao corpo e anima a entrada
-    document.body.appendChild(toast);
-    setTimeout(() => {
-        toast.style.opacity = '1';
-        toast.style.transform = 'translateY(0)';
-    }, 10);
-
-    // Remove o toast após 3 segundos
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateY(20px)';
-        setTimeout(() => {
-            document.body.removeChild(toast);
-        }, 300);
-    }, 3000);
+    UI.showToast(message, type);
 }
-
 
 // =================================================================
 // === LÓGICA DE AUTENTICAÇÃO E FLUXO DE DADOS ===
@@ -96,7 +67,6 @@ async function handleSignUp() {
     }
     try {
         await createUserWithEmailAndPassword(auth, email, password);
-        // O toast de sucesso agora é acionado pelo onAuthStateChanged
     } catch (error) {
         console.error("Erro ao cadastrar:", error);
         UI.updateAuthUI(null, "Erro ao cadastrar: " + error.message, true);
@@ -116,6 +86,23 @@ async function handleSignIn() {
         UI.updateAuthUI(null, "Erro ao entrar: " + error.message, true);
     }
 }
+
+// ARQUITETO: Nova função para lidar com o fluxo de login do Google.
+async function handleGoogleSignIn() {
+    try {
+        // A função signInWithGoogle em auth.js agora lida com o popup e scopes.
+        // O resultado será capturado pelo listener onAuthStateChanged.
+        await signInWithGoogle();
+    } catch (error) {
+        console.error("Erro ao iniciar login com Google:", error);
+        showToast(error.message, "error");
+        state.drive.connected = false;
+        state.drive.error = error.message;
+        UI.updateDriveStatus(false, error.message);
+    }
+}
+
+
 async function handlePasswordReset() {
     const email = document.getElementById('email').value.trim();
     if (!email) {
@@ -123,7 +110,7 @@ async function handlePasswordReset() {
         return;
     }
     try {
-        await sendPasswordResetEmail(auth, email);
+        await resetPassword(email);
         UI.updateAuthUI(null, "Um e-mail de redefinição de senha foi enviado para " + email + ".");
     } catch (error) {
         console.error("Erro ao redefinir senha:", error);
@@ -188,6 +175,7 @@ function applyFiltersAndRender(panelId) {
 
 async function loadDataForUser(user) {
     try {
+        UI.showLoadingState(true);
         const [prayerData, archivedData, perseveranceData, weeklyData] = await Promise.all([
             Service.fetchPrayerTargets(user.uid),
             Service.fetchArchivedTargets(user.uid),
@@ -195,9 +183,12 @@ async function loadDataForUser(user) {
             Service.loadWeeklyPrayerData(user.uid)
         ]);
         state.user = user;
-        state.prayerTargets = prayerData;
-        state.archivedTargets = archivedData.filter(t => !t.resolved);
-        state.resolvedTargets = archivedData.filter(t => t.resolved);
+        
+        // ARQUITETO: Inicializa o status de sincronização para cada alvo.
+        state.prayerTargets = prayerData.map(t => ({...t, syncStatus: t.googleDocId ? 'synced' : 'unsynced'}));
+        state.archivedTargets = archivedData.filter(t => !t.resolved).map(t => ({...t, syncStatus: t.googleDocId ? 'synced' : 'unsynced'}));
+        state.resolvedTargets = archivedData.filter(t => t.resolved).map(t => ({...t, syncStatus: t.googleDocId ? 'synced' : 'unsynced'}));
+
         state.perseveranceData = perseveranceData;
         state.weeklyPrayerData = weeklyData;
         const dailyTargetsData = await Service.loadDailyTargets(user.uid, state.prayerTargets);
@@ -227,13 +218,52 @@ async function loadDataForUser(user) {
         console.error("[App] Error during data loading process:", error);
         showToast("Ocorreu um erro crítico ao carregar seus dados.", "error");
         handleLogoutState();
+    } finally {
+        UI.showLoadingState(false);
     }
 }
 function handleLogoutState() {
-    state = { user: null, prayerTargets: [], archivedTargets: [], resolvedTargets: [], perseveranceData: { consecutiveDays: 0, recordDays: 0, lastInteractionDate: null }, weeklyPrayerData: { weekId: null, interactions: {} }, dailyTargets: { pending: [], completed: [], targetIds: [] }, pagination: { mainPanel: { currentPage: 1, targetsPerPage: 10 }, archivedPanel: { currentPage: 1, targetsPerPage: 10 }, resolvedPanel: { currentPage: 1, targetsPerPage: 10 }}, filters: { mainPanel: { searchTerm: '', showDeadlineOnly: false, showExpiredOnly: false, startDate: null, endDate: null }, archivedPanel: { searchTerm: '', startDate: null, endDate: null }, resolvedPanel: { searchTerm: '' }} };
+    // ARQUITETO: Reseta também o estado do Drive no logout.
+    state = { user: null, drive: { connected: false, error: null, gapiReady: state.drive.gapiReady, token: null }, prayerTargets: [], archivedTargets: [], resolvedTargets: [], perseveranceData: { consecutiveDays: 0, recordDays: 0, lastInteractionDate: null }, weeklyPrayerData: { weekId: null, interactions: {} }, dailyTargets: { pending: [], completed: [], targetIds: [] }, pagination: { mainPanel: { currentPage: 1, targetsPerPage: 10 }, archivedPanel: { currentPage: 1, targetsPerPage: 10 }, resolvedPanel: { currentPage: 1, targetsPerPage: 10 }}, filters: { mainPanel: { searchTerm: '', showDeadlineOnly: false, showExpiredOnly: false, startDate: null, endDate: null }, archivedPanel: { searchTerm: '', startDate: null, endDate: null }, resolvedPanel: { searchTerm: '' }} };
     UI.renderTargets([], 0, 1, 10); UI.renderArchivedTargets([], 0, 1, 10); UI.renderResolvedTargets([], 0, 1, 10); UI.renderDailyTargets([], []); UI.resetPerseveranceUI(); UI.resetWeeklyChart(); UI.showPanel('authSection');
+    UI.updateDriveStatus(false);
     updateFloatingNavVisibility(state);
 }
+
+// ARQUITETO: Função wrapper para realizar o backup com feedback visual.
+async function syncTargetToDrive(target, isArchived = false) {
+    if (!state.drive.connected) {
+        showToast("Backup não realizado: conecte-se ao Google Drive.", "info");
+        return;
+    }
+    
+    // UX: Atualiza a UI para mostrar "sincronizando"
+    target.syncStatus = 'syncing';
+    UI.updateTargetSyncStatus(target.id, 'syncing');
+
+    try {
+        const updatedTargetData = await GDS.backupTarget(target);
+        
+        // Se um novo ID de documento foi retornado, salva-o no Firestore.
+        if (updatedTargetData.googleDocId && updatedTargetData.googleDocId !== target.googleDocId) {
+            await Service.updateTargetField(state.user.uid, target.id, isArchived, { googleDocId: updatedTargetData.googleDocId });
+            target.googleDocId = updatedTargetData.googleDocId; // Atualiza o estado local
+        }
+        
+        // UX: Atualiza a UI para "sincronizado"
+        target.syncStatus = 'synced';
+        UI.updateTargetSyncStatus(target.id, 'synced');
+        showToast(`Backup de "${target.title}" salvo no Drive.`, "success");
+
+    } catch (error) {
+        console.error("Falha no backup para o Google Drive:", error);
+        showToast(`Erro no backup de "${target.title}".`, "error");
+        // UX: Atualiza a UI para "erro"
+        target.syncStatus = 'error';
+        UI.updateTargetSyncStatus(target.id, 'error');
+    }
+}
+
 
 async function handleAddNewTarget(event) {
     event.preventDefault();
@@ -245,7 +275,7 @@ async function handleAddNewTarget(event) {
     if (hasDeadline && !deadlineValue) return showToast("Selecione uma data para o prazo.", "error");
     const isPriority = document.getElementById('isPriority').checked;
 
-    const newTarget = { 
+    const newTargetData = { 
         title: title, 
         details: document.getElementById('details').value.trim(), 
         date: new Date(document.getElementById('date').value + 'T12:00:00Z'), 
@@ -254,14 +284,26 @@ async function handleAddNewTarget(event) {
         category: document.getElementById('categorySelect').value, 
         observations: [], 
         resolved: false,
-        isPriority: isPriority
+        isPriority: isPriority,
+        // ARQUITETO: Adiciona os novos campos ao objeto a ser salvo.
+        googleDocId: null,
     };
     try {
-        await Service.addNewPrayerTarget(state.user.uid, newTarget);
-        showToast("Alvo adicionado com sucesso!", "success");
+        const createdTarget = await Service.addNewPrayerTarget(state.user.uid, newTargetData);
+        // Adiciona o status de sync localmente para a UI
+        createdTarget.syncStatus = 'unsynced';
+        
+        showToast("Alvo adicionado! Sincronizando com o Drive...", "success");
+        
         document.getElementById('prayerForm').reset();
         document.getElementById('deadlineContainer').style.display = 'none';
-        await loadDataForUser(state.user);
+        
+        // Atualiza UI localmente de forma otimista
+        state.prayerTargets.unshift(createdTarget);
+        applyFiltersAndRender('mainPanel');
+        
+        await syncTargetToDrive(createdTarget, false);
+        
         UI.showPanel('mainPanel');
     } catch (error) {
         console.error("Erro ao adicionar novo alvo:", error);
@@ -289,7 +331,6 @@ async function handlePray(targetId) {
     UI.renderDailyTargets(state.dailyTargets.pending, state.dailyTargets.completed);
     UI.renderPriorityTargets(state.prayerTargets, state.dailyTargets);
     
-    // MELHORIA APLICADA: Feedback visual imediato e personalizado
     showToast(`Oração por "${targetToPray.title}" registrada!`, "success");
 
     try {
@@ -304,7 +345,6 @@ async function handlePray(targetId) {
         UI.updatePerseveranceUI(state.perseveranceData, isNewRecord);
         UI.updateWeeklyChart(state.weeklyPrayerData);
 
-        // MELHORIA APLICADA: Verifica se todos os alvos prioritários foram concluídos
         if (targetToPray.isPriority) {
             const priorityTargets = state.prayerTargets.filter(t => t.isPriority);
             const allPriorityPrayed = priorityTargets.every(p => 
@@ -312,7 +352,6 @@ async function handlePray(targetId) {
             );
 
             if (allPriorityPrayed) {
-                // Atraso para não sobrepor o toast de sucesso
                 setTimeout(() => {
                     showToast("Parabéns! Você orou por todos os seus alvos prioritários de hoje!", "info");
                 }, 500);
@@ -350,6 +389,7 @@ async function handleResolveTarget(target, panelId) {
     try {
         await Service.markAsResolved(state.user.uid, targetToResolve);
         showToast("Alvo marcado como respondido!", "success");
+        await syncTargetToDrive(targetToResolve, true);
     } catch (error) {
         showToast("Erro ao sincronizar. A ação será desfeita.", "error");
         state.resolvedTargets.shift();
@@ -375,6 +415,7 @@ async function handleArchiveTarget(target, panelId) {
     try {
         await Service.archiveTarget(state.user.uid, targetToArchive);
         showToast("Alvo arquivado.", "info");
+        await syncTargetToDrive(targetToArchive, true);
     } catch (error) {
         showToast("Erro ao sincronizar. A ação será desfeita.", "error");
         state.archivedTargets.shift();
@@ -386,19 +427,27 @@ async function handleArchiveTarget(target, panelId) {
 
 async function handleDeleteArchivedTarget(targetId) {
     if (!confirm("EXCLUIR PERMANENTEMENTE? Esta ação não pode ser desfeita.")) return;
+    
+    // ARQUITETO: Primeiro, encontra o alvo para obter o googleDocId
     const index = state.archivedTargets.findIndex(t => t.id === targetId);
     if (index === -1) return;
+    const targetToDelete = state.archivedTargets[index];
 
     // UI Otimista
-    const [deletedTarget] = state.archivedTargets.splice(index, 1);
+    state.archivedTargets.splice(index, 1);
     applyFiltersAndRender('archivedPanel');
 
     try {
         await Service.deleteArchivedTarget(state.user.uid, targetId);
         showToast("Alvo excluído permanentemente.", "info");
+        // Também exclui o backup do Drive
+        if(state.drive.connected && targetToDelete.googleDocId) {
+            await GDS.deleteBackup(targetToDelete.googleDocId);
+            showToast("Backup do Drive também removido.", "info");
+        }
     } catch (error) {
         showToast("Erro ao sincronizar. O item será restaurado.", "error");
-        state.archivedTargets.splice(index, 0, deletedTarget);
+        state.archivedTargets.splice(index, 0, targetToDelete);
         applyFiltersAndRender('archivedPanel');
     }
 }
@@ -412,6 +461,7 @@ async function handleAddObservation(target, isArchived, panelId) {
     
     // UI Otimista
     if (!target.observations) target.observations = [];
+    const oldObservations = [...target.observations];
     target.observations.push(newObservation);
     UI.toggleAddObservationForm(target.id);
     applyFiltersAndRender(panelId);
@@ -419,9 +469,10 @@ async function handleAddObservation(target, isArchived, panelId) {
     try {
         await Service.addObservationToTarget(state.user.uid, target.id, isArchived, newObservation); 
         showToast("Observação adicionada.", "success");
+        await syncTargetToDrive(target, isArchived);
     } catch(error) {
         showToast("Falha ao salvar. A alteração será desfeita.", "error");
-        target.observations.pop();
+        target.observations = oldObservations;
         applyFiltersAndRender(panelId);
     }
 }
@@ -438,6 +489,7 @@ async function handleSaveCategory(target, isArchived, panelId) {
     try {
         await Service.updateTargetField(state.user.uid, target.id, isArchived, { category: newCategory }); 
         showToast("Categoria atualizada.", "success");
+        await syncTargetToDrive(target, isArchived);
     } catch(error) {
         showToast("Falha ao salvar. A alteração foi desfeita.", "error");
         target.category = oldCategory;
@@ -446,6 +498,7 @@ async function handleSaveCategory(target, isArchived, panelId) {
 }
 
 async function handleTogglePriority(target) {
+    const oldStatus = target.isPriority;
     const newStatus = !target.isPriority;
     
     // UI Otimista
@@ -456,9 +509,10 @@ async function handleTogglePriority(target) {
     try {
         await Service.updateTargetField(state.user.uid, target.id, false, { isPriority: newStatus });
         showToast(newStatus ? "Alvo marcado como prioritário." : "Alvo removido dos prioritários.", "info");
+        await syncTargetToDrive(target, false);
     } catch (error) {
         showToast("Erro ao sincronizar. A alteração foi desfeita.", "error");
-        target.isPriority = !newStatus;
+        target.isPriority = oldStatus;
         applyFiltersAndRender('mainPanel');
         UI.renderPriorityTargets(state.prayerTargets, state.dailyTargets);
     }
@@ -469,12 +523,35 @@ async function handleTogglePriority(target) {
 // === PONTO DE ENTRADA DA APLICAÇÃO E EVENTOS ===
 // ===============================================
 document.addEventListener('DOMContentLoaded', () => {
-    onAuthStateChanged(auth, user => {
+    // ARQUITETO: Carrega a API do Google assim que a página estiver pronta.
+    GDS.loadGapiClient(() => {
+        state.drive.gapiReady = true;
+        // Se já tivermos um token (de um login anterior), inicializa o cliente.
+        if (state.drive.token) {
+            GDS.initGapiClient(state.drive.token);
+            state.drive.connected = true;
+            UI.updateDriveStatus(true);
+        }
+    });
+
+    initializeAuth(async (user, credential) => {
         if (user) { 
-            // MELHORIA APLICADA: Toast de sucesso no login
             showToast(`Bem-vindo(a), ${user.email}!`, 'success');
             UI.updateAuthUI(user);
-            loadDataForUser(user);
+            
+            if (credential) {
+                const token = credential.accessToken;
+                if (token) {
+                    state.drive.token = token;
+                    if (state.drive.gapiReady) {
+                        GDS.initGapiClient(token);
+                        state.drive.connected = true;
+                        UI.updateDriveStatus(true);
+                    }
+                }
+            }
+            
+            await loadDataForUser(user);
         } else { 
             UI.updateAuthUI(null);
             handleLogoutState();
@@ -485,7 +562,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btnEmailSignUp').addEventListener('click', handleSignUp);
     document.getElementById('btnEmailSignIn').addEventListener('click', handleSignIn);
     document.getElementById('btnForgotPassword').addEventListener('click', handlePasswordReset);
-    document.getElementById('btnLogout').addEventListener('click', () => signOut(auth));
+    // ARQUITETO: Adicionado listener para o novo botão de login com Google.
+    document.getElementById('btnGoogleSignIn').addEventListener('click', handleGoogleSignIn);
+    document.getElementById('btnLogout').addEventListener('click', () => handleSignOut());
     document.getElementById('prayerForm').addEventListener('submit', handleAddNewTarget);
     document.getElementById('backToMainButton').addEventListener('click', () => UI.showPanel('dailySection'));
     document.getElementById('addNewTargetButton').addEventListener('click', () => UI.showPanel('appContent'));
@@ -547,7 +626,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('hasDeadline').addEventListener('change', e => { document.getElementById('deadlineContainer').style.display = e.target.checked ? 'block' : 'none'; });
     ['searchMain', 'searchArchived', 'searchResolved'].forEach(id => { document.getElementById(id).addEventListener('input', e => { const panelId = id.replace('search', '').toLowerCase() + 'Panel'; state.filters[panelId].searchTerm = e.target.value; state.pagination[panelId].currentPage = 1; applyFiltersAndRender(panelId); }); });
-    ['showDeadlineOnly', 'showExpiredOnlyMain'].forEach(id => { document.getElementById(id).addEventListener('change', e => { const filterName = id === 'showDeadlineOnly' ? 'showDeadlineOnly' : 'showExpiredOnly'; state.filters.mainPanel[filterName] = e.target.checked; state.pagination.mainPanel.currentPage = 1; applyFiltersAndRender(panelId); }); });
+    ['showDeadlineOnly', 'showExpiredOnlyMain'].forEach(id => { document.getElementById(id).addEventListener('change', e => { const filterName = id === 'showDeadlineOnly' ? 'showDeadlineOnly' : 'showExpiredOnly'; state.filters.mainPanel[filterName] = e.target.checked; state.pagination.mainPanel.currentPage = 1; applyFiltersAndRender('mainPanel'); }); });
     document.getElementById('closeManualTargetModal').addEventListener('click', () => UI.toggleManualTargetModal(false));
     document.getElementById('manualTargetSearchInput').addEventListener('input', e => { const searchTerm = e.target.value.toLowerCase(); const filtered = state.prayerTargets.filter(t => t.title.toLowerCase().includes(searchTerm) || (t.details && t.details.toLowerCase().includes(searchTerm))); UI.renderManualSearchResults(filtered, state.prayerTargets, searchTerm); });
 
@@ -679,26 +758,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 const form = e.target.closest('.inline-edit-form');
                 if (!form || !target) break;
                 const inputField = form.querySelector('input');
-                const saveButton = form.querySelector('.save-btn');
-                if (!inputField || !saveButton) break;
+                if (!inputField || inputField.value.trim() === target.title) {
+                    if (form) form.remove();
+                    break;
+                }
 
                 const newTitle = inputField.value.trim();
-                if (newTitle === '') break;
-                
-                saveButton.textContent = 'Salvando...';
-                saveButton.disabled = true;
-                
                 const oldTitle = target.title;
                 target.title = newTitle;
                 
+                form.remove();
+                applyFiltersAndRender(panelId);
+                
                 try {
                     await Service.updateTargetField(state.user.uid, id, isArchived, { title: newTitle });
-                    showToast("Título atualizado com sucesso!", "success");
+                    await syncTargetToDrive(target, isArchived);
                 } catch (error) {
                     target.title = oldTitle;
                     showToast("Falha ao atualizar o título.", "error");
                     console.error("Erro ao salvar título:", error);
-                } finally {
                     applyFiltersAndRender(panelId);
                 }
                 break;
@@ -708,24 +786,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 const form = e.target.closest('.inline-edit-form');
                 if (!form || !target) break;
                 const inputField = form.querySelector('textarea');
-                const saveButton = form.querySelector('.save-btn');
-                if (!inputField || !saveButton) break;
-
+                if (!inputField || inputField.value.trim() === target.details) {
+                    if (form) form.remove();
+                    break;
+                }
+                
                 const newDetails = inputField.value.trim();
-                saveButton.textContent = 'Salvando...';
-                saveButton.disabled = true;
-
                 const oldDetails = target.details;
                 target.details = newDetails;
 
+                form.remove();
+                applyFiltersAndRender(panelId);
+
                 try {
                     await Service.updateTargetField(state.user.uid, id, isArchived, { details: newDetails });
-                    showToast("Detalhes atualizados com sucesso!", "success");
+                    await syncTargetToDrive(target, isArchived);
                 } catch (error) {
                     target.details = oldDetails;
                     showToast("Falha ao atualizar os detalhes.", "error");
                     console.error("Erro ao salvar detalhes:", error);
-                } finally {
                     applyFiltersAndRender(panelId);
                 }
                 break;
@@ -735,26 +814,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 const form = e.target.closest('.inline-edit-form');
                 if (!form || !target) break;
                 const inputField = form.querySelector('textarea');
-                const saveButton = form.querySelector('.save-btn');
-                if (!inputField || !saveButton) break;
-
                 const newText = inputField.value.trim();
-                if (newText === '') break;
 
-                saveButton.textContent = 'Salvando...';
-                saveButton.disabled = true;
+                if (newText === '' || newText === target.observations[obsIndex].text) {
+                     if (form) form.remove();
+                     break;
+                }
 
-                const oldText = target.observations[obsIndex].text;
+                const oldObservations = JSON.parse(JSON.stringify(target.observations));
                 target.observations[obsIndex].text = newText;
+                
+                form.remove();
+                applyFiltersAndRender(panelId);
                 
                 try {
                     await Service.updateObservationInTarget(state.user.uid, id, isArchived, obsIndex, { text: newText });
-                    showToast("Observação atualizada!", "success");
+                    await syncTargetToDrive(target, isArchived);
                 } catch (error) {
-                    target.observations[obsIndex].text = oldText;
+                    target.observations = oldObservations;
                     showToast("Falha ao atualizar a observação.", "error");
                     console.error("Erro ao salvar observação:", error);
-                } finally {
                     applyFiltersAndRender(panelId);
                 }
                 break;
@@ -765,30 +844,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 const form = e.target.closest('.inline-edit-form');
                 if (!form || !target) break;
                 const inputField = form.querySelector('input, textarea');
-                const saveButton = form.querySelector('.save-btn');
-                if (!inputField || !saveButton) break;
-
+                
                 const newText = inputField.value.trim();
-                if (newText === '') break;
-                
-                saveButton.textContent = 'Salvando...';
-                saveButton.disabled = true;
-                
-                const obsToUpdate = target.observations[obsIndex];
                 const isTitle = action === 'save-sub-target-title';
                 const fieldToUpdate = isTitle ? 'subTargetTitle' : 'text';
-                const oldText = obsToUpdate[fieldToUpdate];
+
+                if (newText === '' || newText === target.observations[obsIndex][fieldToUpdate]) {
+                    if (form) form.remove();
+                    break;
+                }
                 
-                obsToUpdate[fieldToUpdate] = newText;
+                const oldObservations = JSON.parse(JSON.stringify(target.observations));
+                target.observations[obsIndex][fieldToUpdate] = newText;
+
+                form.remove();
+                applyFiltersAndRender(panelId);
 
                 try {
                     await Service.updateObservationInTarget(state.user.uid, id, isArchived, obsIndex, { [fieldToUpdate]: newText });
-                    showToast("Sub-alvo atualizado!", "success");
+                    await syncTargetToDrive(target, isArchived);
                 } catch (error) {
-                    obsToUpdate[fieldToUpdate] = oldText;
+                    target.observations = oldObservations;
                     showToast("Falha ao atualizar sub-alvo.", "error");
                     console.error("Erro ao salvar sub-alvo:", error);
-                } finally {
                     applyFiltersAndRender(panelId);
                 }
                 break;
@@ -798,28 +876,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 const form = e.target.closest('.inline-edit-form');
                 if (!form || !target) break;
                 const inputField = form.querySelector('textarea');
-                const saveButton = form.querySelector('.save-btn');
-                if (!inputField || !saveButton) break;
-
                 const newText = inputField.value.trim();
-                if (newText === '') break;
-
-                saveButton.textContent = 'Salvando...';
-                saveButton.disabled = true;
 
                 const subObsToUpdate = target.observations[obsIndex].subObservations[subObsIndex];
-                const oldText = subObsToUpdate.text;
+                if (newText === '' || newText === subObsToUpdate.text) {
+                     if (form) form.remove();
+                     break;
+                }
 
+                const oldObservations = JSON.parse(JSON.stringify(target.observations));
                 subObsToUpdate.text = newText;
+                
+                form.remove();
+                applyFiltersAndRender(panelId);
 
                 try {
                     await Service.updateSubObservationInTarget(state.user.uid, id, isArchived, obsIndex, subObsIndex, { text: newText });
-                    showToast("Observação do sub-alvo atualizada!", "success");
+                    await syncTargetToDrive(target, isArchived);
                 } catch (error) {
-                    subObsToUpdate.text = oldText;
+                    target.observations = oldObservations;
                     showToast("Falha ao atualizar observação.", "error");
                     console.error("Erro ao salvar sub-observação:", error);
-                } finally {
                     applyFiltersAndRender(panelId);
                 }
                 break;
@@ -852,11 +929,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 target.deadlineDate = newDeadlineDate;
                 target.hasDeadline = true;
+
+                form.remove();
                 applyFiltersAndRender(panelId);
 
                 try {
                     await Service.updateTargetField(state.user.uid, target.id, isArchived, { hasDeadline: true, deadlineDate: newDeadlineDate });
-                    showToast("Prazo atualizado com sucesso!", "success");
+                    await syncTargetToDrive(target, isArchived);
                 } catch(error) {
                     showToast("Falha ao salvar prazo. A alteração foi desfeita.", "error");
                     target.deadlineDate = oldDeadlineDate;
@@ -880,6 +959,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     await Service.updateTargetField(state.user.uid, target.id, isArchived, { hasDeadline: false, deadlineDate: null });
                     showToast("Prazo removido.", "info");
+                    await syncTargetToDrive(target, isArchived);
                 } catch(error) {
                     showToast("Falha ao remover prazo. A alteração foi desfeita.", "error");
                     target.deadlineDate = oldDeadlineDate;
@@ -938,17 +1018,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     subObservations: []
                 };
 
-                const originalObservation = { ...target.observations[parseInt(obsIndex)] };
+                const originalObservations = JSON.parse(JSON.stringify(target.observations));
                 Object.assign(target.observations[parseInt(obsIndex)], updatedObservationData);
                 applyFiltersAndRender(panelId);
 
                 try {
                     await Service.updateObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), updatedObservationData);
                     showToast("Observação promovida a sub-alvo com sucesso!", "success");
+                    await syncTargetToDrive(target, isArchived);
                 } catch (error) {
                     console.error("Erro ao promover observação:", error);
                     showToast("Falha ao salvar. A alteração foi desfeita.", "error");
-                    target.observations[parseInt(obsIndex)] = originalObservation;
+                    target.observations = originalObservations;
                     applyFiltersAndRender(panelId);
                 }
                 break;
@@ -996,8 +1077,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (e.target.disabled) return;
                 if (!confirm("Tem certeza que deseja reverter este sub-alvo para uma observação comum?")) return;
 
-                const originalSubTarget = { ...target.observations[parseInt(obsIndex)] };
-                const updatedObservation = { ...originalSubTarget, isSubTarget: false };
+                const originalObservations = JSON.parse(JSON.stringify(target.observations));
+                const updatedObservation = { ...target.observations[parseInt(obsIndex)], isSubTarget: false };
                 delete updatedObservation.subTargetTitle;
                 delete updatedObservation.subTargetStatus;
                 delete updatedObservation.interactionCount;
@@ -1009,9 +1090,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     await Service.updateObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), updatedObservation);
                     showToast("Sub-alvo revertido para observação.", "info");
+                    await syncTargetToDrive(target, isArchived);
                 } catch (error) {
                     showToast("Erro ao reverter. A alteração foi desfeita.", "error");
-                    target.observations[parseInt(obsIndex)] = originalSubTarget;
+                    target.observations = originalObservations;
                     applyFiltersAndRender(panelId);
                 }
                 break;
@@ -1019,7 +1101,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             case 'resolve-sub-target': {
                 if (!confirm("Marcar este sub-alvo como respondido?")) return;
-                const originalSubTarget = { ...target.observations[parseInt(obsIndex)] };
+                const originalObservations = JSON.parse(JSON.stringify(target.observations));
                 const updatedObservation = { subTargetStatus: 'resolved' };
 
                 Object.assign(target.observations[parseInt(obsIndex)], updatedObservation);
@@ -1028,9 +1110,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     await Service.updateObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), updatedObservation);
                     showToast("Sub-alvo marcado como respondido!", "success");
+                    await syncTargetToDrive(target, isArchived);
                 } catch (error) {
                     showToast("Erro ao salvar. A alteração foi desfeita.", "error");
-                    target.observations[parseInt(obsIndex)] = originalSubTarget;
+                    target.observations = originalObservations;
                     applyFiltersAndRender(panelId);
                 }
                 break;
@@ -1042,6 +1125,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const newSubObservation = { text: text.trim(), date: new Date() };
 
+                const originalObservations = JSON.parse(JSON.stringify(target.observations));
                 const subTarget = target.observations[parseInt(obsIndex)];
                 if (!Array.isArray(subTarget.subObservations)) {
                     subTarget.subObservations = [];
@@ -1052,9 +1136,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     await Service.addSubObservationToTarget(state.user.uid, id, isArchived, parseInt(obsIndex), newSubObservation);
                     showToast("Observação adicionada ao sub-alvo.", "success");
+                    await syncTargetToDrive(target, isArchived);
                 } catch (error) {
                     showToast("Erro ao salvar. A alteração foi desfeita.", "error");
-                    subTarget.subObservations.pop();
+                    target.observations = originalObservations;
                     applyFiltersAndRender(panelId);
                 }
                 break;
