@@ -1,6 +1,6 @@
 // ui.js
 // Responsável por toda a manipulação do DOM e renderização da interface.
-// ARQUITETURA REVISADA: Inclui formulários inline, sistema de notificações toast e integração visual com Google Drive.
+// ARQUITETURA REVISADA: Inclui formulários inline, sistema de notificações e integração visual com Google Drive.
 
 // --- MÓDULOS ---
 import { formatDateForDisplay, formatDateToISO, timeElapsed, calculateMilestones } from './utils.js';
@@ -163,31 +163,47 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
 function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
     const isEditingEnabled = config.isEditingEnabled === true;
     
-    // NOVO: Lógica para gerar o ícone de status do Google Drive
+    // INÍCIO DA MODIFICAÇÃO: Lógica para gerar o ícone de status do Google Drive
     let driveStatusHTML = '';
-    if (config.showDriveStatus && target.googleDocId) {
-        let icon = '✓';
-        let title = 'Backup realizado com sucesso no Google Drive. Clique para abrir.';
-        let statusClass = 'synced';
+    // Apenas mostra o status se a configuração permitir e se houver um ID do Google Doc associado (ou estiver em processo de criação).
+    if (config.showDriveStatus) {
+        let icon = '';
+        let title = '';
+        let statusClass = '';
+        let isClickable = false;
 
-        // O estado dinâmico (syncing, error) sobrepõe o estado base "salvo".
-        if (target.driveStatus === 'syncing') {
-            icon = '...'; // Em um app real, isso seria um ícone de spinner animado
-            title = 'Sincronizando com o Google Drive...';
-            statusClass = 'syncing';
-        } else if (target.driveStatus === 'error') {
-            icon = '✗';
-            title = `Falha no backup: ${target.driveError || 'Erro desconhecido.'}.`;
-            statusClass = 'error';
+        // O estado é determinado pela propriedade 'driveStatus' injetada pelo script.js
+        switch (target.driveStatus) {
+            case 'syncing':
+                icon = '...';
+                title = 'Sincronizando com o Google Drive...';
+                statusClass = 'syncing';
+                break;
+            case 'error':
+                icon = '✗';
+                title = `Falha no backup.`; // Ação de 'tentar novamente' pode ser adicionada aqui no futuro.
+                statusClass = 'error';
+                break;
+            case 'synced':
+                icon = '✓';
+                title = 'Backup sincronizado no Google Drive. Clique para abrir.';
+                statusClass = 'synced';
+                isClickable = true;
+                break;
         }
 
-        // Se for um erro, não será um link clicável.
-        if (statusClass === 'error' || statusClass === 'syncing') {
-             driveStatusHTML = `<span class="drive-status-icon ${statusClass}" title="${title}">${icon}</span>`;
-        } else {
-             driveStatusHTML = `<a href="https://docs.google.com/document/d/${target.googleDocId}" target="_blank" class="drive-status-icon ${statusClass}" title="${title}">${icon}</a>`;
+        // Gera o HTML do ícone apenas se um status for determinado.
+        if (statusClass) {
+            if (isClickable && target.googleDocId) {
+                // Se estiver sincronizado e tiver um ID, cria um link para o documento.
+                driveStatusHTML = `<a href="https://docs.google.com/document/d/${target.googleDocId}" target="_blank" class="drive-status-icon ${statusClass}" title="${title}">${icon}</a>`;
+            } else {
+                // Para outros status, gera um span não clicável.
+                driveStatusHTML = `<span class="drive-status-icon ${statusClass}" title="${title}">${icon}</span>`;
+            }
         }
     }
+    // FIM DA MODIFICAÇÃO
     
     const hasSubTargets = Array.isArray(target.observations) && target.observations.some(obs => obs.isSubTarget);
     const subTargetIndicatorIcon = hasSubTargets ? `<span class="sub-target-indicator" title="Este alvo contém sub-alvos">🔗</span>` : '';
@@ -242,8 +258,9 @@ function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
         <div id="observationForm-${target.id}" class="add-observation-form" style="display:none;"></div>
         <div id="editCategoryForm-${target.id}" class="edit-category-form" style="display:none;"></div>` : '';
 
+    // MODIFICAÇÃO: Inserção do driveStatusHTML no início do h3.
     return `
-        <h3>${driveStatusHTML} ${subTargetIndicatorIcon} ${creationTag} ${categoryTag} ${deadlineTag} ${resolvedTag} ${target.title || 'Sem Título'}${editTitleIcon}</h3>
+        <h3>${driveStatusHTML}${subTargetIndicatorIcon}${creationTag}${categoryTag}${deadlineTag}${resolvedTag} ${target.title || 'Sem Título'}${editTitleIcon}</h3>
         ${detailsPara}
         ${mainActionHTML}
         ${elapsedTimePara}
@@ -274,11 +291,12 @@ export function renderPriorityTargets(allActiveTargets, dailyTargetsData) {
     section.style.display = 'block';
     container.innerHTML = ''; 
 
+    // MODIFICAÇÃO: Adicionado showDriveStatus: true
     const config = {
         showCreationDate: true, showCategory: true, showDeadline: true, showDetails: true,
         showObservations: true, showActions: false, showPrayButton: true,
         isPriorityPanel: true, showForms: true, isEditingEnabled: false, 
-        showDriveStatus: true // NOVO: Habilita o status do Drive
+        showDriveStatus: true 
     };
     
     priorityTargets.forEach(target => {
@@ -296,13 +314,14 @@ export function renderTargets(targets, total, page, perPage, dailyTargetsData) {
     if (targets.length === 0) {
         container.innerHTML = '<p>Nenhum alvo de oração encontrado com os filtros atuais.</p>';
     } else {
+        // MODIFICAÇÃO: Adicionado showDriveStatus: true
         const config = {
             showCreationDate: true, showCategory: true, showDeadline: true, showDetails: true,
             showElapsedTime: true, showObservations: true, showActions: true,
             showResolveButton: true, showArchiveButton: true, showTogglePriorityButton: true,
             showAddObservationButton: true, showEditDeadlineButton: true, showEditCategoryButton: true,
             showDownloadButton: true, showForms: true, showPrayButton: false, isEditingEnabled: true,
-            showDriveStatus: true // NOVO: Habilita o status do Drive
+            showDriveStatus: true
         };
         targets.forEach(target => {
             const div = document.createElement("div");
@@ -326,12 +345,13 @@ export function renderArchivedTargets(targets, total, page, perPage, dailyTarget
             div.className = `target archived ${target.resolved ? 'resolved' : ''}`;
             div.dataset.targetId = target.id;
             
+            // MODIFICAÇÃO: Adicionado showDriveStatus: true
             const config = {
                 showCreationDate: true, showCategory: true, showResolvedDate: true,
                 showDetails: true, showArchivedDate: true, showObservations: true,
                 showActions: true, showDeleteButton: true,
                 showDownloadButton: true, showForms: true, isEditingEnabled: true,
-                showDriveStatus: true // NOVO: Habilita o status do Drive
+                showDriveStatus: true
             };
             div.innerHTML = createTargetHTML(target, config, dailyTargetsData);
             container.appendChild(div);
@@ -346,11 +366,12 @@ export function renderResolvedTargets(targets, total, page, perPage) {
     if (targets.length === 0) {
         container.innerHTML = '<p>Nenhum alvo respondido encontrado.</p>';
     } else {
+        // MODIFICAÇÃO: Adicionado showDriveStatus: true
         const config = {
             showCategory: true, showResolvedDate: true, showTimeToResolution: true,
             showObservations: true, showActions: false, showDownloadButton: true,
             showForms: true, isEditingEnabled: true,
-            showDriveStatus: true // NOVO: Habilita o status do Drive
+            showDriveStatus: true
         };
         targets.forEach(target => {
             const div = document.createElement("div");
@@ -373,11 +394,12 @@ export function renderDailyTargets(pending, completed, dailyTargetsData) {
     }
 
     if (pending.length > 0) {
+        // MODIFICAÇÃO: Adicionado showDriveStatus: true
         const config = {
             showCreationDate: true, showCategory: true, showDeadline: true, showDetails: true,
             showObservations: true, showActions: false, showPrayButton: true, 
             showForms: true, isEditingEnabled: false,
-            showDriveStatus: true // NOVO: Habilita o status do Drive
+            showDriveStatus: true
         };
         pending.forEach(target => {
             const div = document.createElement("div");
