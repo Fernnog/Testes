@@ -1,3 +1,5 @@
+/* styles.css (Versão Final com Melhorias de Backup) */
+
 /* ==== GOOGLE FONTS ==== */
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');
 
@@ -19,7 +21,7 @@
     clear: right;
 }
 
-/* ==== USER STATUS (Barra Superior) - MELHORIA PRIORIDADE 1 ==== */
+/* ==== USER AND DRIVE STATUS (Barra Superior) ==== */
 .user-status-top {
     float: right;
     padding: 5px 15px;
@@ -30,6 +32,25 @@
     border-radius: 15px;
     margin-left: 15px;
     display: none; /* Oculto por padrão, ativado via JS */
+}
+
+/* NOVO: Estilo para o indicador de status do Google Drive */
+.drive-status-top {
+    float: right;
+    padding: 5px 15px;
+    font-size: 0.9em;
+    color: #fff;
+    background-color: #0f9d58; /* Verde do Google Drive */
+    border: 1px solid #0a8f4c;
+    border-radius: 15px;
+    margin-left: 10px;
+    display: none; /* Ativado via JS após login */
+}
+
+/* NOVO: Modificador para estado de erro no indicador do Drive */
+.drive-status-top.error {
+    background-color: #db4437; /* Vermelho Google */
+    border-color: #c5372c;
 }
 
 
@@ -100,6 +121,15 @@ h1 {
 }
 .main-menu button:hover, .main-menu .btn:hover {
     background-color: #ca7d1b; /* Darker orange */
+}
+
+/* NOVO: Estilo para o botão de Login com Google */
+.google-btn {
+    background-color: #4285F4; /* Cor oficial do Google */
+    color: white;
+}
+.google-btn:hover {
+    background-color: #357ae8;
 }
 
 /* View Buttons (Dark Brown) */
@@ -676,6 +706,42 @@ input[type="date"] {
     opacity: 0.6;
 }
 /* ==== FIM: ESTILOS PARA SUB-ALVOS ==== */
+
+/* ==== SYNC STATUS ICONS (UX Improvement) ==== */
+.sync-status-icon {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    margin-left: 10px;
+    vertical-align: middle;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    transition: opacity 0.3s, transform 0.3s;
+}
+
+/* Ícone para 'Synced' (check verde) */
+.sync-status-icon.synced {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%2327ae60"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>');
+}
+
+/* Ícone para 'Syncing' (loader girando) */
+.sync-status-icon.syncing {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%233498db"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>');
+    animation: spin 1s linear infinite;
+}
+
+/* Ícone para 'Error' (alerta vermelho) */
+.sync-status-icon.sync-error {
+     background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23e74c3c"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>');
+}
+
+/* Animação de rotação para o ícone 'syncing' */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
 
 /* ==== MODAL STYLES ==== */
 .modal {
