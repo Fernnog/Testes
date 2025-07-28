@@ -13,9 +13,9 @@
 <body>
 
 <div class="top-bar">
+    <!-- MODIFICADO: Adicionado o span para o status do Google Drive -->
+    <span id="driveStatusTop" class="drive-status-top" style="display: none;">Conectado ao Drive ✓</span>
     <span id="userStatusTop" class="user-status-top" style="display: none;"></span>
-    <!-- Conteúdo opcional para a barra superior, como data do último backup -->
-    <!-- <span class="ultimo-backup">Último Backup: DD/MM/AAAA HH:MM</span> -->
 </div>
 
 <div class="logo-container">
@@ -33,6 +33,8 @@
             <div class="auth-buttons">
                 <button id="btnEmailSignUp" class="btn auth-btn">Cadastrar</button>
                 <button id="btnEmailSignIn" class="btn auth-btn">Entrar</button>
+                <!-- NOVO: Botão de Login com Google -->
+                <button id="btnGoogleSignIn" class="btn auth-btn google-btn">Entrar com Google</button>
             </div>
             <div class="forgot-password-container">
                 <button id="btnForgotPassword" class="forgot-password-btn">Esqueci minha senha</button>
@@ -324,7 +326,9 @@
         <span id="expiredToastMessage">Você tem alvos com prazo vencido!</span>
         <button id="closeExpiredToast" class="toast-close-btn">×</button>
     </div>
-
+    
+    <!-- NOVO: Adicionado script da API do Google -->
+    <script async defer src="https://apis.google.com/js/api.js"></script>
     <script type="module" src="script.js"></script>
 </body>
 </html>
