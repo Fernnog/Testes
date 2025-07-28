@@ -1,17 +1,19 @@
 // --- START OF FILE auth.js ---
 // Responsabilidade: Conter as funções que interagem diretamente com o serviço Firebase Auth.
-// Este módulo não deve manipular o DOM diretamente.
+// Este módulo foi refatorado para usar "aliasing" (apelidos) nas importações do Firebase,
+// evitando conflitos de nome e melhorando a clareza do código.
 
 import { auth } from './firebase-config.js';
 import { 
-    signOut, 
+    signOut as firebaseSignOut, // Renomeado para clareza
     onAuthStateChanged, 
-    createUserWithEmailAndPassword, 
-    signInWithEmailAndPassword, 
-    sendPasswordResetEmail,
-    GoogleAuthProvider,       // <-- IMPORTAÇÃO ADICIONADA
-    signInWithPopup,          // <-- IMPORTAÇÃO ADICIONADA
-    getAdditionalUserInfo    // <-- IMPORTAÇÃO ADICIONADA
+    createUserWithEmailAndPassword as firebaseCreateUser, // Renomeado
+    signInWithEmailAndPassword as firebaseSignIn,     // Renomeado
+    sendPasswordResetEmail as firebaseSendPasswordReset, // Renomeado
+    GoogleAuthProvider,
+    signInWithPopup,
+    getAdditionalUserInfo,
+    OAuthProvider
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
 /**
@@ -33,7 +35,7 @@ export function initializeAuth(onUserAuthenticated) {
  * @throws {Error} - Lança um erro em caso de falha no cadastro.
  */
 export async function signUpWithEmailPassword(email, password) {
-    return await createUserWithEmailAndPassword(auth, email, password);
+    return await firebaseCreateUser(auth, email, password);
 }
 
 /**
@@ -43,8 +45,8 @@ export async function signUpWithEmailPassword(email, password) {
  * @returns {Promise<import("firebase/auth").UserCredential>} - Uma promessa que resolve com as credenciais do usuário em caso de sucesso.
  * @throws {Error} - Lança um erro em caso de falha na autenticação.
  */
-export async function signInWithEmailAndPassword(email, password) {
-    return await signInWithEmailAndPassword(auth, email, password);
+export async function signInWithEmailPassword(email, password) {
+    return await firebaseSignIn(auth, email, password);
 }
 
 /**
@@ -89,7 +91,7 @@ export async function resetPassword(email) {
     if (!email) {
         throw new Error("O e-mail é obrigatório para redefinir a senha.");
     }
-    return await sendPasswordResetEmail(auth, email);
+    return await firebaseSendPasswordReset(auth, email);
 }
 
 /**
@@ -98,5 +100,5 @@ export async function resetPassword(email) {
  * @throws {Error} - Lança um erro se houver falha no logout.
  */
 export async function handleSignOut() {
-    return await signOut(auth);
+    return await firebaseSignOut(auth);
 }
