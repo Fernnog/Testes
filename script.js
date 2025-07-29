@@ -94,8 +94,6 @@ const findTargetInState = (targetId) => {
  * @param {string} targetId - O ID do alvo a ser sincronizado.
  */
 async function syncTarget(targetId) {
-    // LOG DE VERIFICAÇÃO 4
-    console.log(`[Sync] A função syncTarget foi chamada para o ID: ${targetId}. O Drive está habilitado? ${state.isDriveEnabled}`);
     if (!state.isDriveEnabled) {
         console.warn("[Sync] Sincronização abortada: o serviço do Drive não está habilitado.");
         return;
@@ -130,6 +128,40 @@ async function syncTarget(targetId) {
     }
 }
 
+/**
+ * (NOVO) Handler para forçar a sincronização de todos os alvos.
+ */
+async function handleForceSync() {
+    if (!state.isDriveEnabled) {
+        showToast("Você precisa estar conectado com o Google para sincronizar.", "error");
+        return;
+    }
+    
+    if (!confirm("Deseja forçar a sincronização de todos os alvos com o Google Drive agora?")) return;
+
+    showToast("Iniciando sincronização manual completa...", "info");
+    console.log('[App] Iniciando sincronização manual em massa...');
+
+    // Define todos os alvos como pendentes para feedback visual
+    state.prayerTargets.forEach(t => t.driveStatus = 'pending');
+    state.archivedTargets.forEach(t => t.driveStatus = 'pending');
+    state.resolvedTargets.forEach(t => t.driveStatus = 'pending');
+    
+    // Re-renderiza tudo para mostrar o status "pendente"
+    applyFiltersAndRender('mainPanel');
+    applyFiltersAndRender('archivedPanel');
+    applyFiltersAndRender('resolvedPanel');
+
+    const allTargetsToSync = [...state.prayerTargets, ...state.archivedTargets, ...state.resolvedTargets];
+    for (const target of allTargetsToSync) {
+        await new Promise(resolve => setTimeout(resolve, 200)); 
+        await syncTarget(target.id);
+    }
+    
+    showToast("Sincronização manual concluída!", "success");
+}
+
+
 // =================================================================
 // === LÓGICA DE AUTENTICAÇÃO E FLUXO DE DADOS ===
 // =================================================================
@@ -158,12 +190,8 @@ async function handleSignIn() {
     }
 }
 
-/**
- * NOVO: Handler para o fluxo de login com o Google.
- */
 async function handleGoogleSignIn() {
     try {
-        // LOG DE VERIFICAÇÃO 2
         console.log("[App] Iniciando o fluxo de login com Google...");
         const { user, accessToken } = await Auth.signInWithGoogle();
         
@@ -171,7 +199,6 @@ async function handleGoogleSignIn() {
             console.log("[App] Login com Google bem-sucedido. Usuário:", user.uid);
             showToast("Autenticado com Google. Inicializando o serviço do Drive...", "info");
             
-            // LOG DE VERIFICAÇÃO 3
             console.log("[App] Tentando inicializar o GoogleDriveService...");
             const initialized = await GoogleDriveService.initializeDriveService(accessToken);
             
@@ -180,6 +207,10 @@ async function handleGoogleSignIn() {
                 state.isDriveEnabled = true;
                 UI.updateDriveStatusUI('connected');
                 showToast("Conexão com Google Drive estabelecida!", "success");
+                // Recarrega os dados para iniciar a sincronização em massa, se já estiver logado
+                if (state.user) {
+                   await loadDataForUser(state.user);
+                }
             } else {
                  console.error("[App] Falha na inicialização do GoogleDriveService, mas sem erro lançado.");
             }
@@ -209,6 +240,8 @@ async function handlePasswordReset() {
 }
 
 function applyFiltersAndRender(panelId) {
+    if (!panelId || !state.pagination[panelId] || !state.filters[panelId]) return;
+
     const panelState = state.pagination[panelId];
     const panelFilters = state.filters[panelId];
     let sourceData = [];
@@ -265,20 +298,27 @@ function applyFiltersAndRender(panelId) {
 
 async function loadDataForUser(user) {
     try {
+        // 1. Busca de dados primários do Firestore
         const [prayerData, archivedData, perseveranceData, weeklyData] = await Promise.all([
             Service.fetchPrayerTargets(user.uid),
             Service.fetchArchivedTargets(user.uid),
             Service.loadPerseveranceData(user.uid),
             Service.loadWeeklyPrayerData(user.uid)
         ]);
+
         state.user = user;
-        state.prayerTargets = prayerData;
-        state.archivedTargets = archivedData.filter(t => !t.resolved);
-        state.resolvedTargets = archivedData.filter(t => t.resolved);
+        // 2. Atribuição de estado inicial de sincronização
+        state.prayerTargets = prayerData.map(t => ({ ...t, driveStatus: 'pending' }));
+        const allArchived = archivedData.map(t => ({ ...t, driveStatus: 'pending' }));
+        state.archivedTargets = allArchived.filter(t => !t.resolved);
+        state.resolvedTargets = allArchived.filter(t => t.resolved);
+        
         state.perseveranceData = perseveranceData;
         state.weeklyPrayerData = weeklyData;
         const dailyTargetsData = await Service.loadDailyTargets(user.uid, state.prayerTargets);
         state.dailyTargets = dailyTargetsData;
+
+        // 3. Renderização inicial da UI com o status 'pending'
         applyFiltersAndRender('mainPanel');
         applyFiltersAndRender('archivedPanel');
         applyFiltersAndRender('resolvedPanel');
@@ -288,16 +328,28 @@ async function loadDataForUser(user) {
         UI.updateWeeklyChart(state.weeklyPrayerData);
         UI.showPanel('dailySection');
 
+        // --- Ponto Crítico da Correção ---
+        // 4. Dispara a sincronização em massa para todos os alvos carregados
+        if (state.isDriveEnabled) {
+            console.log('[App] Iniciando sincronização em massa para todos os alvos...');
+            showToast('Iniciando sincronização com o Google Drive...', 'info');
+            const allTargetsToSync = [...state.prayerTargets, ...state.archivedTargets, ...state.resolvedTargets];
+            for (const target of allTargetsToSync) {
+                // Adiciona um pequeno delay para não sobrecarregar a API do Google
+                await new Promise(resolve => setTimeout(resolve, 200)); 
+                await syncTarget(target.id);
+            }
+        }
+        
+        // Lógica existente de toast de prazos vencidos
         const now = new Date();
         const todayUTCStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
         const expiredTargets = state.prayerTargets.filter(target =>
             target.hasDeadline && target.deadlineDate && target.deadlineDate.getTime() < todayUTCStart.getTime()
         );
-        
         if (expiredTargets.length > 0) {
             UI.showExpiredTargetsToast(expiredTargets);
         }
-        
         updateFloatingNavVisibility(state);
 
     } catch (error) {
@@ -307,10 +359,10 @@ async function loadDataForUser(user) {
     }
 }
 
+
 function handleLogoutState() {
     state = { user: null, prayerTargets: [], archivedTargets: [], resolvedTargets: [], perseveranceData: { consecutiveDays: 0, recordDays: 0, lastInteractionDate: null }, weeklyPrayerData: { weekId: null, interactions: {} }, dailyTargets: { pending: [], completed: [], targetIds: [] }, pagination: { mainPanel: { currentPage: 1, targetsPerPage: 10 }, archivedPanel: { currentPage: 1, targetsPerPage: 10 }, resolvedPanel: { currentPage: 1, targetsPerPage: 10 }}, filters: { mainPanel: { searchTerm: '', showDeadlineOnly: false, showExpiredOnly: false, startDate: null, endDate: null }, archivedPanel: { searchTerm: '', startDate: null, endDate: null }, resolvedPanel: { searchTerm: '' }}, isDriveEnabled: false };
     UI.renderTargets([], 0, 1, 10); UI.renderArchivedTargets([], 0, 1, 10); UI.renderResolvedTargets([], 0, 1, 10); UI.renderDailyTargets([], []); UI.resetPerseveranceUI(); UI.resetWeeklyChart(); UI.showPanel('authSection');
-    // NOVO: Garante que o status do Drive seja ocultado no logout
     UI.updateDriveStatusUI('disconnected');
     updateFloatingNavVisibility(state);
 }
@@ -335,7 +387,7 @@ async function handleAddNewTarget(event) {
         observations: [],
         resolved: false,
         isPriority: isPriority,
-        googleDocId: null // NOVO: Campo para o ID do Google Doc
+        googleDocId: null 
     };
     try {
         await Service.addNewPrayerTarget(state.user.uid, newTarget);
@@ -348,7 +400,6 @@ async function handleAddNewTarget(event) {
         const newTargetInState = state.prayerTargets.find(t => t.title === newTarget.title && !t.googleDocId);
 
         if (newTargetInState) {
-            // LOG DE VERIFICAÇÃO 5
             console.log(`[App] Disparando sincronização para o novo alvo ID: ${newTargetInState.id}`);
             await syncTarget(newTargetInState.id);
         } else {
@@ -558,12 +609,10 @@ async function handleTogglePriority(target) {
 document.addEventListener('DOMContentLoaded', () => {
     Auth.initializeAuth(user => {
         if (user) {
-            // A chamada UI.updateAuthUI(user) já oculta a seção de login.
             showToast(`Bem-vindo(a), ${user.email || user.displayName}!`, 'success');
             UI.updateAuthUI(user);
             loadDataForUser(user);
         } else {
-            // A chamada UI.updateAuthUI(null) já exibe a seção de login.
             UI.updateAuthUI(null);
             handleLogoutState();
         }
@@ -573,7 +622,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btnEmailSignUp').addEventListener('click', handleSignUp);
     document.getElementById('btnEmailSignIn').addEventListener('click', handleSignIn);
     document.getElementById('btnForgotPassword').addEventListener('click', handlePasswordReset);
-    // NOVO: Listener para o botão de login com Google
     document.getElementById('btnGoogleSignIn').addEventListener('click', handleGoogleSignIn);
     document.getElementById('btnLogout').addEventListener('click', () => Auth.handleSignOut());
     document.getElementById('prayerForm').addEventListener('submit', handleAddNewTarget);
@@ -582,6 +630,12 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('viewAllTargetsButton').addEventListener('click', () => UI.showPanel('mainPanel'));
     document.getElementById('viewArchivedButton').addEventListener('click', () => UI.showPanel('archivedPanel'));
     document.getElementById('viewResolvedButton').addEventListener('click', () => UI.showPanel('resolvedPanel'));
+    
+    // Supondo um novo botão com id="btnForceSync" no index.html
+    const forceSyncButton = document.getElementById('btnForceSync');
+    if(forceSyncButton) {
+        forceSyncButton.addEventListener('click', handleForceSync);
+    }
     
     // --- Listeners da Seção Diária, Relatórios, Modais e Filtros ---
     document.getElementById('refreshDaily').addEventListener('click', async () => { if(confirm("Deseja gerar uma nova lista de alvos para hoje? A lista atual será substituída.")) { await Service.forceGenerateDailyTargets(state.user.uid, state.prayerTargets); await loadDataForUser(state.user); showToast("Nova lista gerada!", "success"); } });
