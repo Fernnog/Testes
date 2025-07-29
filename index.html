@@ -26,27 +26,19 @@
     <h1>Meus Alvos de Oração</h1>
 </div>
 
-    <div id="authSection" class="auth-section">
-        <div class="auth-form" id="emailPasswordAuthForm" style="display: block;">
-            <input type="email" id="email" placeholder="Seu e-mail" required>
-            <input type="password" id="password" placeholder="Sua senha" required>
-            <div class="auth-buttons">
-                <button id="btnEmailSignUp" class="btn auth-btn">Cadastrar</button>
-                <button id="btnEmailSignIn" class="btn auth-btn">Entrar</button>
-                <!-- NOVO: Botão de Login com Google -->
-                <button id="btnGoogleSignIn" class="btn auth-btn google-btn">Entrar com Google</button>
-            </div>
-            <div class="forgot-password-container">
-                <button id="btnForgotPassword" class="forgot-password-btn">Esqueci minha senha</button>
-            </div>
-        </div>
-
-        <div class="auth-status-container" style="display: none;">
-            <p id="authStatus" class="auth-status">Nenhum usuário autenticado</p>
-            <button id="btnLogout" class="btn auth-btn" style="display:none;">Sair</button>
-        </div>
-        <div id="passwordResetMessage" class="password-reset-message" style="display:none; margin-top: 10px;"></div>
+<div id="authSection" class="auth-section">
+    <!-- O formulário de email/senha foi removido -->
+    
+    <div id="googleAuthContainer" style="display: block;">
+         <button id="btnGoogleSignIn" class="btn auth-btn google-btn">Entrar com Google</button>
     </div>
+
+    <div class="auth-status-container" style="display: none;">
+        <p id="authStatus" class="auth-status">Nenhum usuário autenticado</p>
+        <button id="btnLogout" class="btn auth-btn" style="display:none;">Sair</button>
+    </div>
+    <div id="passwordResetMessage" class="password-reset-message" style="display:none;"></div>
+</div>
 
     <hr class="menu-separator">
 
