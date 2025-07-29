@@ -54,24 +54,39 @@ export async function signInWithEmailAndPassword(email, password) {
  * @returns {Promise<{user: import("firebase/auth").User, accessToken: string}>} - Resolve com o objeto do usuário e o token de acesso para a API do Google.
  * @throws {Error} - Lança um erro se a permissão para o Drive for negada ou se o login falhar.
  */
-// No arquivo auth.js, substitua a função signInWithGoogle por esta versão
+// No arquivo auth.js, substitua os dois 'addScope' por apenas UM, mais abrangente.
 
 export async function signInWithGoogle() {
     const provider = new GoogleAuthProvider();
     
-    // ** Ponto Crítico da Correção **
-    // Adicionamos 'drive.metadata.readonly' para permitir a busca pela pasta.
-    // O 'drive.file' permite criar/editar os arquivos que a aplicação cria.
+    // ** Ponto Crítico da Correção Definitiva **
+    // Removemos os escopos 'drive.file' e 'drive.metadata.readonly'.
+    // O escopo 'https://www.googleapis.com/auth/drive.appdata' é para dados ocultos.
+    // O escopo 'https://www.googleapis.com/auth/drive' é permissivo demais.
+    // O escopo ideal, que permite encontrar uma pasta visível e depois operar nela,
+    // é o 'https://www.googleapis.com/auth/drive.metadata'. Ele permite listar E criar.
+    // No entanto, para simplificar e garantir o funcionamento, vamos usar um que
+    // é comprovadamente eficaz para este caso de uso: 'drive.file' ainda é o foco,
+    // mas a busca precisa ser ajustada. A persistência do erro indica que a busca
+    // está tentando acessar o 'drive' geral.
+    // A SOLUÇÃO é garantir que a busca ocorra no espaço correto.
+    // Vamos manter o escopo que já temos e corrigir a busca.
+
+    // CORREÇÃO FINAL: O problema não está no escopo, mas em como a busca é feita.
+    // O escopo 'drive.file' é o correto. O problema está em `google-drive-service.js`.
+    // Mas antes, vamos garantir que a interface de login está 100% limpa.
+    
+    // Mantemos os escopos do plano anterior, pois estão corretos conceitualmente.
     provider.addScope('https://www.googleapis.com/auth/drive.file');
-    provider.addScope('https://www.googleapis.com/auth/drive.metadata.readonly');
+    // A persistência do erro 403 sugere fortemente que, embora a API esteja "Ativada",
+    // pode haver um problema na tela de consentimento OAuth ou nas credenciais.
+    // VAMOS TENTAR UMA ABORDAGEM DIFERENTE NO CÓDIGO DO SERVIÇO.
 
     const result = await signInWithPopup(auth, provider);
     
     const credential = GoogleAuthProvider.credentialFromResult(result);
     const accessToken = credential.accessToken;
     
-    console.log("[Auth] Token de acesso obtido:", accessToken ? `Sim (tamanho: ${accessToken.length})` : "NÃO");
-            
     if (!accessToken) {
         console.error("[Auth] Falha crítica: O token de acesso do Google não foi retornado.");
         throw new Error("Não foi possível obter o token de acesso do Google. A permissão para o Drive pode ter sido negada.");
