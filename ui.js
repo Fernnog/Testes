@@ -161,45 +161,45 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
  * @returns {string} - O HTML do elemento do alvo.
  */
 function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
-    // LOG DE VERIFICAÇÃO 11
-    if (config.showDriveStatus) {
-        console.log(`[UI] Renderizando alvo '${target.title}' (ID: ${target.id}). Status do Drive recebido:`, target.driveStatus);
-    }
-    
     const isEditingEnabled = config.isEditingEnabled === true;
-    
+
     let driveStatusHTML = '';
     if (config.showDriveStatus) {
         let icon = '';
         let title = '';
         let statusClass = '';
-        let isClickable = false;
+        let tagName = 'span';
+        let actionAttribute = '';
 
         switch (target.driveStatus) {
             case 'syncing':
-                icon = '...';
+                icon = '↻'; // Ícone de spinner/refresh
                 title = 'Sincronizando com o Google Drive...';
                 statusClass = 'syncing';
                 break;
             case 'error':
                 icon = '✗';
-                title = `Falha no backup.`;
+                title = 'Falha no backup.';
                 statusClass = 'error';
                 break;
             case 'synced':
                 icon = '✓';
                 title = 'Backup sincronizado no Google Drive. Clique para abrir.';
                 statusClass = 'synced';
-                isClickable = true;
+                if (target.googleDocId) {
+                    tagName = 'a';
+                    actionAttribute = `href="https://docs.google.com/document/d/${target.googleDocId}" target="_blank"`;
+                }
+                break;
+            case 'pending':
+                icon = ''; // Ícone de relógio
+                title = 'Sincronização pendente...';
+                statusClass = 'pending';
                 break;
         }
 
         if (statusClass) {
-            if (isClickable && target.googleDocId) {
-                driveStatusHTML = `<a href="https://docs.google.com/document/d/${target.googleDocId}" target="_blank" class="drive-status-icon ${statusClass}" title="${title}">${icon}</a>`;
-            } else {
-                driveStatusHTML = `<span class="drive-status-icon ${statusClass}" title="${title}">${icon}</span>`;
-            }
+            driveStatusHTML = `<${tagName} ${actionAttribute} class="drive-status-icon ${statusClass}" title="${title}">${icon}</${tagName}>`;
         }
     }
     
@@ -920,29 +920,38 @@ export function displayCompletionPopup() {
  */
 export function updateAuthUI(user, message = '', isError = false) {
     const authSection = document.getElementById('authSection');
+    if (!authSection) return;
+
+    const authForm = document.getElementById('emailPasswordAuthForm');
+    const authStatusContainer = authSection.querySelector('.auth-status-container');
+    const authStatusP = document.getElementById('authStatus');
+    const btnLogout = document.getElementById('btnLogout');
     const userStatusTop = document.getElementById('userStatusTop');
-    const driveStatusTop = document.getElementById('driveStatusTop');
     const passwordResetMessageDiv = document.getElementById('passwordResetMessage');
     const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
 
     if (user) {
+        // Oculta a seção inteira, pois a informação principal estará na barra superior
         authSection.classList.add('hidden');
         userStatusTop.textContent = `Logado: ${user.email}`;
         userStatusTop.style.display = 'inline-block';
         if (passwordResetMessageDiv) passwordResetMessageDiv.style.display = 'none';
+
     } else {
+        // Garante que o estado de logout esteja correto
         authSection.classList.remove('hidden');
+        authForm.style.display = 'block';
+        authStatusContainer.style.display = 'none';
+        
         if (userStatusTop) {
-            userStatusTop.style.display = 'none';
-            userStatusTop.textContent = '';
+             userStatusTop.style.display = 'none';
+             userStatusTop.textContent = '';
         }
-        if (driveStatusTop) {
-            driveStatusTop.style.display = 'none';
-            driveStatusTop.textContent = '';
-        }
+
         if (emailInput) emailInput.value = '';
         if (passwordInput) passwordInput.value = '';
+
         if (message && passwordResetMessageDiv) {
             passwordResetMessageDiv.textContent = message;
             passwordResetMessageDiv.style.color = isError ? "red" : "green";
@@ -952,6 +961,7 @@ export function updateAuthUI(user, message = '', isError = false) {
         }
     }
 }
+
 
 /**
  * NOVO: Atualiza o indicador de status global do Google Drive.
