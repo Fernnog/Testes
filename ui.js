@@ -160,6 +160,7 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
  * @param {object} dailyTargetsData - Dados dos alvos diários para verificar status.
  * @returns {string} - O HTML do elemento do alvo.
  */
+
 function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
     const isEditingEnabled = config.isEditingEnabled === true;
 
@@ -192,7 +193,8 @@ function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
                 }
                 break;
             case 'pending':
-                icon = ''; // Ícone de relógio
+            default:
+                icon = ''; // Ícone de relógio ou nuvem
                 title = 'Sincronização pendente...';
                 statusClass = 'pending';
                 break;
