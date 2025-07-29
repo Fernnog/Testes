@@ -56,22 +56,27 @@ export async function initializeDriveService(accessToken) {
  */
 async function findOrCreateAppFolder() {
     if (appFolderId) {
+        console.log("[Drive Service] Usando ID da pasta em cache:", appFolderId);
         return appFolderId;
     }
 
     // 1. Procura por uma pasta com o nome definido e que não esteja na lixeira.
+    const searchQuery = `mimeType='application/vnd.google-apps.folder' and name='${FOLDER_NAME}' and trashed=false`;
+    console.log("[Drive Service] Procurando por pasta com a query:", searchQuery);
     const response = await gapi.client.drive.files.list({
-        q: `mimeType='application/vnd.google-apps.folder' and name='${FOLDER_NAME}' and trashed=false`,
+        q: searchQuery,
         fields: 'files(id, name)',
         spaces: 'drive'
     });
 
     if (response.result.files && response.result.files.length > 0) {
         appFolderId = response.result.files[0].id;
+        console.log(`[Drive Service] Pasta encontrada. ID: ${appFolderId}`);
         return appFolderId;
     }
 
     // 2. Se não encontrou, cria a pasta.
+    console.log("[Drive Service] Pasta não encontrada. Tentando criar uma nova...");
     const folderMetadata = {
         'name': FOLDER_NAME,
         'mimeType': 'application/vnd.google-apps.folder'
@@ -82,6 +87,7 @@ async function findOrCreateAppFolder() {
     });
 
     appFolderId = createResponse.result.id;
+    console.log(`[Drive Service] Pasta criada com sucesso. ID: ${appFolderId}`);
     return appFolderId;
 }
 
@@ -131,6 +137,7 @@ export async function backupTargetToDrive(target, googleDocId = null) {
 
     if (googleDocId) {
         // --- LÓGICA DE ATUALIZAÇÃO (UPDATE) ---
+        console.log(`[Drive Service] ATUALIZANDO documento. ID: ${googleDocId}, Novo Título: ${fileName}`);
         const updateMetadata = { name: fileName }; // Garante que o nome seja atualizado se o título do alvo mudar
         
         // Requisição multipart para atualizar metadados e conteúdo de uma vez
@@ -154,12 +161,13 @@ ${fileContent}
             body: body
         });
         
-        console.log(`Backup do alvo '${target.title}' ATUALIZADO no Drive.`);
+        console.log(`[Drive Service] Resposta da API de atualização recebida para o alvo '${target.title}'.`);
         return { success: true, docId: googleDocId };
 
     } else {
         // --- LÓGICA DE CRIAÇÃO (CREATE) ---
         const parentFolderId = await findOrCreateAppFolder();
+        console.log(`[Drive Service] CRIANDO novo documento. Título: ${fileName}, na pasta ID: ${parentFolderId}`);
         const createMetadata = {
             'name': fileName,
             'mimeType': 'application/vnd.google-apps.document', // Cria como um Google Doc
@@ -187,7 +195,7 @@ ${fileContent}
         });
         
         const newDocId = response.result.id;
-        console.log(`Backup do alvo '${target.title}' CRIADO no Drive com ID: ${newDocId}`);
+        console.log(`[Drive Service] Documento criado com sucesso. Novo ID do Documento: ${newDocId}`);
         return { success: true, docId: newDocId };
     }
 }
