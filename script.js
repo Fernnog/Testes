@@ -330,11 +330,13 @@ async function handleAddNewTarget(event) {
 
         await loadDataForUser(state.user);
         
-        const newTargetInState = state.prayerTargets.find(t => t.title === newTarget.title && !t.id.includes('_'));
+        // **INÍCIO DA MODIFICAÇÃO (PRIORIDADE 1)**
+        const newTargetInState = state.prayerTargets.find(t => t.title === newTarget.title && !t.googleDocId);
 
         if (newTargetInState) {
             await syncTarget(newTargetInState.id);
         }
+        // **FIM DA MODIFICAÇÃO**
 
         UI.showPanel('mainPanel');
     } catch (error) {
@@ -417,7 +419,9 @@ async function handleResolveTarget(target, panelId) {
     try {
         await Service.markAsResolved(state.user.uid, targetToResolve);
         showToast("Alvo marcado como respondido!", "success");
+        // **INÍCIO DA MODIFICAÇÃO (PRIORIDADE 1)**
         await syncTarget(target.id);
+        // **FIM DA MODIFICAÇÃO**
     } catch (error) {
         showToast("Erro ao sincronizar. A ação será desfeita.", "error");
         state.resolvedTargets.shift();
@@ -442,7 +446,9 @@ async function handleArchiveTarget(target, panelId) {
     try {
         await Service.archiveTarget(state.user.uid, targetToArchive);
         showToast("Alvo arquivado.", "info");
+        // **INÍCIO DA MODIFICAÇÃO (PRIORIDADE 1)**
         await syncTarget(target.id);
+        // **FIM DA MODIFICAÇÃO**
     } catch (error) {
         showToast("Erro ao sincronizar. A ação será desfeita.", "error");
         state.archivedTargets.shift();
@@ -485,7 +491,9 @@ async function handleAddObservation(target, isArchived, panelId) {
     try {
         await Service.addObservationToTarget(state.user.uid, target.id, isArchived, newObservation);
         showToast("Observação adicionada.", "success");
+        // **INÍCIO DA MODIFICAÇÃO (PRIORIDADE 1)**
         await syncTarget(target.id);
+        // **FIM DA MODIFICAÇÃO**
     } catch(error) {
         showToast("Falha ao salvar. A alteração será desfeita.", "error");
         target.observations.pop();
@@ -504,7 +512,9 @@ async function handleSaveCategory(target, isArchived, panelId) {
     try {
         await Service.updateTargetField(state.user.uid, target.id, isArchived, { category: newCategory });
         showToast("Categoria atualizada.", "success");
+        // **INÍCIO DA MODIFICAÇÃO (PRIORIDADE 1)**
         await syncTarget(target.id);
+        // **FIM DA MODIFICAÇÃO**
     } catch(error) {
         showToast("Falha ao salvar. A alteração foi desfeita.", "error");
         target.category = oldCategory;
@@ -522,7 +532,9 @@ async function handleTogglePriority(target) {
     try {
         await Service.updateTargetField(state.user.uid, target.id, false, { isPriority: newStatus });
         showToast(newStatus ? "Alvo marcado como prioritário." : "Alvo removido dos prioritários.", "info");
+        // **INÍCIO DA MODIFICAÇÃO (PRIORIDADE 1)**
         await syncTarget(target.id);
+        // **FIM DA MODIFICAÇÃO**
     } catch (error) {
         showToast("Erro ao sincronizar. A alteração foi desfeita.", "error");
         target.isPriority = !newStatus;
@@ -538,10 +550,12 @@ async function handleTogglePriority(target) {
 document.addEventListener('DOMContentLoaded', () => {
     Auth.initializeAuth(user => {
         if (user) {
+            // A chamada UI.updateAuthUI(user) já oculta a seção de login.
             showToast(`Bem-vindo(a), ${user.email || user.displayName}!`, 'success');
             UI.updateAuthUI(user);
             loadDataForUser(user);
         } else {
+            // A chamada UI.updateAuthUI(null) já exibe a seção de login.
             UI.updateAuthUI(null);
             handleLogoutState();
         }
@@ -742,7 +756,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     await Service.updateTargetField(state.user.uid, id, isArchived, { title: newTitle });
                     showToast("Título atualizado com sucesso!", "success");
+                    // **INÍCIO DA MODIFICAÇÃO (PRIORIDADE 1)**
                     await syncTarget(id);
+                    // **FIM DA MODIFICAÇÃO**
                 } catch (error) {
                     target.title = oldTitle;
                     showToast("Falha ao atualizar o título.", "error");
@@ -763,7 +779,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     await Service.updateTargetField(state.user.uid, id, isArchived, { details: newDetails });
                     showToast("Detalhes atualizados com sucesso!", "success");
+                    // **INÍCIO DA MODIFICAÇÃO (PRIORIDADE 1)**
                     await syncTarget(id);
+                    // **FIM DA MODIFICAÇÃO**
                 } catch (error) {
                     target.details = oldDetails;
                     showToast("Falha ao atualizar os detalhes.", "error");
@@ -785,7 +803,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     await Service.updateObservationInTarget(state.user.uid, id, isArchived, obsIndex, { text: newText });
                     showToast("Observação atualizada!", "success");
+                    // **INÍCIO DA MODIFICAÇÃO (PRIORIDADE 1)**
                     await syncTarget(id);
+                    // **FIM DA MODIFICAÇÃO**
                 } catch (error) {
                     target.observations[obsIndex].text = oldText;
                     showToast("Falha ao atualizar a observação.", "error");
@@ -811,7 +831,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     await Service.updateObservationInTarget(state.user.uid, id, isArchived, obsIndex, { [fieldToUpdate]: newText });
                     showToast("Sub-alvo atualizado!", "success");
+                    // **INÍCIO DA MODIFICAÇÃO (PRIORIDADE 1)**
                     await syncTarget(id);
+                    // **FIM DA MODIFICAÇÃO**
                 } catch (error) {
                     obsToUpdate[fieldToUpdate] = oldText;
                     showToast("Falha ao atualizar sub-alvo.", "error");
@@ -834,7 +856,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     await Service.updateSubObservationInTarget(state.user.uid, id, isArchived, obsIndex, subObsIndex, { text: newText });
                     showToast("Observação do sub-alvo atualizada!", "success");
+                    // **INÍCIO DA MODIFICAÇÃO (PRIORIDADE 1)**
                     await syncTarget(id);
+                    // **FIM DA MODIFICAÇÃO**
                 } catch (error) {
                     subObsToUpdate.text = oldText;
                     showToast("Falha ao atualizar observação.", "error");
@@ -871,7 +895,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     await Service.updateTargetField(state.user.uid, target.id, isArchived, { hasDeadline: true, deadlineDate: newDeadlineDate });
                     showToast("Prazo atualizado com sucesso!", "success");
+                    // **INÍCIO DA MODIFICAÇÃO (PRIORIDADE 1)**
                     await syncTarget(id);
+                    // **FIM DA MODIFICAÇÃO**
                 } catch(error) {
                     showToast("Falha ao salvar prazo. A alteração foi desfeita.", "error");
                     target.deadlineDate = oldDeadlineDate;
@@ -894,7 +920,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     await Service.updateTargetField(state.user.uid, target.id, isArchived, { hasDeadline: false, deadlineDate: null });
                     showToast("Prazo removido.", "info");
+                    // **INÍCIO DA MODIFICAÇÃO (PRIORIDADE 1)**
                     await syncTarget(id);
+                    // **FIM DA MODIFICAÇÃO**
                 } catch(error) {
                     showToast("Falha ao remover prazo. A alteração foi desfeita.", "error");
                     target.deadlineDate = oldDeadlineDate;
@@ -947,7 +975,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     await Service.updateObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), updatedObservationData);
                     showToast("Observação promovida a sub-alvo com sucesso!", "success");
+                    // **INÍCIO DA MODIFICAÇÃO (PRIORIDADE 1)**
                     await syncTarget(id);
+                    // **FIM DA MODIFICAÇÃO**
                 } catch (error) {
                     showToast("Falha ao salvar. A alteração foi desfeita.", "error");
                     target.observations[parseInt(obsIndex)] = originalObservation;
@@ -999,7 +1029,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     await Service.updateObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), updatedObservation);
                     showToast("Sub-alvo revertido para observação.", "info");
+                    // **INÍCIO DA MODIFICAÇÃO (PRIORIDADE 1)**
                     await syncTarget(id);
+                    // **FIM DA MODIFICAÇÃO**
                 } catch (error) {
                     showToast("Erro ao reverter. A alteração foi desfeita.", "error");
                     target.observations[parseInt(obsIndex)] = originalSubTarget;
@@ -1018,7 +1050,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     await Service.updateObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), updatedObservation);
                     showToast("Sub-alvo marcado como respondido!", "success");
+                    // **INÍCIO DA MODIFICAÇÃO (PRIORIDADE 1)**
                     await syncTarget(id);
+                    // **FIM DA MODIFICAÇÃO**
                 } catch (error) {
                     showToast("Erro ao salvar. A alteração foi desfeita.", "error");
                     target.observations[parseInt(obsIndex)] = originalSubTarget;
@@ -1040,7 +1074,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     await Service.addSubObservationToTarget(state.user.uid, id, isArchived, parseInt(obsIndex), newSubObservation);
                     showToast("Observação adicionada ao sub-alvo.", "success");
+                    // **INÍCIO DA MODIFICAÇÃO (PRIORIDADE 1)**
                     await syncTarget(id);
+                    // **FIM DA MODIFICAÇÃO**
                 } catch (error) {
                     showToast("Erro ao salvar. A alteração foi desfeita.", "error");
                     subTarget.subObservations.pop();
