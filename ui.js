@@ -922,43 +922,32 @@ export function updateAuthUI(user, message = '', isError = false) {
     const authSection = document.getElementById('authSection');
     if (!authSection) return;
 
-    const authForm = document.getElementById('emailPasswordAuthForm');
+    const googleAuthContainer = document.getElementById('googleAuthContainer');
     const authStatusContainer = authSection.querySelector('.auth-status-container');
     const authStatusP = document.getElementById('authStatus');
     const btnLogout = document.getElementById('btnLogout');
     const userStatusTop = document.getElementById('userStatusTop');
-    const passwordResetMessageDiv = document.getElementById('passwordResetMessage');
-    const emailInput = document.getElementById('email');
-    const passwordInput = document.getElementById('password');
-
+    
     if (user) {
-        // Oculta a seção inteira, pois a informação principal estará na barra superior
+        // Esconde o botão de login do Google e exibe o status de logado
+        if (googleAuthContainer) googleAuthContainer.style.display = 'none';
+        if (authStatusContainer) authStatusContainer.style.display = 'flex';
+        if (authStatusP) authStatusP.textContent = `Logado como: ${user.email}`;
+        if (btnLogout) btnLogout.style.display = 'inline-block';
+        
+        // Exibe o status na barra superior e oculta a seção de login inteira
+        if (userStatusTop) {
+            userStatusTop.textContent = `Logado: ${user.email}`;
+            userStatusTop.style.display = 'inline-block';
+        }
         authSection.classList.add('hidden');
-        userStatusTop.textContent = `Logado: ${user.email}`;
-        userStatusTop.style.display = 'inline-block';
-        if (passwordResetMessageDiv) passwordResetMessageDiv.style.display = 'none';
 
     } else {
         // Garante que o estado de logout esteja correto
         authSection.classList.remove('hidden');
-        authForm.style.display = 'block';
-        authStatusContainer.style.display = 'none';
-        
-        if (userStatusTop) {
-             userStatusTop.style.display = 'none';
-             userStatusTop.textContent = '';
-        }
-
-        if (emailInput) emailInput.value = '';
-        if (passwordInput) passwordInput.value = '';
-
-        if (message && passwordResetMessageDiv) {
-            passwordResetMessageDiv.textContent = message;
-            passwordResetMessageDiv.style.color = isError ? "red" : "green";
-            passwordResetMessageDiv.style.display = "block";
-        } else if (passwordResetMessageDiv) {
-            passwordResetMessageDiv.style.display = 'none';
-        }
+        if (googleAuthContainer) googleAuthContainer.style.display = 'block';
+        if (authStatusContainer) authStatusContainer.style.display = 'none';
+        if (userStatusTop) userStatusTop.style.display = 'none';
     }
 }
 
