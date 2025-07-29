@@ -161,18 +161,20 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
  * @returns {string} - O HTML do elemento do alvo.
  */
 function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
+    // LOG DE VERIFICAÇÃO 11
+    if (config.showDriveStatus) {
+        console.log(`[UI] Renderizando alvo '${target.title}' (ID: ${target.id}). Status do Drive recebido:`, target.driveStatus);
+    }
+    
     const isEditingEnabled = config.isEditingEnabled === true;
     
-    // Lógica para gerar o ícone de status do Google Drive
     let driveStatusHTML = '';
-    // Apenas mostra o status se a configuração permitir e se houver um ID do Google Doc associado (ou estiver em processo de criação).
     if (config.showDriveStatus) {
         let icon = '';
         let title = '';
         let statusClass = '';
         let isClickable = false;
 
-        // O estado é determinado pela propriedade 'driveStatus' injetada pelo script.js
         switch (target.driveStatus) {
             case 'syncing':
                 icon = '...';
@@ -181,7 +183,7 @@ function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
                 break;
             case 'error':
                 icon = '✗';
-                title = `Falha no backup.`; // Ação de 'tentar novamente' pode ser adicionada aqui no futuro.
+                title = `Falha no backup.`;
                 statusClass = 'error';
                 break;
             case 'synced':
@@ -192,13 +194,10 @@ function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
                 break;
         }
 
-        // Gera o HTML do ícone apenas se um status for determinado.
         if (statusClass) {
             if (isClickable && target.googleDocId) {
-                // Se estiver sincronizado e tiver um ID, cria um link para o documento.
                 driveStatusHTML = `<a href="https://docs.google.com/document/d/${target.googleDocId}" target="_blank" class="drive-status-icon ${statusClass}" title="${title}">${icon}</a>`;
             } else {
-                // Para outros status, gera um span não clicável.
                 driveStatusHTML = `<span class="drive-status-icon ${statusClass}" title="${title}">${icon}</span>`;
             }
         }
@@ -257,7 +256,6 @@ function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
         <div id="observationForm-${target.id}" class="add-observation-form" style="display:none;"></div>
         <div id="editCategoryForm-${target.id}" class="edit-category-form" style="display:none;"></div>` : '';
 
-    // Inserção do driveStatusHTML no início do h3.
     return `
         <h3>${driveStatusHTML}${subTargetIndicatorIcon}${creationTag}${categoryTag}${deadlineTag}${resolvedTag} ${target.title || 'Sem Título'}${editTitleIcon}</h3>
         ${detailsPara}
@@ -290,7 +288,6 @@ export function renderPriorityTargets(allActiveTargets, dailyTargetsData) {
     section.style.display = 'block';
     container.innerHTML = ''; 
 
-    // Adicionado showDriveStatus: true
     const config = {
         showCreationDate: true, showCategory: true, showDeadline: true, showDetails: true,
         showObservations: true, showActions: false, showPrayButton: true,
@@ -313,7 +310,6 @@ export function renderTargets(targets, total, page, perPage, dailyTargetsData) {
     if (targets.length === 0) {
         container.innerHTML = '<p>Nenhum alvo de oração encontrado com os filtros atuais.</p>';
     } else {
-        // Adicionado showDriveStatus: true
         const config = {
             showCreationDate: true, showCategory: true, showDeadline: true, showDetails: true,
             showElapsedTime: true, showObservations: true, showActions: true,
@@ -344,7 +340,6 @@ export function renderArchivedTargets(targets, total, page, perPage, dailyTarget
             div.className = `target archived ${target.resolved ? 'resolved' : ''}`;
             div.dataset.targetId = target.id;
             
-            // Adicionado showDriveStatus: true
             const config = {
                 showCreationDate: true, showCategory: true, showResolvedDate: true,
                 showDetails: true, showArchivedDate: true, showObservations: true,
@@ -365,7 +360,6 @@ export function renderResolvedTargets(targets, total, page, perPage) {
     if (targets.length === 0) {
         container.innerHTML = '<p>Nenhum alvo respondido encontrado.</p>';
     } else {
-        // Adicionado showDriveStatus: true
         const config = {
             showCategory: true, showResolvedDate: true, showTimeToResolution: true,
             showObservations: true, showActions: false, showDownloadButton: true,
@@ -393,7 +387,6 @@ export function renderDailyTargets(pending, completed, dailyTargetsData) {
     }
 
     if (pending.length > 0) {
-        // Adicionado showDriveStatus: true
         const config = {
             showCreationDate: true, showCategory: true, showDeadline: true, showDetails: true,
             showObservations: true, showActions: false, showPrayButton: true, 
@@ -934,17 +927,16 @@ export function updateAuthUI(user, message = '', isError = false) {
     const passwordInput = document.getElementById('password');
 
     if (user) {
-        authSection.classList.add('hidden'); // Oculta o formulário de autenticação
+        authSection.classList.add('hidden');
         userStatusTop.textContent = `Logado: ${user.email}`;
         userStatusTop.style.display = 'inline-block';
         if (passwordResetMessageDiv) passwordResetMessageDiv.style.display = 'none';
     } else {
-        authSection.classList.remove('hidden'); // Mostra o formulário de autenticação
+        authSection.classList.remove('hidden');
         if (userStatusTop) {
             userStatusTop.style.display = 'none';
             userStatusTop.textContent = '';
         }
-        // Esconde o status do Drive no logout
         if (driveStatusTop) {
             driveStatusTop.style.display = 'none';
             driveStatusTop.textContent = '';
@@ -973,17 +965,17 @@ export function updateDriveStatusUI(status, message) {
     switch (status) {
         case 'connected':
             driveStatusTop.textContent = message || 'Drive Conectado ✓';
-            driveStatusTop.style.backgroundColor = '#0f9d58'; // Verde Drive
+            driveStatusTop.style.backgroundColor = '#0f9d58';
             driveStatusTop.style.display = 'inline-block';
             break;
         case 'error':
             driveStatusTop.textContent = message || 'Erro no Drive ✗';
-            driveStatusTop.style.backgroundColor = '#dc3545'; // Vermelho Erro
+            driveStatusTop.style.backgroundColor = '#dc3545';
             driveStatusTop.style.display = 'inline-block';
             break;
         case 'syncing':
             driveStatusTop.textContent = message || 'Sincronizando...';
-            driveStatusTop.style.backgroundColor = '#f4b400'; // Amarelo Drive
+            driveStatusTop.style.backgroundColor = '#f4b400';
             driveStatusTop.style.display = 'inline-block';
             break;
         case 'disconnected':
