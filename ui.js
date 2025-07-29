@@ -929,24 +929,18 @@ export function updateAuthUI(user, message = '', isError = false) {
     const userStatusTop = document.getElementById('userStatusTop');
     
     if (user) {
-        // Esconde o botão de login do Google e exibe o status de logado
-        if (googleAuthContainer) googleAuthContainer.style.display = 'none';
-        if (authStatusContainer) authStatusContainer.style.display = 'flex';
-        if (authStatusP) authStatusP.textContent = `Logado como: ${user.email}`;
-        if (btnLogout) btnLogout.style.display = 'inline-block';
-        
-        // Exibe o status na barra superior e oculta a seção de login inteira
+        // Oculta a seção inteira, pois a informação principal estará na barra superior
+        authSection.classList.add('hidden');
         if (userStatusTop) {
             userStatusTop.textContent = `Logado: ${user.email}`;
             userStatusTop.style.display = 'inline-block';
         }
-        authSection.classList.add('hidden');
 
     } else {
         // Garante que o estado de logout esteja correto
         authSection.classList.remove('hidden');
         if (googleAuthContainer) googleAuthContainer.style.display = 'block';
-        if (authStatusContainer) authStatusContainer.style.display = 'none';
+        if (authStatusContainer) authStatusContainer.style.display = 'none'; // Garante que status de logout esteja oculto
         if (userStatusTop) userStatusTop.style.display = 'none';
     }
 }
