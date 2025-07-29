@@ -1,15 +1,15 @@
 // --- START OF FILE auth.js ---
 // Responsabilidade: Conter as funções que interagem diretamente com o serviço Firebase Auth.
 // Este módulo não deve manipular o DOM diretamente.
-// (VERSÃO FINAL CORRIGIDA E MELHORADA)
+// (VERSÃO COM LOGS DE DIAGNÓSTICO)
 
 import { auth } from './firebase-config.js';
 import { 
     signOut, 
     onAuthStateChanged, 
-    createUserWithEmailAndPassword as firebaseCreateUser, // APELIDO (BOA PRÁTICA)
-    signInWithEmailAndPassword as firebaseSignIn,     // APELIDO (CORREÇÃO)
-    sendPasswordResetEmail as firebaseSendPasswordReset, // APELIDO (BOA PRÁTICA)
+    createUserWithEmailAndPassword as firebaseCreateUser,
+    signInWithEmailAndPassword as firebaseSignIn,
+    sendPasswordResetEmail as firebaseSendPasswordReset,
     GoogleAuthProvider,
     signInWithPopup,
     getAdditionalUserInfo,
@@ -35,7 +35,6 @@ export function initializeAuth(onUserAuthenticated) {
  * @throws {Error} - Lança um erro em caso de falha no cadastro.
  */
 export async function signUpWithEmailPassword(email, password) {
-    // Usa a função apelidada do Firebase
     return await firebaseCreateUser(auth, email, password);
 }
 
@@ -47,12 +46,11 @@ export async function signUpWithEmailPassword(email, password) {
  * @throws {Error} - Lança um erro em caso de falha na autenticação.
  */
 export async function signInWithEmailAndPassword(email, password) {
-    // Usa a função apelidada do Firebase (CORREÇÃO DO BUG ORIGINAL)
     return await firebaseSignIn(auth, email, password);
 }
 
 /**
- * (VERSÃO CORRIGIDA) Autentica um usuário com o Google e solicita permissão para o Google Drive.
+ * Autentica um usuário com o Google, solicita permissão para o Google Drive e adiciona logs de diagnóstico.
  * @returns {Promise<{user: import("firebase/auth").User, accessToken: string}>} - Resolve com o objeto do usuário e o token de acesso para a API do Google.
  * @throws {Error} - Lança um erro se a permissão para o Drive for negada ou se o login falhar.
  */
@@ -61,7 +59,6 @@ export async function signInWithGoogle() {
     
     // ** Ponto Crítico **
     // Solicita a permissão para criar, editar e ver os arquivos que a APLICAÇÃO criou.
-    // Isso não dá acesso a outros arquivos do usuário.
     provider.addScope('https://www.googleapis.com/auth/drive.file');
 
     const result = await signInWithPopup(auth, provider);
@@ -70,11 +67,12 @@ export async function signInWithGoogle() {
     const credential = GoogleAuthProvider.credentialFromResult(result);
     const accessToken = credential.accessToken;
     
-    // CORREÇÃO: A verificação de 'scope' foi removida por ser instável e desnecessária.
-    // A obtenção bem-sucedida do accessToken já valida que a permissão foi concedida.
-    
+    // LOG DE VERIFICAÇÃO 1
+    console.log("[Auth] Token de acesso obtido:", accessToken ? `Sim (tamanho: ${accessToken.length})` : "NÃO");
+            
     if (!accessToken) {
-        throw new Error("Não foi possível obter o token de acesso do Google. Tente novamente.");
+        console.error("[Auth] Falha crítica: O token de acesso do Google não foi retornado.");
+        throw new Error("Não foi possível obter o token de acesso do Google. A permissão para o Drive pode ter sido negada.");
     }
 
     return { user: result.user, accessToken: accessToken };
@@ -90,7 +88,6 @@ export async function resetPassword(email) {
     if (!email) {
         throw new Error("O e-mail é obrigatório para redefinir a senha.");
     }
-    // Usa a função apelidada do Firebase
     return await firebaseSendPasswordReset(auth, email);
 }
 
