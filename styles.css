@@ -1,4 +1,4 @@
-/* styles.css (Versão Final com Melhorias de Backup) */
+/* styles.css (Versão Final com Melhorias de Autenticação e Sincronização) */
 
 /* ==== GOOGLE FONTS ==== */
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');
@@ -34,7 +34,6 @@
     display: none; /* Oculto por padrão, ativado via JS */
 }
 
-/* NOVO: Estilo para o indicador de status do Google Drive */
 .drive-status-top {
     float: right;
     padding: 5px 15px;
@@ -47,7 +46,6 @@
     display: none; /* Ativado via JS após login */
 }
 
-/* NOVO: Modificador para estado de erro no indicador do Drive */
 .drive-status-top.error {
     background-color: #db4437; /* Vermelho Google */
     border-color: #c5372c;
@@ -71,7 +69,7 @@
 html, body {
     max-width: 100%;
     overflow-x: hidden;
-    scroll-padding-top: 20px; /* MELHORIA UX: Garante espaço ao rolar para âncoras */
+    scroll-padding-top: 20px;
 }
 
 body {
@@ -98,7 +96,6 @@ h1 {
     margin-bottom: 20px;
 }
 
-/* General Button Style */
 .btn {
     margin: 10px 5px;
     padding: 10px 20px;
@@ -107,32 +104,25 @@ h1 {
     cursor: pointer;
     border-radius: 5px;
     font-size: 14px;
-    font-family: 'Playfair Display', serif; /* Ensure font */
-    transition: background-color 0.3s, color 0.3s, box-shadow 0.3s; /* Added box-shadow for potential effects */
+    font-family: 'Playfair Display', serif;
+    transition: background-color 0.3s, color 0.3s, box-shadow 0.3s;
 }
 
-.btn:hover {
-    /* Hover effects defined per button type below */
-}
-
-/* Primary Menu Buttons (Orange) */
 .main-menu button, .main-menu .btn {
     background-color: #e29420;
 }
 .main-menu button:hover, .main-menu .btn:hover {
-    background-color: #ca7d1b; /* Darker orange */
+    background-color: #ca7d1b;
 }
 
-/* NOVO: Estilo para o botão de Login com Google */
 .google-btn {
-    background-color: #4285F4; /* Cor oficial do Google */
+    background-color: #4285F4;
     color: white;
 }
 .google-btn:hover {
     background-color: #357ae8;
 }
 
-/* View Buttons (Dark Brown) */
 .generate-view, .daily-view {
     background-color: #7a5217;
 }
@@ -140,7 +130,6 @@ h1 {
     background-color: #5f4012;
 }
 
-/* Archived/Resolved Buttons (Grey) */
 .archived-resolved {
     background-color: #948484;
 }
@@ -148,7 +137,6 @@ h1 {
     background-color: #756b6b;
 }
 
-/* Action Buttons (Darkest Brown) */
 .main-menu .action-btn {
     background-color: #654321;
 }
@@ -156,76 +144,73 @@ h1 {
     background-color: #4a301a;
 }
 
-/* Daily Section Action Buttons */
 .daily-action-btn {
-    background-color: #654321; /* Darkest Brown */
+    background-color: #654321;
     color: #fff;
 }
 .daily-action-btn:hover {
-    background-color: #4a301a; /* Darkest Brown (Hover) */
+    background-color: #4a301a;
 }
 
-/* Submit Button in Add Target Form */
 .submit-btn {
-     background-color: #654321; /* Darkest Brown */
+     background-color: #654321;
      color: #fff;
 }
 .submit-btn:hover {
-     background-color: #4a301a; /* Darkest Brown (Hover) */
+     background-color: #4a301a;
 }
 
-/* Close Button in Completion Popup */
 .popup .btn {
-    background-color: #948484; /* Grey */
+    background-color: #948484;
     color: #fff;
 }
 .popup .btn:hover {
-     background-color: #756b6b; /* Grey (Hover) */
+     background-color: #756b6b;
 }
 
 
 /* Separator Lines */
 hr.menu-separator {
     border: none;
-    border-top: 2px solid #e29420; /* Orange */
+    border-top: 2px solid #e29420;
     margin: 20px auto;
     width: 80%;
 }
 hr.menu-separator.dark {
-    border-top: 2px solid #654321; /* Dark Brown */
+    border-top: 2px solid #654321;
 }
 hr.section-separator {
     border: none;
-    border-top: 1px solid #ddd; /* Light Grey */
+    border-top: 1px solid #ddd;
     margin: 30px auto;
     width: 80%;
 }
 hr.title-separator, hr.search-separator, hr.filter-separator {
      border: none;
-     border-top: 1px solid #eee; /* Very light separator */
+     border-top: 1px solid #eee;
      margin: 15px auto;
      width: 80%;
  }
 
 /* ==== SECTION STYLES ==== */
 .form-section, .targets-section, .daily-section, .completed-daily-targets-section {
-    margin: 20px auto; /* Center sections */
+    margin: 20px auto;
     padding: 15px;
     border: 1px solid #ddd;
     border-radius: 5px;
-    background-color: #fff; /* Default background for most sections */
+    background-color: #fff;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     text-align: center;
-    width: 95%; /* Responsive width */
-    max-width: 800px; /* Max width */
+    width: 95%;
+    max-width: 800px;
 }
 
 .perseverance-section, .weekly-perseverance-chart {
     margin: 20px auto;
     padding: 15px;
-    border: 1px solid #e6ccb2; /* Lighter brown border */
-    border-radius: 8px; /* Slightly more rounded */
-    background-color: #fff0db; /* Light peach/orange tint - MAIS VIVA */
+    border: 1px solid #e6ccb2;
+    border-radius: 8px;
+    background-color: #fff0db;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
     text-align: center;
     width: 95%;
@@ -236,9 +221,9 @@ hr.title-separator, hr.search-separator, hr.filter-separator {
 .priority-section {
     margin: 20px auto;
     padding: 15px;
-    border: 1px solid #FFD54F; /* Borda dourada sutil */
+    border: 1px solid #FFD54F;
     border-radius: 5px;
-    background-color: #FFFDE7; /* Fundo amarelo muito claro */
+    background-color: #FFFDE7;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
     text-align: center;
     width: 95%;
@@ -246,27 +231,25 @@ hr.title-separator, hr.search-separator, hr.filter-separator {
 }
 
 .priority-section h2 {
-    color: #6D4C41; /* Tom de marrom */
+    color: #6D4C41;
     margin-bottom: 15px;
 }
 
 #priorityTargetsList .target {
     background-color: #fff;
-    border-left: 4px solid #FBC02D; /* Destaque na borda esquerda */
+    border-left: 4px solid #FBC02D;
     text-align: left;
 }
 
-/* Ícone de estrela para alvos prioritários */
 .priority-target-item h3::before {
     content: '⭐';
     margin-right: 8px;
     font-size: 1.1em;
 }
 
-/* ==== AÇÕES E MENSAGENS NO PAINEL DE PRIORIDADES ==== */
 .priority-target-item .priority-target-actions {
     margin-top: 10px;
-    text-align: left; /* MODIFICADO: Alinha o botão à esquerda */
+    text-align: left;
 }
 
 #priorityTargetsList .empty-message {
@@ -296,7 +279,7 @@ select
     border: 1px solid #ccc;
     border-radius: 5px;
     font-family: 'Playfair Display', serif;
-    box-sizing: border-box; /* Include padding in width calculation */
+    box-sizing: border-box;
 }
 
 textarea {
@@ -312,7 +295,6 @@ textarea {
     display: block;
 }
 
-/* Style for left date icon */
 input[type="date"] {
     padding-left: 30px;
     background-repeat: no-repeat;
@@ -321,11 +303,10 @@ input[type="date"] {
     background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="%23555"><path d="M464 64H48C21.49 64 0 85.49 0 112v336c0 26.51 21.49 48 48 48h416c26.51 0 48-21.49-48-48V112c0-26.51-21.49-48-48-48zM48 96h416c8.822 0 16 7.178 16 16v48H32v-48c0-8.822 7.178-16 16-16zM464 480H48c-8.822 0-16-7.178-16-16v-288h448v288c0 8.822-7.178 16-16 16zM128 192h64v64h-64zM288 192h64v64h-64zM128 288h64v64h-64zM288 288h64v64h-64z"/></svg>');
 }
 
-/* Checkbox specific styling */
 .checkbox-container {
     display: flex;
     align-items: center;
-    justify-content: center; /* Center if a single item, or use for multiple */
+    justify-content: center;
     margin: 10px auto;
     width: 80%;
     max-width: 400px;
@@ -360,109 +341,103 @@ input[type="date"] {
     border-bottom: none;
 }
 
-/* Target Heading (H3) with Tags */
 .target h3 {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 5px; /* Space between tags and title */
+    gap: 5px;
     margin-top: 0;
     margin-bottom: 8px;
 }
 
 .target h3 .category-tag,
 .target h3 .deadline-tag {
-    flex-shrink: 0; /* Prevent tags from shrinking */
+    flex-shrink: 0;
 }
 
-/* Estilo para o parágrafo da data de criação */
 .target-creation-info {
     margin-top: 8px;
     margin-bottom: 8px;
 }
 
-/* Target Actions & Buttons */
 .target-actions {
      margin-top: 10px;
      display: flex;
      flex-wrap: wrap;
      gap: 5px;
 }
-.target .btn { /* Buttons inside targets */
+.target .btn {
      padding: 8px 12px;
      font-size: 13px;
      margin: 0;
 }
 
 .target button.resolved {
-    background-color: #9cbe4a; /* Green */
+    background-color: #9cbe4a;
 }
 .target button.resolved:hover {
     background-color: #85a739;
 }
 
 .target button.archive {
-    background-color: #c97272; /* Light Red */
+    background-color: #c97272;
 }
 .target button.archive:hover {
     background-color: #a65b5b;
 }
 
 .target button.add-observation {
-    background-color: #73a8f3; /* Light Blue */
+    background-color: #73a8f3;
 }
 .target button.add-observation:hover {
     background-color: #5a8ccb;
 }
 
-/* BOTÃO DE ALTERNAR PRIORIDADE */
 .target button.toggle-priority {
-    background-color: #42A5F5; /* Azul */
+    background-color: #42A5F5;
     color: white;
 }
 .target button.toggle-priority:hover {
     background-color: #1E88E5;
 }
 .target button.toggle-priority.is-priority {
-    background-color: #FFA726; /* Laranja/Dourado quando já é prioridade */
+    background-color: #FFA726;
 }
 .target button.toggle-priority.is-priority:hover {
     background-color: #FB8C00;
 }
 
-/* CORREÇÃO APLICADA: Botão de Editar Prazo */
 .target button.edit-deadline {
-    background-color: #ffb74d; /* Laranja suave */
+    background-color: #ffb74d;
     color: #333;
 }
 .target button.edit-deadline:hover {
-    background-color: #ffa726; /* Laranja mais forte */
+    background-color: #ffa726;
 }
 
 .target button.edit-category {
-    background-color: #C71585; /* MediumVioletRed / Fuchsia */
+    background-color: #C71585;
     color: white;
 }
 .target button.edit-category:hover {
-    background-color: #A01069; /* Darker Tone */
+    background-color: #A01069;
 }
 
-.target button.delete { /* Delete button in Archived */
-    background-color: #d9534f; /* Red */
+.target button.delete {
+    background-color: #d9534f;
 }
 .target button.delete:hover {
     background-color: #c9302c;
 }
 
-/* Botão de Download para alvos arquivados */
 .target button.download {
-    background-color: #3498db; /* Azul */
+    background-color: #3498db;
 }
 .target button.download:hover {
-    background-color: #2980b9; /* Azul mais escuro */
+    background-color: #2980b9;
 }
 
-/* Ícone de Status de Sincronização por Alvo */
+/* NOVO: Ícone de Status de Sincronização por Alvo */
 .drive-status-icon {
     display: inline-flex;
     justify-content: center;
@@ -493,18 +468,16 @@ input[type="date"] {
 }
 
 
-/* Styling for different target views/states */
-.resolved { /* Targets in Resolved panel AND Archived panel if resolved */
-    background-color: #eaffea; /* Light green background */
-    border-left: 3px solid #9cbe4a; /* Green left border */
+.resolved {
+    background-color: #eaffea;
+    border-left: 3px solid #9cbe4a;
     padding-left: 10px;
 }
-.archived { /* Targets in Archived panel */
-     background-color: #f8f8f8; /* Light grey background */
+.archived {
+     background-color: #f8f8f8;
      opacity: 0.9;
 }
 
-/* Resolved Tag Style */
 .resolved-tag {
     background-color: #DCEDC8;
     color: #558B2F;
@@ -517,8 +490,6 @@ input[type="date"] {
     vertical-align: middle;
 }
 
-
-/* Daily Targets Styling */
 #dailyTargets .target {
      background-color: #fff;
      padding: 12px;
@@ -527,7 +498,7 @@ input[type="date"] {
      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
 }
 #dailyTargets .target:nth-child(odd) {
-    background-color: rgba(249, 168, 37, 0.05); /* Very light orange tint */
+    background-color: rgba(249, 168, 37, 0.05);
 }
 
 #dailyTargets .target h3::before {
@@ -537,7 +508,6 @@ input[type="date"] {
     vertical-align: middle;
 }
 
-/* Add/Edit Form Styles (within targets) */
 .add-observation-form,
 .edit-deadline-form,
 .edit-category-form
@@ -548,11 +518,6 @@ input[type="date"] {
     border: 1px solid #ddd;
     border-radius: 5px;
 }
-
-.edit-deadline-form {
-    display: none; /* This class is no longer used for inline forms */
-}
-
 
 .add-observation-form textarea,
 .add-observation-form input[type="date"],
@@ -575,7 +540,6 @@ input[type="date"] {
     font-size: 14px;
 }
 
-/* Specific button colors for forms */
 .add-observation-form .btn { background-color: #7cb17c; }
 .add-observation-form .btn:hover { background-color: #649464; }
 
@@ -585,7 +549,6 @@ input[type="date"] {
 .edit-category-form .cancel-category-btn:hover { background-color: #da190b; }
 
 
-/* Observation Display Styles */
 .observations {
     margin-top: 10px;
     padding-left: 10px;
@@ -599,12 +562,10 @@ input[type="date"] {
     margin-bottom: 5px;
     text-align: justify;
 }
-.observation-item strong { /* Date part */
+.observation-item strong {
      color: #444;
 }
 
-/* ==== INÍCIO: ESTILOS PARA SUB-ALVOS E OBSERVAÇÕES ANINHADAS ==== */
-/* Ícone indicador de sub-alvo no título do alvo principal */
 .sub-target-indicator {
     font-size: 1em;
     margin-right: 8px;
@@ -612,47 +573,42 @@ input[type="date"] {
     cursor: help;
 }
 
-/* Estilo para a observação que foi promovida a sub-alvo */
 .observation-item.sub-target {
-    background-color: #eaf6ff; /* Azul pastel claro para destaque */
-    border: 1px solid #bbdefb; /* Borda azul mais suave */
-    border-left: 4px solid #3498db; /* Borda azul mais escura à esquerda */
+    background-color: #eaf6ff;
+    border: 1px solid #bbdefb;
+    border-left: 4px solid #3498db;
     padding: 12px;
-    margin-top: 10px; /* Mais espaço para se destacar */
+    margin-top: 10px;
     border-radius: 4px;
 }
 
-/* Estilo para um sub-alvo que foi marcado como respondido */
 .observation-item.sub-target.resolved {
-    background-color: #e8f5e9; /* Verde claro para resolvido */
+    background-color: #e8f5e9;
     border-color: #c8e6c9;
     border-left-color: #66bb6a;
-    opacity: 0.8; /* Suaviza a aparência */
+    opacity: 0.8;
 }
 
-/* Container para o título e botões de ação do sub-alvo */
 .sub-target-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    flex-wrap: wrap; /* Garante que os botões quebrem a linha em telas pequenas */
+    flex-wrap: wrap;
     gap: 8px;
     margin-bottom: 8px;
 }
 
-/* Título do sub-alvo */
 .sub-target-title {
     font-weight: bold;
-    color: #5d4037; /* Tom de marrom */
+    color: #5d4037;
     font-size: 1.05em;
 }
 
 .sub-target-title::before {
-    content: '🎯'; /* Ícone de alvo para identificação rápida */
+    content: '🎯';
     margin-right: 6px;
 }
 
-/* Container para os botões de ação dentro de uma observação */
 .observation-actions {
     margin-top: 8px;
     display: flex;
@@ -660,9 +616,8 @@ input[type="date"] {
     align-items: center;
 }
 
-/* Estilo base para os botões pequenos dentro das observações */
 .observation-actions .btn-small {
-    padding: 4px 10px; /* Menor que os botões principais */
+    padding: 4px 10px;
     font-size: 11px;
     font-family: 'Playfair Display', serif;
     border: 1px solid #ccc;
@@ -677,28 +632,26 @@ input[type="date"] {
     border-color: #999;
 }
 
-/* Variações de cor para os botões de ação */
 .observation-actions .btn-small.promote {
-    background-color: #ffecb3; /* Amarelo claro para "Promover" */
+    background-color: #ffecb3;
     border-color: #ffe082;
 }
 
 .observation-actions .btn-small.resolve {
-    background-color: #a5d6a7; /* Verde claro para "Marcar Respondido" */
+    background-color: #a5d6a7;
     border-color: #81c784;
 }
 
 .observation-actions .btn-small.edit {
-    background-color: #bbdefb; /* Azul claro para "Editar" */
+    background-color: #bbdefb;
     border-color: #90caf9;
 }
 
 .observation-actions .btn-small.demote {
-    background-color: #e0e0e0; /* Cinza para "Reverter" */
+    background-color: #e0e0e0;
     border-color: #bdbdbe;
 }
 
-/* Span para texto 'Respondido' quando não há mais botão de ação */
 .sub-target-header .resolved-tag {
     font-size: 0.9em;
     font-weight: bold;
@@ -708,36 +661,30 @@ input[type="date"] {
     border-radius: 4px;
 }
 
-/* Container para a lista de observações de um sub-alvo */
 .sub-observations-list {
     margin-top: 10px;
-    padding-left: 20px; /* Aumenta a indentação */
-    border-left: 2px dashed #90caf9; /* Borda azul pontilhada para diferenciar */
+    padding-left: 20px;
+    border-left: 2px dashed #90caf9;
 }
 
-/* Estilo para cada item de sub-observação */
 .sub-observation-item {
     font-size: 0.9em;
-    color: #455a64; /* Tom de azul-cinza escuro */
+    color: #455a64;
     padding: 5px;
-    background-color: rgba(232, 245, 253, 0.6); /* Fundo azul ainda mais claro */
+    background-color: rgba(232, 245, 253, 0.6);
     border-radius: 3px;
     margin-bottom: 5px;
 }
 
-/* [PRIORIDADE 1] Aplica o 'riscado' apenas no título do sub-alvo resolvido */
 .observation-item.sub-target.resolved .sub-target-title {
     text-decoration: line-through;
     text-decoration-thickness: 2px;
 }
 
-/* [MELHORIA UX] Reduz o destaque da descrição do sub-alvo resolvido */
 .observation-item.sub-target.resolved > p {
     opacity: 0.6;
 }
-/* ==== FIM: ESTILOS PARA SUB-ALVOS ==== */
 
-/* ==== SYNC STATUS ICONS (UX Improvement) ==== */
 .sync-status-icon {
     display: inline-block;
     width: 20px;
@@ -750,23 +697,19 @@ input[type="date"] {
     transition: opacity 0.3s, transform 0.3s;
 }
 
-/* Ícone para 'Synced' (check verde) */
 .sync-status-icon.synced {
     background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%2327ae60"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>');
 }
 
-/* Ícone para 'Syncing' (loader girando) */
 .sync-status-icon.syncing {
     background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%233498db"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>');
     animation: spin 1s linear infinite;
 }
 
-/* Ícone para 'Error' (alerta vermelho) */
 .sync-status-icon.sync-error {
      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23e74c3c"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>');
 }
 
-/* Animação de rotação para o ícone 'syncing' */
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
@@ -808,11 +751,11 @@ input[type="date"] {
      margin-bottom: 3px;
      font-weight: bold;
      text-align: left;
-     margin-left: 0; /* Reset for modal content */
+     margin-left: 0;
 }
 .modal-content input[type="date"],
-.modal-content input[type="text"], /* Added for manualTargetSearchInput */
-.modal-content select /* Added for potential future use */
+.modal-content input[type="text"],
+.modal-content select
 {
      width: 100%;
      margin-bottom: 15px;
@@ -825,20 +768,19 @@ input[type="date"] {
 .modal-buttons .btn {
      margin-left: 10px;
 }
-.modal-buttons .modal-action-btn { /* Primary action button (e.g., Generate) */
-    background-color: #7a5217; /* Brown */
+.modal-buttons .modal-action-btn {
+    background-color: #7a5217;
 }
 .modal-buttons .modal-action-btn:hover {
     background-color: #5f4012;
 }
-.modal-buttons .modal-cancel-btn { /* Cancel button */
-    background-color: #948484; /* Grey */
+.modal-buttons .modal-cancel-btn {
+    background-color: #948484;
 }
 .modal-buttons .modal-cancel-btn:hover {
      background-color: #756b6b;
 }
 
-/* Modal Close Button */
 .close-button {
     color: #aaa;
     position: absolute;
@@ -855,27 +797,26 @@ input[type="date"] {
     text-decoration: none;
 }
 
-/* Specific Styles for Manual Target Addition Modal */
 #manualTargetModal .modal-content {
-    max-width: 600px; /* Slightly larger for results */
+    max-width: 600px;
 }
 
-.manual-search-results { /* Results container */
-    max-height: 300px; /* Limit height and add scroll */
+.manual-search-results {
+    max-height: 300px;
     overflow-y: auto;
     border: 1px solid #eee;
     padding: 5px;
     background-color: #fdfdfd;
-    min-height: 50px; /* Min height for feedback */
+    min-height: 50px;
 }
 
-.manual-search-results p { /* Style for messages (e.g., "Type something...") */
+.manual-search-results p {
     text-align: center;
     color: #888;
     padding: 15px;
 }
 
-.manual-target-item { /* Style for each result item */
+.manual-target-item {
     padding: 10px;
     border-bottom: 1px solid #eee;
     cursor: pointer;
@@ -887,26 +828,25 @@ input[type="date"] {
 .manual-target-item:hover {
     background-color: #f0f0f0;
 }
-.manual-target-item h4 { /* Target title in result */
+.manual-target-item h4 {
     margin: 0 0 3px 0;
     font-size: 1.1em;
     color: #333;
 }
-.manual-target-item span { /* Details/Category in result */
+.manual-target-item span {
     font-size: 0.9em;
     color: #666;
     display: block;
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis; /* Add '...' if too long */
+    text-overflow: ellipsis;
 }
 
-/* Styles for Category Selection Modal */
 #categorySelectionModal .modal-content {
     max-width: 450px;
 }
 
-#categorySelectionModal p { /* Style for the instruction text */
+#categorySelectionModal p {
     text-align: left;
     margin-bottom: 15px;
 }
@@ -929,18 +869,18 @@ input[type="date"] {
 .category-checkbox-item input[type="checkbox"] {
     margin-right: 8px;
     vertical-align: middle;
-    display: inline-block; /* Override general input styles */
+    display: inline-block;
     width: auto;
-    margin: 0 8px 0 0; /* Override general input styles */
+    margin: 0 8px 0 0;
 }
 
 .category-checkbox-item label {
-    display: inline; /* Keep label next to checkbox */
+    display: inline;
     font-weight: normal;
     cursor: pointer;
     vertical-align: middle;
-    margin: 0; /* Override general label styles */
-    text-align: left; /* Override general label styles */
+    margin: 0;
+    text-align: left;
 }
 
 
@@ -966,19 +906,19 @@ input[type="date"] {
 .page-link:hover {
     background-color: #eee;
 }
-.page-link.disabled { /* Style for disabled pagination links */
+.page-link.disabled {
      color: #ccc;
      pointer-events: none;
      background-color: #fdfdfd;
 }
-.pagination span { /* Style for "Page X of Y" text */
+.pagination span {
      margin: 0 10px;
      color: #666;
 }
 
 /* ==== Botão 'Orei!' Unificado ==== */
 .pray-button {
-    background-color: #9cbe4a; /* Verde */
+    background-color: #9cbe4a;
     color: white;
     border: none;
     padding: 12px 24px;
@@ -1023,7 +963,7 @@ input[type="date"] {
 
 .popup h3 {
     margin-top: 0;
-    color: #4CAF50; /* Green */
+    color: #4CAF50;
 }
 .popup p {
     margin-bottom: 10px;
@@ -1043,14 +983,14 @@ input[type="date"] {
     font-style: italic;
     color: #555;
     padding: 10px 15px;
-    background-color: #fdfaf6; /* Light cream background */
-    border-left: 3px solid #e29420; /* Orange left border */
+    background-color: #fdfaf6;
+    border-left: 3px solid #e29420;
     border-radius: 3px;
 }
 
 /* ==== DEADLINE TAG STYLES ==== */
 .deadline-tag {
-    background-color: #ffcc00; /* Yellow */
+    background-color: #ffcc00;
     color: #333;
     padding: 3px 8px;
     border-radius: 4px;
@@ -1060,14 +1000,14 @@ input[type="date"] {
     vertical-align: middle;
 }
 .deadline-tag.expired {
-    background-color: #ff6666; /* Red */
+    background-color: #ff6666;
     color: #fff;
     border-color: #ff4d4d;
 }
 
 /* ==== CATEGORY TAG STYLES ==== */
 .category-tag {
-    background-color: #C71585; /* MediumVioletRed / Fuchsia */
+    background-color: #C71585;
     color: #fff;
     padding: 3px 8px;
     border-radius: 4px;
@@ -1080,8 +1020,8 @@ input[type="date"] {
 
 /* ==== CREATION DATE TAG STYLES ==== */
 .creation-date-tag {
-    background-color: #A5D6A7; /* Verde suave */
-    color: #1B5E20; /* Verde escuro */
+    background-color: #A5D6A7;
+    color: #1B5E20;
     padding: 3px 8px;
     border-radius: 4px;
     font-size: 0.8em;
@@ -1130,7 +1070,7 @@ input[type="date"] {
     margin-left: auto;
     margin-right: auto;
 }
-/* Adicionado para ocultar a seção de autenticação após o login - MELHORIA PRIORIDADE 1 */
+/* NOVO: Regra para ocultar a seção de autenticação após o login */
 .auth-section.hidden {
     display: none;
 }
@@ -1154,7 +1094,7 @@ input[type="date"] {
     padding: 10px 15px;
     border: none;
     border-radius: 5px;
-    background-color: #f9c784; /* Light orange */
+    background-color: #f9c784;
     color: #333;
     cursor: pointer;
     transition: background-color 0.3s;
@@ -1164,7 +1104,7 @@ input[type="date"] {
 
 .forgot-password-container { margin-top: 15px; }
 .forgot-password-btn {
-    background: none; border: none; color: #654321; /* Dark Brown */
+    background: none; border: none; color: #654321;
     cursor: pointer; text-decoration: underline; font-size: 0.9em;
 }
 .forgot-password-btn:hover { text-decoration: none; }
@@ -1185,7 +1125,7 @@ input[type="date"] {
 }
 .auth-status-container #btnLogout {
      margin: 0;
-     background-color: #a65b5b; /* Muted red */
+     background-color: #a65b5b;
      color: #fff;
 }
 .auth-status-container #btnLogout:hover {
@@ -1211,7 +1151,7 @@ input[type="date"] {
 .milestone-icons-area {
     text-align: center;
     margin-bottom: 15px;
-    min-height: 44px; /* Evita "pulos" de layout ao carregar */
+    min-height: 44px;
 }
 
 .milestone-icon, .record-crown {
@@ -1219,8 +1159,8 @@ input[type="date"] {
     margin: 0 10px;
     vertical-align: middle;
     transition: opacity 0.4s ease, transform 0.4s ease, color 0.4s ease;
-    display: inline-block; /* Ícones são sempre inline-block */
-    animation: fadeInScale 0.5s ease-out forwards; /* Animação de entrada */
+    display: inline-block;
+    animation: fadeInScale 0.5s ease-out forwards;
 }
 
 .record-crown {
@@ -1332,19 +1272,18 @@ input[type="date"] {
     margin: 0 7px;
 }
 
-/* NOVOS ESTILOS PARA MARCOS CUMULATIVOS */
 .milestone-group {
-    display: inline-flex; /* Alinha ícone e contador na mesma linha */
-    align-items: center;  /* Centraliza verticalmente */
-    margin: 0 5px;      /* Espaçamento entre os grupos de marcos */
+    display: inline-flex;
+    align-items: center;
+    margin: 0 5px;
 }
 
 .milestone-counter {
     font-size: 1.2em;
     font-weight: bold;
-    color: #6D4C41; /* Tom de marrom para combinar com a identidade */
-    margin-left: -5px; /* Leve sobreposição para um visual mais coeso */
-    align-self: flex-end; /* Alinha na base do ícone */
+    color: #6D4C41;
+    margin-left: -5px;
+    align-self: flex-end;
     padding-bottom: 5px;
     text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.7);
 }
@@ -1359,7 +1298,6 @@ input[type="date"] {
         transform: scale(1);
     }
 }
-/* FIM DOS NOVOS ESTILOS */
 
 
 /* ==== WEEKLY PERSEVERANCE CHART STYLES ==== */
@@ -1449,7 +1387,6 @@ input[type="date"] {
     color: #777 !important; 
 }
 
-/* ==== ANIMAÇÕES E EFEITOS DE UX (PRIORIDADE 2.b) ==== */
 @keyframes fadeInItem {
     from {
         opacity: 0;
@@ -1465,30 +1402,27 @@ input[type="date"] {
     animation: fadeInItem 0.5s ease-out forwards;
 }
 
-/* ==== INÍCIO: NOVOS ESTILOS PARA EDIÇÃO INLINE ==== */
-/* Estilo para o ícone de edição (lápis) */
+/* ==== INLINE EDITING STYLES ==== */
 .edit-icon {
     display: inline-block;
     margin-left: 8px;
     cursor: pointer;
     font-size: 0.8em;
-    opacity: 0.5; /* Começa discreto */
+    opacity: 0.5;
     transition: opacity 0.2s;
-    vertical-align: middle; /* Alinha com o texto */
+    vertical-align: middle;
 }
 
-/* O ícone fica mais visível ao passar o mouse */
 .target h3:hover .edit-icon,
 .target-details:hover .edit-icon,
 .observation-item:hover .edit-icon {
     opacity: 1;
 }
 
-/* Container para os formulários de edição inline */
 .inline-edit-form {
     margin-top: 10px;
     padding: 10px;
-    background-color: #fff9e7; /* Amarelo bem claro para destaque */
+    background-color: #fff9e7;
     border: 1px solid #ffe082;
     border-radius: 5px;
     animation: fadeInItem 0.4s ease-out;
@@ -1498,7 +1432,7 @@ input[type="date"] {
 .inline-edit-form input[type="date"],
 .inline-edit-form textarea {
     width: 100%;
-    box-sizing: border-box; /* Garante que padding não estoure a largura */
+    box-sizing: border-box;
     padding: 8px;
     margin-bottom: 8px;
     border: 1px solid #ccc;
@@ -1509,7 +1443,7 @@ input[type="date"] {
 .inline-edit-form .form-actions {
     display: flex;
     gap: 8px;
-    justify-content: flex-end; /* Alinha botões à direita */
+    justify-content: flex-end;
     align-items: center;
 }
 
@@ -1522,9 +1456,9 @@ input[type="date"] {
     color: white;
 }
 
-.inline-edit-form .save-btn { background-color: #28a745; } /* Verde */
-.inline-edit-form .cancel-btn { background-color: #dc3545; } /* Vermelho */
-.inline-edit-form .remove-btn { background-color: #e57373; color: white; } /* Vermelho suave */
+.inline-edit-form .save-btn { background-color: #28a745; }
+.inline-edit-form .cancel-btn { background-color: #dc3545; }
+.inline-edit-form .remove-btn { background-color: #e57373; color: white; }
 
 .inline-edit-form label {
     display: block;
@@ -1534,7 +1468,6 @@ input[type="date"] {
     color: #5d4037;
     font-size: 0.9em;
 }
-/* ==== FIM: NOVOS ESTILOS PARA EDIÇÃO INLINE ==== */
 
 
 /* ==== RESPONSIVENESS ==== */
@@ -1577,7 +1510,6 @@ input[type="date"] {
 
     .modal-content { width: 95%; margin: 20% auto; padding: 15px;}
 
-    /* Perseverance bar responsiveness */
     .milestone-icon, .record-crown { font-size: 2.2em; margin: 0 8px; }
     .progress-bar { height: 22px; }
     .progress-percentage-left { font-size: 0.8em; }
@@ -1597,7 +1529,6 @@ input[type="date"] {
      .auth-btn { font-size: 0.9em; padding: 8px 12px; }
      .modal-content { margin: 25% auto; } 
      
-     /* Perseverance bar responsiveness for very small screens */
      .milestone-icon, .record-crown { font-size: 1.8em; margin: 0 5px; }
      .progress-bar { height: 20px; }
      .progress-percentage-left { font-size: 0.75em; padding: 0 8px; }
@@ -1662,29 +1593,27 @@ input[type="date"] {
     transform: scale(0.95);
 }
 
-/* Cores específicas para cada botão */
 .floating-nav .top-btn {
-    background-color: #7f8c8d; /* Cinza */
+    background-color: #7f8c8d;
     order: 1;
 }
 .floating-nav .priority-btn {
-    background-color: #2c3e50; /* Preto/Azul escuro */
+    background-color: #2c3e50;
     order: 2;
 }
 .floating-nav .daily-btn {
-    background-color: #3498db; /* Azul Céu */
+    background-color: #3498db;
     order: 3;
 }
 .floating-nav .up-btn {
-    background-color: #95a5a6; /* Cinza suave */
+    background-color: #95a5a6;
     order: 4;
 }
 .floating-nav .down-btn {
-    background-color: #95a5a6; /* Cinza suave */
+    background-color: #95a5a6;
     order: 5;
 }
 
-/* Estilo para os ícones SVG dentro dos botões */
 .floating-nav .nav-btn svg {
     width: 28px;
     height: 28px;
@@ -1715,7 +1644,7 @@ input[type="date"] {
     bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
-    background-color: #e44d26; /* Cor de alerta */
+    background-color: #e44d26;
     color: white;
     padding: 12px 20px;
     border-radius: 8px;
@@ -1750,7 +1679,7 @@ input[type="date"] {
     opacity: 1;
 }
 
-/* ==== APP TOAST NOTIFICATIONS (Genérico) - MELHORIAS PRIORIDADE 2 e 3 ==== */
+/* ==== APP TOAST NOTIFICATIONS (Genérico) ==== */
 .app-toast {
     position: fixed;
     bottom: 20px;
@@ -1758,7 +1687,7 @@ input[type="date"] {
     padding: 12px 20px;
     border-radius: 5px;
     color: white;
-    z-index: 1051; /* Acima do outro toast */
+    z-index: 1051;
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.4s, transform 0.4s, visibility 0.4s;
@@ -1768,22 +1697,16 @@ input[type="date"] {
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
-.app-toast.show {
+.app-toast.is-visible {
     opacity: 1;
     visibility: visible;
     transform: translateY(0);
 }
 
-/* Variações de Cor */
-.app-toast.success { background-color: #28a745; } /* Verde */
-.app-toast.error   { background-color: #dc3545; } /* Vermelho */
-.app-toast.info    { background-color: #17a2b8; } /* Azul Info */
+.toast--success { background-color: #28a745; }
+.toast--error   { background-color: #dc3545; }
+.toast--info    { background-color: #17a2b8; }
 
-.app-toast-message {
-    flex-grow: 1; /* Permite que a mensagem ocupe o espaço */
-}
-
-/* Botão de Fechar para Toasts (Prioridade 3) */
 .app-toast .toast-close-btn {
     background: none;
     border: none;
@@ -1792,8 +1715,8 @@ input[type="date"] {
     line-height: 1;
     cursor: pointer;
     opacity: 0.8;
-    padding: 0 0 0 15px; /* Espaço entre a mensagem e o botão */
-    margin-left: auto; /* Garante alinhamento à direita */
+    padding: 0 0 0 15px;
+    margin-left: auto;
 }
 
 .app-toast .toast-close-btn:hover {
@@ -1808,21 +1731,19 @@ input[type="date"] {
     text-align: left;
 }
 
-/* Estilo para o botão 'Orei' dentro de um sub-alvo */
 .sub-target .pray-button {
-    background-color: #6a8d73; /* Um tom de verde distinto mas harmonioso */
+    background-color: #6a8d73;
     color: white;
     padding: 6px 14px;
     font-size: 14px;
     border-radius: 5px;
-    margin-right: 8px; /* Espaçamento para outros botões */
+    margin-right: 8px;
 }
 
 .sub-target .pray-button:hover:not(:disabled) {
     background-color: #587962;
 }
 
-/* Estilo para botões pequenos desabilitados, como o de 'Reverter' */
 .observation-actions .btn-small:disabled {
     background-color: #e0e0e0;
     border-color: #bdbdbe;
@@ -1831,9 +1752,8 @@ input[type="date"] {
     opacity: 0.7;
 }
 
-/* (Opcional) Adiciona um 'tooltip' nativo para o botão desabilitado */
 .observation-actions .btn-small:disabled:hover::after {
-    content: attr(title); /* Exibe o conteúdo do atributo 'title' */
+    content: attr(title);
     position: absolute;
     background-color: #333;
     color: white;
