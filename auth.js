@@ -60,16 +60,10 @@ export async function signInWithGoogle() {
     const provider = new GoogleAuthProvider();
     
     // ** Ponto Crítico da Correção **
-    // O escopo 'drive.file' é muito restritivo. Ele não permite pesquisar pastas
-    // no Drive do usuário. Para que a função findOrCreateAppFolder funcione,
-    // precisamos de uma permissão que permita listar arquivos e pastas.
-    // O escopo 'https://www.googleapis.com/auth/drive' funciona, mas é muito amplo.
-    // O 'https://www.googleapis.com/auth/drive.file' é o correto para o que queremos,
-    // mas a lógica de busca precisa ser ajustada. A causa mais provável do erro 403
-    // é a API não estar habilitada no Google Cloud (passo anterior).
-    // Por segurança, vamos manter o escopo atual, pois ele é o recomendado.
-    // A garantia de que a API está ativa é o passo mais importante.
+    // Adicionamos 'drive.metadata.readonly' para permitir a busca pela pasta.
+    // O 'drive.file' permite criar/editar os arquivos que a aplicação cria.
     provider.addScope('https://www.googleapis.com/auth/drive.file');
+    provider.addScope('https://www.googleapis.com/auth/drive.metadata.readonly');
 
     const result = await signInWithPopup(auth, provider);
     
