@@ -619,9 +619,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Listeners de Ações Gerais ---
-    document.getElementById('btnEmailSignUp').addEventListener('click', handleSignUp);
-    document.getElementById('btnEmailSignIn').addEventListener('click', handleSignIn);
-    document.getElementById('btnForgotPassword').addEventListener('click', handlePasswordReset);
     document.getElementById('btnGoogleSignIn').addEventListener('click', handleGoogleSignIn);
     document.getElementById('btnLogout').addEventListener('click', () => Auth.handleSignOut());
     document.getElementById('prayerForm').addEventListener('submit', handleAddNewTarget);
