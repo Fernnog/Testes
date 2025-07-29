@@ -627,12 +627,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('viewAllTargetsButton').addEventListener('click', () => UI.showPanel('mainPanel'));
     document.getElementById('viewArchivedButton').addEventListener('click', () => UI.showPanel('archivedPanel'));
     document.getElementById('viewResolvedButton').addEventListener('click', () => UI.showPanel('resolvedPanel'));
+    document.getElementById('forceDriveSyncButton').addEventListener('click', handleForceSync);
     
-    // Supondo um novo botão com id="btnForceSync" no index.html
-    const forceSyncButton = document.getElementById('btnForceSync');
-    if(forceSyncButton) {
-        forceSyncButton.addEventListener('click', handleForceSync);
-    }
+   
     
     // --- Listeners da Seção Diária, Relatórios, Modais e Filtros ---
     document.getElementById('refreshDaily').addEventListener('click', async () => { if(confirm("Deseja gerar uma nova lista de alvos para hoje? A lista atual será substituída.")) { await Service.forceGenerateDailyTargets(state.user.uid, state.prayerTargets); await loadDataForUser(state.user); showToast("Nova lista gerada!", "success"); } });
