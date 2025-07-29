@@ -54,40 +54,61 @@ export async function initializeDriveService(accessToken) {
  * Procura pela pasta da aplicação no Drive ou a cria se não existir.
  * @returns {Promise<string>} - O ID da pasta.
  */
+// No arquivo google-drive-service.js, substitua a função findOrCreateAppFolder
+
 async function findOrCreateAppFolder() {
     if (appFolderId) {
         console.log("[Drive Service] Usando ID da pasta em cache:", appFolderId);
         return appFolderId;
     }
 
-    // 1. Procura por uma pasta com o nome definido e que não esteja na lixeira.
-    const searchQuery = `mimeType='application/vnd.google-apps.folder' and name='${FOLDER_NAME}' and trashed=false`;
-    console.log("[Drive Service] Procurando por pasta com a query:", searchQuery);
-    const response = await gapi.client.drive.files.list({
-        q: searchQuery,
-        fields: 'files(id, name)',
-        spaces: 'drive'
+    // 1. A busca com q='name=...' e spaces='drive' é INCOMPATÍVEL com o escopo 'drive.file'.
+    // O erro 403 é esperado. A estratégia correta é usar um arquivo especial como marcador.
+    const markerFileName = '.meu-diario-oracao-folder-id';
+    const searchMarkerQuery = `name='${markerFileName}' and 'appDataFolder' in parents`;
+
+    // Busca o arquivo marcador no espaço de dados oculto da aplicação.
+    let response = await gapi.client.drive.files.list({
+        q: searchMarkerQuery,
+        fields: 'files(id, appProperties)',
+        spaces: 'appDataFolder'
     });
 
+    // Se o arquivo marcador existir e tiver o ID da pasta, usa ele.
     if (response.result.files && response.result.files.length > 0) {
-        appFolderId = response.result.files[0].id;
-        console.log(`[Drive Service] Pasta encontrada. ID: ${appFolderId}`);
-        return appFolderId;
+        const folderId = response.result.files[0].appProperties.folderId;
+        if (folderId) {
+            console.log(`[Drive Service] ID da pasta encontrado no arquivo marcador. ID: ${folderId}`);
+            appFolderId = folderId;
+            return appFolderId;
+        }
     }
-
-    // 2. Se não encontrou, cria a pasta.
-    console.log("[Drive Service] Pasta não encontrada. Tentando criar uma nova...");
+    
+    // 2. Se não encontrou, cria a pasta VISÍVEL para o usuário.
+    console.log("[Drive Service] Pasta ou marcador não encontrados. Criando uma nova pasta...");
     const folderMetadata = {
         'name': FOLDER_NAME,
         'mimeType': 'application/vnd.google-apps.folder'
     };
-    const createResponse = await gapi.client.drive.files.create({
+    const createFolderResponse = await gapi.client.drive.files.create({
         resource: folderMetadata,
         fields: 'id'
     });
+    const newFolderId = createFolderResponse.result.id;
+    console.log(`[Drive Service] Pasta visível criada com sucesso. ID: ${newFolderId}`);
+    
+    // 3. Cria o arquivo marcador OCULTO e armazena o ID da pasta visível nele.
+    const markerMetadata = {
+        name: markerFileName,
+        parents: ['appDataFolder'],
+        appProperties: {
+            folderId: newFolderId
+        }
+    };
+    await gapi.client.drive.files.create({ resource: markerMetadata });
+    console.log(`[Drive Service] Arquivo marcador oculto criado para persistir o ID da pasta.`);
 
-    appFolderId = createResponse.result.id;
-    console.log(`[Drive Service] Pasta criada com sucesso. ID: ${appFolderId}`);
+    appFolderId = newFolderId;
     return appFolderId;
 }
 
