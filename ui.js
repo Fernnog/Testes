@@ -163,7 +163,7 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
 function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
     const isEditingEnabled = config.isEditingEnabled === true;
     
-    // INÍCIO DA MODIFICAÇÃO: Lógica para gerar o ícone de status do Google Drive
+    // Lógica para gerar o ícone de status do Google Drive
     let driveStatusHTML = '';
     // Apenas mostra o status se a configuração permitir e se houver um ID do Google Doc associado (ou estiver em processo de criação).
     if (config.showDriveStatus) {
@@ -203,7 +203,6 @@ function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
             }
         }
     }
-    // FIM DA MODIFICAÇÃO
     
     const hasSubTargets = Array.isArray(target.observations) && target.observations.some(obs => obs.isSubTarget);
     const subTargetIndicatorIcon = hasSubTargets ? `<span class="sub-target-indicator" title="Este alvo contém sub-alvos">🔗</span>` : '';
@@ -258,7 +257,7 @@ function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
         <div id="observationForm-${target.id}" class="add-observation-form" style="display:none;"></div>
         <div id="editCategoryForm-${target.id}" class="edit-category-form" style="display:none;"></div>` : '';
 
-    // MODIFICAÇÃO: Inserção do driveStatusHTML no início do h3.
+    // Inserção do driveStatusHTML no início do h3.
     return `
         <h3>${driveStatusHTML}${subTargetIndicatorIcon}${creationTag}${categoryTag}${deadlineTag}${resolvedTag} ${target.title || 'Sem Título'}${editTitleIcon}</h3>
         ${detailsPara}
@@ -291,7 +290,7 @@ export function renderPriorityTargets(allActiveTargets, dailyTargetsData) {
     section.style.display = 'block';
     container.innerHTML = ''; 
 
-    // MODIFICAÇÃO: Adicionado showDriveStatus: true
+    // Adicionado showDriveStatus: true
     const config = {
         showCreationDate: true, showCategory: true, showDeadline: true, showDetails: true,
         showObservations: true, showActions: false, showPrayButton: true,
@@ -314,7 +313,7 @@ export function renderTargets(targets, total, page, perPage, dailyTargetsData) {
     if (targets.length === 0) {
         container.innerHTML = '<p>Nenhum alvo de oração encontrado com os filtros atuais.</p>';
     } else {
-        // MODIFICAÇÃO: Adicionado showDriveStatus: true
+        // Adicionado showDriveStatus: true
         const config = {
             showCreationDate: true, showCategory: true, showDeadline: true, showDetails: true,
             showElapsedTime: true, showObservations: true, showActions: true,
@@ -345,7 +344,7 @@ export function renderArchivedTargets(targets, total, page, perPage, dailyTarget
             div.className = `target archived ${target.resolved ? 'resolved' : ''}`;
             div.dataset.targetId = target.id;
             
-            // MODIFICAÇÃO: Adicionado showDriveStatus: true
+            // Adicionado showDriveStatus: true
             const config = {
                 showCreationDate: true, showCategory: true, showResolvedDate: true,
                 showDetails: true, showArchivedDate: true, showObservations: true,
@@ -366,7 +365,7 @@ export function renderResolvedTargets(targets, total, page, perPage) {
     if (targets.length === 0) {
         container.innerHTML = '<p>Nenhum alvo respondido encontrado.</p>';
     } else {
-        // MODIFICAÇÃO: Adicionado showDriveStatus: true
+        // Adicionado showDriveStatus: true
         const config = {
             showCategory: true, showResolvedDate: true, showTimeToResolution: true,
             showObservations: true, showActions: false, showDownloadButton: true,
@@ -394,7 +393,7 @@ export function renderDailyTargets(pending, completed, dailyTargetsData) {
     }
 
     if (pending.length > 0) {
-        // MODIFICAÇÃO: Adicionado showDriveStatus: true
+        // Adicionado showDriveStatus: true
         const config = {
             showCreationDate: true, showCategory: true, showDeadline: true, showDetails: true,
             showObservations: true, showActions: false, showPrayButton: true, 
@@ -929,23 +928,23 @@ export function displayCompletionPopup() {
 export function updateAuthUI(user, message = '', isError = false) {
     const authSection = document.getElementById('authSection');
     const userStatusTop = document.getElementById('userStatusTop');
-    const driveStatusTop = document.getElementById('driveStatusTop'); // NOVO
+    const driveStatusTop = document.getElementById('driveStatusTop');
     const passwordResetMessageDiv = document.getElementById('passwordResetMessage');
     const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
 
     if (user) {
-        authSection.classList.add('hidden');
+        authSection.classList.add('hidden'); // Oculta o formulário de autenticação
         userStatusTop.textContent = `Logado: ${user.email}`;
         userStatusTop.style.display = 'inline-block';
         if (passwordResetMessageDiv) passwordResetMessageDiv.style.display = 'none';
     } else {
-        authSection.classList.remove('hidden');
+        authSection.classList.remove('hidden'); // Mostra o formulário de autenticação
         if (userStatusTop) {
             userStatusTop.style.display = 'none';
             userStatusTop.textContent = '';
         }
-        // NOVO: Esconde o status do Drive no logout
+        // Esconde o status do Drive no logout
         if (driveStatusTop) {
             driveStatusTop.style.display = 'none';
             driveStatusTop.textContent = '';
