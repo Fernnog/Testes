@@ -94,7 +94,12 @@ const findTargetInState = (targetId) => {
  * @param {string} targetId - O ID do alvo a ser sincronizado.
  */
 async function syncTarget(targetId) {
-    if (!state.isDriveEnabled) return;
+    // LOG DE VERIFICAÇÃO 4
+    console.log(`[Sync] A função syncTarget foi chamada para o ID: ${targetId}. O Drive está habilitado? ${state.isDriveEnabled}`);
+    if (!state.isDriveEnabled) {
+        console.warn("[Sync] Sincronização abortada: o serviço do Drive não está habilitado.");
+        return;
+    }
 
     const { target, isArchived, panelId } = findTargetInState(targetId);
     if (!target) {
@@ -146,7 +151,7 @@ async function handleSignIn() {
     const password = document.getElementById('password').value;
     if (!email || !password) return showToast("Por favor, preencha e-mail e senha.", "error");
     try {
-        await Auth.signInWithEmailAndPassword(email, password);
+        await Auth.signInWithEmailPassword(email, password);
     } catch (error) {
         console.error("Erro ao entrar:", error);
         UI.updateAuthUI(null, "Erro ao entrar: " + error.message, true);
@@ -158,25 +163,35 @@ async function handleSignIn() {
  */
 async function handleGoogleSignIn() {
     try {
+        // LOG DE VERIFICAÇÃO 2
+        console.log("[App] Iniciando o fluxo de login com Google...");
         const { user, accessToken } = await Auth.signInWithGoogle();
         
         if (user && accessToken) {
-            showToast("Autenticado com Google. Conectando ao Google Drive...", "info");
+            console.log("[App] Login com Google bem-sucedido. Usuário:", user.uid);
+            showToast("Autenticado com Google. Inicializando o serviço do Drive...", "info");
+            
+            // LOG DE VERIFICAÇÃO 3
+            console.log("[App] Tentando inicializar o GoogleDriveService...");
             const initialized = await GoogleDriveService.initializeDriveService(accessToken);
             
             if (initialized) {
+                console.log("[App] GoogleDriveService INICIALIZADO com sucesso.");
                 state.isDriveEnabled = true;
                 UI.updateDriveStatusUI('connected');
                 showToast("Conexão com Google Drive estabelecida!", "success");
+            } else {
+                 console.error("[App] Falha na inicialização do GoogleDriveService, mas sem erro lançado.");
             }
         }
     } catch (error) {
-        console.error("Erro no login com Google ou na inicialização do Drive:", error);
+        console.error("[App] Erro CRÍTICO no fluxo de login com Google ou na inicialização do Drive:", error);
         showToast(error.message, "error");
         UI.updateDriveStatusUI('error');
         state.isDriveEnabled = false;
     }
 }
+
 
 async function handlePasswordReset() {
     const email = document.getElementById('email').value.trim();
@@ -320,8 +335,7 @@ async function handleAddNewTarget(event) {
         observations: [],
         resolved: false,
         isPriority: isPriority,
-        googleDocId: null, // NOVO: Campo para o ID do Google Doc
-        driveStatus: '' // NOVO: Campo para o status de sincronização
+        googleDocId: null // NOVO: Campo para o ID do Google Doc
     };
     try {
         await Service.addNewPrayerTarget(state.user.uid, newTarget);
@@ -334,15 +348,20 @@ async function handleAddNewTarget(event) {
         const newTargetInState = state.prayerTargets.find(t => t.title === newTarget.title && !t.googleDocId);
 
         if (newTargetInState) {
+            // LOG DE VERIFICAÇÃO 5
+            console.log(`[App] Disparando sincronização para o novo alvo ID: ${newTargetInState.id}`);
             await syncTarget(newTargetInState.id);
+        } else {
+            console.error("[App] Não foi possível encontrar o alvo recém-criado no estado para iniciar a sincronização.");
         }
-        
+
         UI.showPanel('mainPanel');
     } catch (error) {
         console.error("Erro ao adicionar novo alvo:", error);
         showToast("Falha ao adicionar alvo: " + error.message, "error");
     }
 }
+
 
 // =================================================================
 // === Handlers de Ação Dedicados ===
@@ -403,7 +422,7 @@ async function handlePray(targetId) {
     }
 }
 
-async function handleResolveTarget(target) {
+async function handleResolveTarget(target, panelId) {
     if (!confirm("Marcar como respondido?")) return;
     const index = state.prayerTargets.findIndex(t => t.id === target.id);
     if (index === -1) return;
@@ -412,7 +431,9 @@ async function handleResolveTarget(target) {
     targetToResolve.resolved = true;
     targetToResolve.resolutionDate = new Date();
     state.resolvedTargets.unshift(targetToResolve);
-    
+    applyFiltersAndRender('mainPanel');
+    applyFiltersAndRender('resolvedPanel');
+
     try {
         await Service.markAsResolved(state.user.uid, targetToResolve);
         showToast("Alvo marcado como respondido!", "success");
@@ -421,13 +442,12 @@ async function handleResolveTarget(target) {
         showToast("Erro ao sincronizar. A ação será desfeita.", "error");
         state.resolvedTargets.shift();
         state.prayerTargets.splice(index, 0, targetToResolve);
-    } finally {
         applyFiltersAndRender('mainPanel');
         applyFiltersAndRender('resolvedPanel');
     }
 }
 
-async function handleArchiveTarget(target) {
+async function handleArchiveTarget(target, panelId) {
     if (!confirm("Arquivar este alvo?")) return;
     const index = state.prayerTargets.findIndex(t => t.id === target.id);
     if (index === -1) return;
@@ -436,7 +456,9 @@ async function handleArchiveTarget(target) {
     targetToArchive.archived = true;
     targetToArchive.archivedDate = new Date();
     state.archivedTargets.unshift(targetToArchive);
-    
+    applyFiltersAndRender('mainPanel');
+    applyFiltersAndRender('archivedPanel');
+
     try {
         await Service.archiveTarget(state.user.uid, targetToArchive);
         showToast("Alvo arquivado.", "info");
@@ -445,7 +467,6 @@ async function handleArchiveTarget(target) {
         showToast("Erro ao sincronizar. A ação será desfeita.", "error");
         state.archivedTargets.shift();
         state.prayerTargets.splice(index, 0, targetToArchive);
-    } finally {
         applyFiltersAndRender('mainPanel');
         applyFiltersAndRender('archivedPanel');
     }
@@ -457,14 +478,14 @@ async function handleDeleteArchivedTarget(targetId) {
     if (index === -1) return;
 
     const [deletedTarget] = state.archivedTargets.splice(index, 1);
+    applyFiltersAndRender('archivedPanel');
 
     try {
         await Service.deleteArchivedTarget(state.user.uid, targetId);
         showToast("Alvo excluído permanentemente.", "info");
     } catch (error) {
-        showToast("Erro ao excluir. O item será restaurado.", "error");
+        showToast("Erro ao sincronizar. O item será restaurado.", "error");
         state.archivedTargets.splice(index, 0, deletedTarget);
-    } finally {
         applyFiltersAndRender('archivedPanel');
     }
 }
@@ -479,7 +500,8 @@ async function handleAddObservation(target, isArchived, panelId) {
     if (!target.observations) target.observations = [];
     target.observations.push(newObservation);
     UI.toggleAddObservationForm(target.id);
-    
+    applyFiltersAndRender(panelId);
+
     try {
         await Service.addObservationToTarget(state.user.uid, target.id, isArchived, newObservation);
         showToast("Observação adicionada.", "success");
@@ -487,7 +509,6 @@ async function handleAddObservation(target, isArchived, panelId) {
     } catch(error) {
         showToast("Falha ao salvar. A alteração será desfeita.", "error");
         target.observations.pop();
-    } finally {
         applyFiltersAndRender(panelId);
     }
 }
@@ -498,6 +519,7 @@ async function handleSaveCategory(target, isArchived, panelId) {
     
     target.category = newCategory;
     UI.toggleEditCategoryForm(target.id);
+    applyFiltersAndRender(panelId);
 
     try {
         await Service.updateTargetField(state.user.uid, target.id, isArchived, { category: newCategory });
@@ -506,25 +528,24 @@ async function handleSaveCategory(target, isArchived, panelId) {
     } catch(error) {
         showToast("Falha ao salvar. A alteração foi desfeita.", "error");
         target.category = oldCategory;
-    } finally {
         applyFiltersAndRender(panelId);
     }
 }
 
 async function handleTogglePriority(target) {
     const newStatus = !target.isPriority;
-    const oldStatus = target.isPriority;
     
     target.isPriority = newStatus;
-    
+    applyFiltersAndRender('mainPanel');
+    UI.renderPriorityTargets(state.prayerTargets, state.dailyTargets);
+
     try {
         await Service.updateTargetField(state.user.uid, target.id, false, { isPriority: newStatus });
         showToast(newStatus ? "Alvo marcado como prioritário." : "Alvo removido dos prioritários.", "info");
         await syncTarget(target.id);
     } catch (error) {
         showToast("Erro ao sincronizar. A alteração foi desfeita.", "error");
-        target.isPriority = oldStatus;
-    } finally {
+        target.isPriority = !newStatus;
         applyFiltersAndRender('mainPanel');
         UI.renderPriorityTargets(state.prayerTargets, state.dailyTargets);
     }
@@ -537,10 +558,12 @@ async function handleTogglePriority(target) {
 document.addEventListener('DOMContentLoaded', () => {
     Auth.initializeAuth(user => {
         if (user) {
+            // A chamada UI.updateAuthUI(user) já oculta a seção de login.
             showToast(`Bem-vindo(a), ${user.email || user.displayName}!`, 'success');
             UI.updateAuthUI(user);
             loadDataForUser(user);
         } else {
+            // A chamada UI.updateAuthUI(null) já exibe a seção de login.
             UI.updateAuthUI(null);
             handleLogoutState();
         }
@@ -550,6 +573,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btnEmailSignUp').addEventListener('click', handleSignUp);
     document.getElementById('btnEmailSignIn').addEventListener('click', handleSignIn);
     document.getElementById('btnForgotPassword').addEventListener('click', handlePasswordReset);
+    // NOVO: Listener para o botão de login com Google
     document.getElementById('btnGoogleSignIn').addEventListener('click', handleGoogleSignIn);
     document.getElementById('btnLogout').addEventListener('click', () => Auth.handleSignOut());
     document.getElementById('prayerForm').addEventListener('submit', handleAddNewTarget);
@@ -653,11 +677,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
             
             case 'resolve':
-                await handleResolveTarget(target);
+                await handleResolveTarget(target, panelId);
                 break;
 
             case 'archive':
-                await handleArchiveTarget(target);
+                await handleArchiveTarget(target, panelId);
                 break;
             
             case 'delete-archived':
