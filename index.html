@@ -27,17 +27,17 @@
 </div>
 
 <div id="authSection" class="auth-section">
-    <!-- O formulário de email/senha foi removido -->
-    
+    <!-- O formulário de email/senha foi totalmente removido -->
     <div id="googleAuthContainer" style="display: block;">
-         <button id="btnGoogleSignIn" class="btn auth-btn google-btn">Entrar com Google</button>
+        <p style="margin-bottom: 15px;">Acesse ou crie sua conta para sincronizar seus alvos de oração com o Google Drive.</p>
+        <button id="btnGoogleSignIn" class="btn auth-btn google-btn">Entrar com Google</button>
     </div>
 
     <div class="auth-status-container" style="display: none;">
-        <p id="authStatus" class="auth-status">Nenhum usuário autenticado</p>
+        <!-- Este container será exibido pela UI.js após o login -->
+        <p id="authStatus" class="auth-status"></p>
         <button id="btnLogout" class="btn auth-btn" style="display:none;">Sair</button>
     </div>
-    <div id="passwordResetMessage" class="password-reset-message" style="display:none;"></div>
 </div>
 
     <hr class="menu-separator">
