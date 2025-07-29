@@ -54,20 +54,28 @@ export async function signInWithEmailAndPassword(email, password) {
  * @returns {Promise<{user: import("firebase/auth").User, accessToken: string}>} - Resolve com o objeto do usuário e o token de acesso para a API do Google.
  * @throws {Error} - Lança um erro se a permissão para o Drive for negada ou se o login falhar.
  */
+// No arquivo auth.js, substitua a função signInWithGoogle por esta versão
+
 export async function signInWithGoogle() {
     const provider = new GoogleAuthProvider();
     
-    // ** Ponto Crítico **
-    // Solicita a permissão para criar, editar e ver os arquivos que a APLICAÇÃO criou.
+    // ** Ponto Crítico da Correção **
+    // O escopo 'drive.file' é muito restritivo. Ele não permite pesquisar pastas
+    // no Drive do usuário. Para que a função findOrCreateAppFolder funcione,
+    // precisamos de uma permissão que permita listar arquivos e pastas.
+    // O escopo 'https://www.googleapis.com/auth/drive' funciona, mas é muito amplo.
+    // O 'https://www.googleapis.com/auth/drive.file' é o correto para o que queremos,
+    // mas a lógica de busca precisa ser ajustada. A causa mais provável do erro 403
+    // é a API não estar habilitada no Google Cloud (passo anterior).
+    // Por segurança, vamos manter o escopo atual, pois ele é o recomendado.
+    // A garantia de que a API está ativa é o passo mais importante.
     provider.addScope('https://www.googleapis.com/auth/drive.file');
 
     const result = await signInWithPopup(auth, provider);
     
-    // Extrai o token de acesso OAuth necessário para fazer chamadas à API do Google Drive.
     const credential = GoogleAuthProvider.credentialFromResult(result);
     const accessToken = credential.accessToken;
     
-    // LOG DE VERIFICAÇÃO 1
     console.log("[Auth] Token de acesso obtido:", accessToken ? `Sim (tamanho: ${accessToken.length})` : "NÃO");
             
     if (!accessToken) {
