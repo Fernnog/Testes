@@ -1,1041 +1,981 @@
-// script.js (Orquestrador Principal da Aplicação - Versão Final com Sincronização Google Drive)
-// ARQUITETURA ATUALIZADA: Implementa o fluxo de autenticação com Google e sincronização de alvos.
+// ui.js
+// Responsável por toda a manipulação do DOM e renderização da interface.
+// ARQUITETURA REVISADA: Inclui formulários inline, sistema de notificações e integração visual com Google Drive.
 
 // --- MÓDULOS ---
-import * as Auth from './auth.js';
-import * as Service from './firestore-service.js';
-import * as UI from './ui.js';
-import { initializeFloatingNav, updateFloatingNavVisibility } from './floating-nav.js';
-import { formatDateForDisplay, generateAndDownloadPdf } from './utils.js';
-// NOVO: Módulos para a funcionalidade do Google Drive
-import * as GoogleDriveService from './google-drive-service.js';
-import { updateDriveStatusUI } from './ui.js';
+import { formatDateForDisplay, formatDateToISO, timeElapsed, calculateMilestones } from './utils.js';
+import { MILESTONES } from './config.js';
 
-// --- ESTADO DA APLICAÇÃO ---
-let state = {
-    user: null,
-    prayerTargets: [],
-    archivedTargets: [],
-    resolvedTargets: [],
-    perseveranceData: { consecutiveDays: 0, recordDays: 0, lastInteractionDate: null },
-    weeklyPrayerData: { weekId: null, interactions: {} },
-    dailyTargets: { pending: [], completed: [], targetIds: [] },
-    pagination: {
-        mainPanel: { currentPage: 1, targetsPerPage: 10 },
-        archivedPanel: { currentPage: 1, targetsPerPage: 10 },
-        resolvedPanel: { currentPage: 1, targetsPerPage: 10 },
-    },
-    filters: {
-        mainPanel: { searchTerm: '', showDeadlineOnly: false, showExpiredOnly: false, startDate: null, endDate: null },
-        archivedPanel: { searchTerm: '', startDate: null, endDate: null },
-        resolvedPanel: { searchTerm: '' },
-    },
-    // NOVO: Flag para controlar a funcionalidade do Drive
-    isDriveEnabled: false
-};
+// --- Funções Utilitárias Específicas da UI ---
 
-// --- MELHORIA DE UX: Notificações Toast Não-Bloqueantes ---
-function showToast(message, type = 'success') {
-    const toast = document.createElement('div');
-    toast.textContent = message;
-    toast.style.position = 'fixed';
-    toast.style.bottom = '20px';
-    toast.style.right = '20px';
-    toast.style.padding = '12px 20px';
-    toast.style.borderRadius = '5px';
-    toast.style.color = 'white';
-    toast.style.zIndex = '1050';
-    toast.style.opacity = '0';
-    toast.style.transition = 'opacity 0.3s, transform 0.3s';
-    toast.style.transform = 'translateY(20px)';
-    if (type === 'success') {
-        toast.style.backgroundColor = '#28a745';
-    } else if (type === 'error') {
-        toast.style.backgroundColor = '#dc3545';
-    } else {
-        toast.style.backgroundColor = '#17a2b8';
+/**
+ * Exibe uma notificação toast na tela, com opção de fechamento para erros.
+ * @param {string} message - A mensagem a ser exibida.
+ * @param {'success' | 'error' | 'info'} type - O tipo de notificação, que define a cor.
+ */
+export function showToast(message, type = 'success') {
+    const existingToast = document.querySelector('.app-toast');
+    if (existingToast) {
+        existingToast.remove();
     }
+
+    const toast = document.createElement('div');
+    toast.className = 'app-toast';
+    toast.textContent = message;
+    toast.classList.add(`toast--${type}`);
+
+    if (type === 'error') {
+        const closeButton = document.createElement('button');
+        closeButton.className = 'toast-close-btn';
+        closeButton.innerHTML = '×';
+        closeButton.title = 'Fechar';
+        closeButton.onclick = () => {
+            toast.classList.remove('is-visible');
+            setTimeout(() => toast.remove(), 300);
+        };
+        toast.appendChild(closeButton);
+    }
+
     document.body.appendChild(toast);
     setTimeout(() => {
-        toast.style.opacity = '1';
-        toast.style.transform = 'translateY(0)';
+        toast.classList.add('is-visible');
     }, 10);
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateY(20px)';
+
+    if (type !== 'error') {
         setTimeout(() => {
-            if (document.body.contains(toast)) {
-                document.body.removeChild(toast);
-            }
-        }, 300);
-    }, 3000);
+            toast.classList.remove('is-visible');
+            setTimeout(() => {
+                if (document.body.contains(toast)) {
+                    document.body.removeChild(toast);
+                }
+            }, 300);
+        }, 3500);
+    }
 }
 
-// --- LÓGICA DE SINCRONIZAÇÃO COM GOOGLE DRIVE (COM DEBOUNCE) ---
-
-// Mapa para guardar os temporizadores do debounce para cada alvo
-const syncDebounceTimers = new Map();
-
-// Função auxiliar para encontrar o alvo em qualquer lista do estado
-const findTargetInState = (targetId) => {
-    let target = state.prayerTargets.find(t => t.id === targetId);
-    if (target) return { target, isArchived: false, panelId: 'mainPanel' };
-    target = state.archivedTargets.find(t => t.id === targetId);
-    if (target) return { target, isArchived: true, panelId: 'archivedPanel' };
-    target = state.resolvedTargets.find(t => t.id === targetId);
-    if (target) return { target, isArchived: true, panelId: 'resolvedPanel' };
-    return { target: null, isArchived: null, panelId: null };
-};
+/**
+ * Verifica se uma data de prazo já expirou.
+ * @param {Date} date - O objeto Date do prazo.
+ * @returns {boolean} - True se a data já passou.
+ */
+function isDateExpired(date) {
+    if (!date || !(date instanceof Date) || isNaN(date.getTime())) return false;
+    const now = new Date();
+    const todayUTCStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    return date.getTime() < todayUTCStart.getTime();
+}
 
 /**
- * Função central para sincronizar um alvo específico com o Google Drive.
- * @param {string} targetId - O ID do alvo a ser sincronizado.
+ * Gera o HTML para a lista de observações de um alvo.
+ * @param {Array<object>} observations - O array de observações.
+ * @param {string} parentTargetId - O ID do alvo principal.
+ * @param {object} dailyTargetsData - Dados dos alvos diários para verificar status.
+ * @param {boolean} isEditingEnabled - Flag para controlar a exibição dos ícones de edição.
+ * @returns {string} - A string HTML da lista de observações.
  */
-async function syncTarget(targetId) {
-    if (!state.isDriveEnabled) {
-        console.warn("[Sync] Sincronização abortada: o serviço do Drive não está habilitado.");
-        return;
-    }
+function createObservationsHTML(observations, parentTargetId, dailyTargetsData = {}, isEditingEnabled = false) {
+    if (!Array.isArray(observations) || observations.length === 0) return '';
+    
+    const sorted = [...observations].sort((a, b) => (b.date?.getTime() || 0) - (a.date?.getTime() || 0));
+    
+    let html = `<div class="observations">`;
 
-    const { target, isArchived, panelId } = findTargetInState(targetId);
-    if (!target) {
-        console.error("syncTarget: Alvo não encontrado no estado para o ID:", targetId);
-        return;
-    }
-
-    try {
-        target.driveStatus = 'syncing';
-        // Limpa a mensagem de erro anterior ao tentar sincronizar novamente
-        delete target.driveErrorMessage;
-        applyFiltersAndRender(panelId);
-
-        const result = await GoogleDriveService.backupTargetToDrive(target, target.googleDocId);
-
-        if (result.success && result.docId !== target.googleDocId) {
-            await Service.updateTargetField(state.user.uid, targetId, isArchived, { googleDocId: result.docId });
-            target.googleDocId = result.docId;
-        }
+    sorted.forEach((obs) => {
+        const originalIndex = observations.indexOf(obs);
+        const sanitizedText = (obs.text || '').replace(/</g, "<").replace(/>/g, ">");
         
-        target.driveStatus = 'synced';
-        console.log(`Alvo '${target.title}' sincronizado com sucesso.`);
+        if (obs.isSubTarget) {
+            const isResolved = obs.subTargetStatus === 'resolved';
+            const subTargetId = `${parentTargetId}_${originalIndex}`;
+            const hasBeenPrayedToday = (dailyTargetsData.completed || []).some(t => t.targetId === subTargetId);
+            const prayButtonText = hasBeenPrayedToday ? '✓ Orado!' : 'Orei!';
+            const prayButtonClass = `btn pray-button ${hasBeenPrayedToday ? 'prayed' : ''}`;
+            const prayButtonDisabled = hasBeenPrayedToday ? 'disabled' : '';
+            const subTargetPrayButton = `<button class="${prayButtonClass}" data-action="pray-sub-target" data-id="${parentTargetId}" data-obs-index="${originalIndex}" ${prayButtonDisabled}>${prayButtonText}</button>`;
+            const hasSubObservations = Array.isArray(obs.subObservations) && obs.subObservations.length > 0;
+            const demoteButtonDisabled = hasSubObservations ? 'disabled' : '';
+            const demoteButtonTitle = hasSubObservations ? 'Não é possível reverter um sub-alvo que já possui observações.' : 'Reverter para observação comum';
 
-    } catch (error) {
-        console.error(`Falha ao sincronizar o alvo ${targetId}:`, error);
-        target.driveStatus = 'error';
-        // PRIORIDADE 2: Armazena a mensagem de erro específica no objeto do alvo.
-        target.driveErrorMessage = error.message || 'Erro desconhecido. Verifique as permissões ou a conexão.';
-        showToast(`Erro ao sincronizar "${target.title}" com o Drive.`, "error");
-    } finally {
-        applyFiltersAndRender(panelId);
-    }
-}
+            const subTargetActions = !isResolved ? `
+                <button class="btn-small" data-action="add-sub-observation" data-id="${parentTargetId}" data-obs-index="${originalIndex}">+ Observação</button>
+                <button class="btn-small resolve" data-action="resolve-sub-target" data-id="${parentTargetId}" data-obs-index="${originalIndex}">Marcar Respondido</button>
+            ` : `<span class="resolved-tag">Respondido</span>`;
 
+            const editTitleIcon = isEditingEnabled ? ` <span class="edit-icon" data-action="edit-sub-target-title" data-id="${parentTargetId}" data-obs-index="${originalIndex}">✏️</span>` : '';
+            const editDetailsIcon = isEditingEnabled ? ` <span class="edit-icon" data-action="edit-sub-target-details" data-id="${parentTargetId}" data-obs-index="${originalIndex}">✏️</span>` : '';
 
-/**
- * (MELHORIA PRIORIDADE 2) Solicita uma sincronização para um alvo, aplicando um debounce.
- * Evita chamadas excessivas à API ao fazer edições rápidas.
- * @param {string} targetId - O ID do alvo a ser sincronizado.
- */
-function requestSync(targetId) {
-    if (syncDebounceTimers.has(targetId)) {
-        clearTimeout(syncDebounceTimers.get(targetId));
-    }
-
-    console.log(`[Debounce] Sincronização para o alvo ${targetId} agendada em 2 segundos.`);
-    const timer = setTimeout(() => {
-        console.log(`[Debounce] Executando sincronização para o alvo ${targetId}.`);
-        syncTarget(targetId);
-        syncDebounceTimers.delete(targetId);
-    }, 2000); // Atraso de 2 segundos
-
-    syncDebounceTimers.set(targetId, timer);
-}
-
-/**
- * Handler para forçar a sincronização de todos os alvos. Não usa debounce.
- */
-async function handleForceSync() {
-    if (!state.isDriveEnabled) {
-        showToast("Você precisa estar conectado com o Google para sincronizar.", "error");
-        return;
-    }
-    
-    if (!confirm("Deseja forçar a sincronização de todos os alvos com o Google Drive agora?")) return;
-
-    // PRIORIDADE 2: Usa o status global da UI para dar feedback sobre a operação em massa.
-    UI.updateDriveStatusUI('syncing', 'Sincronizando...');
-    showToast("Iniciando sincronização manual completa...", "info");
-    console.log('[App] Iniciando sincronização manual em massa...');
-
-    // Limpa status e mensagens de erro anteriores
-    state.prayerTargets.forEach(t => { t.driveStatus = 'pending'; delete t.driveErrorMessage; });
-    state.archivedTargets.forEach(t => { t.driveStatus = 'pending'; delete t.driveErrorMessage; });
-    state.resolvedTargets.forEach(t => { t.driveStatus = 'pending'; delete t.driveErrorMessage; });
-    
-    applyFiltersAndRender('mainPanel');
-    applyFiltersAndRender('archivedPanel');
-    applyFiltersAndRender('resolvedPanel');
-
-    const allTargetsToSync = [...state.prayerTargets, ...state.archivedTargets, ...state.resolvedTargets];
-    let hasError = false;
-
-    try {
-        for (const target of allTargetsToSync) {
-            await new Promise(resolve => setTimeout(resolve, 200)); 
-            await syncTarget(target.id);
-            
-            // Verifica se este alvo específico falhou para determinar o status final
-            const { target: updatedTarget } = findTargetInState(target.id);
-            if (updatedTarget && updatedTarget.driveStatus === 'error') {
-                hasError = true;
+            let subObservationsHTML = '';
+            if (hasSubObservations) {
+                subObservationsHTML += '<div class="sub-observations-list">';
+                const sortedSubObs = [...obs.subObservations].sort((a, b) => (b.date?.getTime() || 0) - (a.date?.getTime() || 0));
+                
+                sortedSubObs.forEach(subObs => {
+                    const originalSubObsIndex = obs.subObservations.indexOf(subObs);
+                    const sanitizedSubText = (subObs.text || '').replace(/</g, "<").replace(/>/g, ">");
+                    const editSubObsIcon = isEditingEnabled ? ` <span class="edit-icon" data-action="edit-sub-observation" data-id="${parentTargetId}" data-obs-index="${originalIndex}" data-sub-obs-index="${originalSubObsIndex}">✏️</span>` : '';
+                    subObservationsHTML += `
+                        <div class="sub-observation-item">
+                            <strong>${formatDateForDisplay(subObs.date)}:</strong> ${sanitizedSubText}${editSubObsIcon}
+                        </div>`;
+                });
+                subObservationsHTML += '</div>';
             }
-        }
-    } catch (error) {
-        console.error("[App] Erro geral durante a sincronização forçada:", error);
-        hasError = true;
-        showToast("Ocorreu um erro inesperado durante a sincronização.", "error");
-    } finally {
-        // PRIORIDADE 2: Atualiza o status global da UI com base no resultado da operação.
-        if (hasError) {
-            UI.updateDriveStatusUI('error', 'Erro na Sincronização');
-            showToast("Sincronização concluída com erros. Verifique os alvos marcados com '✗'.", "error");
+
+            html += `
+                <div class="observation-item sub-target ${isResolved ? 'resolved' : ''}">
+                    <div class="sub-target-header">
+                        <span class="sub-target-title">${obs.subTargetTitle}${editTitleIcon}</span>
+                        <div class="observation-actions">
+                           ${subTargetActions}
+                           <button class="btn-small demote" data-action="demote-sub-target" data-id="${parentTargetId}" data-obs-index="${originalIndex}" ${demoteButtonDisabled} title="${demoteButtonTitle}">Reverter</button>
+                        </div>
+                    </div>
+                    <p><em>${sanitizedText}${editDetailsIcon} (Origem: observação de ${formatDateForDisplay(obs.date)})</em></p>
+                    <div class="target-actions" style="margin-top: 10px;">
+                        ${!isResolved ? subTargetPrayButton : ''}
+                    </div>
+                    ${subObservationsHTML}
+                </div>`;
         } else {
-            UI.updateDriveStatusUI('connected');
-            showToast("Sincronização manual concluída!", "success");
+            const editIcon = isEditingEnabled ? ` <span class="edit-icon" data-action="edit-observation" data-id="${parentTargetId}" data-obs-index="${originalIndex}">✏️</span>` : '';
+            html += `
+                <div class="observation-item">
+                    <p><strong>${formatDateForDisplay(obs.date)}:</strong> ${sanitizedText}${editIcon}</p>
+                    <div class="observation-actions">
+                        <button class="btn-small promote" data-action="promote-observation" data-id="${parentTargetId}" data-obs-index="${originalIndex}">Promover a Sub-Alvo</button>
+                    </div>
+                </div>`;
         }
-    }
-}
-
-
-// =================================================================
-// === LÓGICA DE AUTENTICAÇÃO E FLUXO DE DADOS ===
-// =================================================================
-
-async function handleGoogleSignIn() {
-    try {
-        console.log("[App] Iniciando o fluxo de login com Google...");
-        const { user, accessToken } = await Auth.signInWithGoogle();
-        
-        if (user && accessToken) {
-            console.log("[App] Login com Google bem-sucedido. Usuário:", user.uid);
-            showToast("Autenticado com Google. Inicializando o serviço do Drive...", "info");
-            
-            console.log("[App] Tentando inicializar o GoogleDriveService...");
-            const initialized = await GoogleDriveService.initializeDriveService(accessToken);
-            
-            if (initialized) {
-                console.log("[App] GoogleDriveService INICIALIZADO com sucesso.");
-                state.isDriveEnabled = true;
-                UI.updateDriveStatusUI('connected');
-                showToast("Conexão com Google Drive estabelecida!", "success");
-                if (state.user) {
-                   await loadDataForUser(state.user);
-                }
-            } else {
-                 console.error("[App] Falha na inicialização do GoogleDriveService, mas sem erro lançado.");
-            }
-        }
-    } catch (error) {
-        console.error("[App] Erro CRÍTICO no fluxo de login com Google ou na inicialização do Drive:", error);
-        showToast(error.message, "error");
-        UI.updateDriveStatusUI('error');
-        state.isDriveEnabled = false;
-    }
-}
-
-function applyFiltersAndRender(panelId) {
-    if (!panelId || !state.pagination[panelId] || !state.filters[panelId]) return;
-
-    const panelState = state.pagination[panelId];
-    const panelFilters = state.filters[panelId];
-    let sourceData = [];
-
-    if (panelId === 'mainPanel') sourceData = state.prayerTargets;
-    if (panelId === 'archivedPanel') sourceData = state.archivedTargets;
-    if (panelId === 'resolvedPanel') sourceData = state.resolvedTargets;
-
-    let filteredData = sourceData.filter(target => {
-        const searchTerm = panelFilters.searchTerm.toLowerCase();
-        const matchesSearch = searchTerm === '' ||
-            (target.title && target.title.toLowerCase().includes(searchTerm)) ||
-            (target.details && target.details.toLowerCase().includes(searchTerm)) ||
-            (target.category && target.category.toLowerCase().includes(searchTerm)) ||
-            (target.observations && target.observations.some(obs =>
-                (obs.text && obs.text.toLowerCase().includes(searchTerm)) ||
-                (obs.subTargetTitle && obs.subTargetTitle.toLowerCase().includes(searchTerm))
-            ));
-        if (!matchesSearch) return false;
-
-        if (panelId === 'mainPanel') {
-            const now = new Date();
-            const todayUTCStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-            if (panelFilters.showDeadlineOnly && !target.hasDeadline) return false;
-            if (panelFilters.showExpiredOnly) {
-                if (!target.hasDeadline || !target.deadlineDate || target.deadlineDate.getTime() >= todayUTCStart.getTime()) {
-                    return false;
-                }
-            }
-        }
-        
-        if (panelFilters.startDate) {
-            const startDate = new Date(panelFilters.startDate + 'T00:00:00Z');
-            if (target.date < startDate) return false;
-        }
-        if (panelFilters.endDate) {
-            const endDate = new Date(panelFilters.endDate + 'T23:59:59Z');
-            if (target.date > endDate) return false;
-        }
-
-        return true;
     });
 
-    const { currentPage, targetsPerPage } = panelState;
-    const startIndex = (currentPage - 1) * targetsPerPage;
-    const paginatedData = filteredData.slice(startIndex, startIndex + targetsPerPage);
-
-    switch (panelId) {
-        case 'mainPanel': UI.renderTargets(paginatedData, filteredData.length, currentPage, targetsPerPage); break;
-        case 'archivedPanel': UI.renderArchivedTargets(paginatedData, filteredData.length, currentPage, targetsPerPage); break;
-        case 'resolvedPanel': UI.renderResolvedTargets(paginatedData, filteredData.length, currentPage, targetsPerPage); break;
-    }
+    return html + `</div>`;
 }
 
-async function loadDataForUser(user) {
-    try {
-        const [prayerData, archivedData, perseveranceData, weeklyData] = await Promise.all([
-            Service.fetchPrayerTargets(user.uid),
-            Service.fetchArchivedTargets(user.uid),
-            Service.loadPerseveranceData(user.uid),
-            Service.loadWeeklyPrayerData(user.uid)
-        ]);
+// --- Template Engine de Alvos ---
 
-        state.user = user;
-        state.prayerTargets = prayerData.map(t => ({ ...t, driveStatus: 'pending' }));
-        const allArchived = archivedData.map(t => ({ ...t, driveStatus: 'pending' }));
-        state.archivedTargets = allArchived.filter(t => !t.resolved);
-        state.resolvedTargets = allArchived.filter(t => t.resolved);
-        
-        state.perseveranceData = perseveranceData;
-        state.weeklyPrayerData = weeklyData;
-        const dailyTargetsData = await Service.loadDailyTargets(user.uid, state.prayerTargets);
-        state.dailyTargets = dailyTargetsData;
+/**
+ * MODIFICADO: Cria o HTML para um único alvo, agora incluindo o status de backup do Google Drive.
+ * @param {object} target - O objeto do alvo de oração. (Espera-se que contenha `googleDocId` e `driveStatus`).
+ * @param {object} config - Configurações de exibição e ações.
+ * @param {object} dailyTargetsData - Dados dos alvos diários para verificar status.
+ * @returns {string} - O HTML do elemento do alvo.
+ */
 
-        applyFiltersAndRender('mainPanel');
-        applyFiltersAndRender('archivedPanel');
-        applyFiltersAndRender('resolvedPanel');
-        UI.renderDailyTargets(state.dailyTargets.pending, state.dailyTargets.completed);
-        UI.renderPriorityTargets(state.prayerTargets, state.dailyTargets);
-        UI.updatePerseveranceUI(state.perseveranceData);
-        UI.updateWeeklyChart(state.weeklyPrayerData);
-        UI.showPanel('dailySection');
+function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
+    const isEditingEnabled = config.isEditingEnabled === true;
 
-        if (state.isDriveEnabled) {
-            console.log('[App] Iniciando sincronização em massa para todos os alvos...');
-            showToast('Iniciando sincronização com o Google Drive...', 'info');
-            const allTargetsToSync = [...state.prayerTargets, ...state.archivedTargets, ...state.resolvedTargets];
-            for (const target of allTargetsToSync) {
-                await new Promise(resolve => setTimeout(resolve, 200)); 
-                await syncTarget(target.id);
-            }
+    let driveStatusHTML = '';
+    if (config.showDriveStatus) {
+        let icon = '';
+        let title = '';
+        let statusClass = '';
+        let tagName = 'span';
+        let actionAttribute = '';
+
+        switch (target.driveStatus) {
+            case 'syncing':
+                icon = '↻'; // Ícone de spinner/refresh
+                title = 'Sincronizando com o Google Drive...';
+                statusClass = 'syncing';
+                break;
+            case 'error':
+                icon = '✗';
+                title = `Falha na sincronização. Causa: ${target.driveErrorMessage || 'Erro desconhecido.'}`;
+                statusClass = 'error';
+                break;
+            case 'synced':
+                icon = '✓';
+                title = 'Backup sincronizado no Google Drive. Clique para abrir.';
+                statusClass = 'synced';
+                if (target.googleDocId) {
+                    tagName = 'a';
+                    actionAttribute = `href="https://docs.google.com/document/d/${target.googleDocId}" target="_blank"`;
+                }
+                break;
+            case 'pending':
+            default:
+                icon = '☁️'; // Ícone de nuvem universalmente suportado
+                title = 'Sincronização pendente...';
+                statusClass = 'pending';
+                break;
         }
-        
-        const now = new Date();
-        const todayUTCStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-        const expiredTargets = state.prayerTargets.filter(target =>
-            target.hasDeadline && target.deadlineDate && target.deadlineDate.getTime() < todayUTCStart.getTime()
-        );
-        if (expiredTargets.length > 0) {
-            UI.showExpiredTargetsToast(expiredTargets);
+
+        if (statusClass) {
+            driveStatusHTML = `<${tagName} ${actionAttribute} class="drive-status-icon ${statusClass}" title="${title}">${icon}</${tagName}>`;
         }
-        updateFloatingNavVisibility(state);
-
-    } catch (error) {
-        console.error("[App] Error during data loading process:", error);
-        showToast("Ocorreu um erro crítico ao carregar seus dados.", "error");
-        handleLogoutState();
     }
+    
+    const hasSubTargets = Array.isArray(target.observations) && target.observations.some(obs => obs.isSubTarget);
+    const subTargetIndicatorIcon = hasSubTargets ? `<span class="sub-target-indicator" title="Este alvo contém sub-alvos">🔗</span>` : '';
+    const creationTag = config.showCreationDate ? `<span class="creation-date-tag">Iniciado em: ${formatDateForDisplay(target.date)}</span>` : '';
+    const categoryTag = config.showCategory && target.category ? `<span class="category-tag">${target.category}</span>` : '';
+    const deadlineTag = config.showDeadline && target.hasDeadline && target.deadlineDate ? `<span class="deadline-tag ${isDateExpired(target.deadlineDate) ? 'expired' : ''}">Prazo: ${formatDateForDisplay(target.deadlineDate)}</span>` : '';
+    const resolvedTag = config.showResolvedDate && target.resolved && target.resolutionDate ? `<span class="resolved-tag">Respondido em: ${formatDateForDisplay(target.resolutionDate)}</span>` : '';
+    const editTitleIcon = isEditingEnabled ? ` <span class="edit-icon" data-action="edit-title" data-id="${target.id}">✏️</span>` : '';
+    const editDetailsIcon = isEditingEnabled ? ` <span class="edit-icon" data-action="edit-details" data-id="${target.id}">✏️</span>` : '';
+    
+    const detailsPara = config.showDetails ? `<p class="target-details">${target.details || 'Sem Detalhes'}${editDetailsIcon}</p>` : '';
+    const elapsedTimePara = config.showElapsedTime ? `<p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>` : '';
+    const archivedDatePara = config.showArchivedDate && target.archivedDate ? `<p><strong>Data Arquivamento:</strong> ${formatDateForDisplay(target.archivedDate)}</p>` : '';
+    const timeToResolutionPara = config.showTimeToResolution && target.date && target.resolutionDate ? `<p><strong>Tempo para Resposta:</strong> ${timeElapsed(target.date, target.resolutionDate)}</p>` : '';
+
+    let mainActionHTML = '';
+    if (config.showPrayButton) {
+        const hasBeenPrayedToday = (dailyTargetsData.completed || []).some(t => t.id === target.id);
+        const prayButtonText = hasBeenPrayedToday ? '✓ Orado!' : 'Orei!';
+        const prayButtonClass = `btn pray-button ${hasBeenPrayedToday ? 'prayed' : ''}`;
+        const prayButtonDisabled = hasBeenPrayedToday ? 'disabled' : '';
+        const prayAction = config.isPriorityPanel ? 'pray-priority' : 'pray';
+
+        mainActionHTML = `
+            <div class="target-main-action">
+                <button class="${prayButtonClass}" data-action="${prayAction}" data-id="${target.id}" ${prayButtonDisabled}>${prayButtonText}</button>
+            </div>
+        `;
+    }
+
+    let actionsHTML = '';
+    if (config.showActions) {
+        const priorityButtonClass = `btn toggle-priority ${target.isPriority ? 'is-priority' : ''}`;
+        const priorityButtonText = target.isPriority ? 'Remover Prioridade' : 'Marcar Prioridade';
+        const resolveButton = config.showResolveButton ? `<button class="btn resolved" data-action="resolve" data-id="${target.id}">Respondido</button>` : '';
+        const archiveButton = config.showArchiveButton ? `<button class="btn archive" data-action="archive" data-id="${target.id}">Arquivar</button>` : '';
+        const togglePriorityButton = config.showTogglePriorityButton ? `<button class="${priorityButtonClass}" data-action="toggle-priority" data-id="${target.id}">${priorityButtonText}</button>` : '';
+        const addObservationButton = config.showAddObservationButton ? `<button class="btn add-observation" data-action="toggle-observation" data-id="${target.id}">Observação</button>` : '';
+        const editDeadlineButton = config.showEditDeadlineButton ? `<button class="btn edit-deadline" data-action="edit-deadline" data-id="${target.id}">Editar Prazo</button>` : '';
+        const editCategoryButton = config.showEditCategoryButton ? `<button class="btn edit-category" data-action="edit-category" data-id="${target.id}">Editar Categoria</button>` : '';
+        const deleteButton = config.showDeleteButton ? `<button class="btn delete" data-action="delete-archived" data-id="${target.id}">Excluir</button>` : '';
+        const downloadButton = config.showDownloadButton ? `<button class="btn download" data-action="download-target-pdf" data-id="${target.id}">Download (.pdf)</button>` : '';
+
+        actionsHTML = `<div class="target-actions">
+            ${resolveButton} ${archiveButton} ${togglePriorityButton} ${addObservationButton} 
+            ${editDeadlineButton} ${editCategoryButton} ${deleteButton} ${downloadButton}
+        </div>`;
+    }
+
+    const observationsHTML = config.showObservations ? createObservationsHTML(target.observations, target.id, dailyTargetsData, isEditingEnabled) : '';
+    const formsHTML = config.showForms ? `
+        <div id="observationForm-${target.id}" class="add-observation-form" style="display:none;"></div>
+        <div id="editCategoryForm-${target.id}" class="edit-category-form" style="display:none;"></div>` : '';
+
+    return `
+        <h3>${driveStatusHTML}${subTargetIndicatorIcon}${creationTag}${categoryTag}${deadlineTag}${resolvedTag} ${target.title || 'Sem Título'}${editTitleIcon}</h3>
+        ${detailsPara}
+        ${mainActionHTML}
+        ${elapsedTimePara}
+        ${archivedDatePara}
+        ${timeToResolutionPara}
+        <div id="inlineEditContainer-${target.id}"></div>
+        ${observationsHTML}
+        ${actionsHTML}
+        ${formsHTML}
+    `;
 }
 
-function handleLogoutState() {
-    state = { user: null, prayerTargets: [], archivedTargets: [], resolvedTargets: [], perseveranceData: { consecutiveDays: 0, recordDays: 0, lastInteractionDate: null }, weeklyPrayerData: { weekId: null, interactions: {} }, dailyTargets: { pending: [], completed: [], targetIds: [] }, pagination: { mainPanel: { currentPage: 1, targetsPerPage: 10 }, archivedPanel: { currentPage: 1, targetsPerPage: 10 }, resolvedPanel: { currentPage: 1, targetsPerPage: 10 }}, filters: { mainPanel: { searchTerm: '', showDeadlineOnly: false, showExpiredOnly: false, startDate: null, endDate: null }, archivedPanel: { searchTerm: '', startDate: null, endDate: null }, resolvedPanel: { searchTerm: '' }}, isDriveEnabled: false };
-    UI.renderTargets([], 0, 1, 10); UI.renderArchivedTargets([], 0, 1, 10); UI.renderResolvedTargets([], 0, 1, 10); UI.renderDailyTargets([], []); UI.resetPerseveranceUI(); UI.resetWeeklyChart(); UI.showPanel('authSection');
-    UI.updateDriveStatusUI('disconnected');
-    updateFloatingNavVisibility(state);
-}
+// --- Funções de Renderização de Listas de Alvos (Refatoradas) ---
 
-async function handleAddNewTarget(event) {
-    event.preventDefault();
-    if (!state.user) return showToast("Você precisa estar logado.", "error");
-    const title = document.getElementById('title').value.trim();
-    if (!title) return showToast("O título é obrigatório.", "error");
-    const hasDeadline = document.getElementById('hasDeadline').checked;
-    const deadlineValue = document.getElementById('deadlineDate').value;
-    if (hasDeadline && !deadlineValue) return showToast("Selecione uma data para o prazo.", "error");
-    const isPriority = document.getElementById('isPriority').checked;
+export function renderPriorityTargets(allActiveTargets, dailyTargetsData) {
+    const container = document.getElementById('priorityTargetsList');
+    const section = document.getElementById('prioritySection');
+    if (!container || !section) return;
 
-    const newTarget = {
-        title: title,
-        details: document.getElementById('details').value.trim(),
-        date: new Date(document.getElementById('date').value + 'T12:00:00Z'),
-        hasDeadline: hasDeadline,
-        deadlineDate: hasDeadline ? new Date(deadlineValue + 'T12:00:00Z') : null,
-        category: document.getElementById('categorySelect').value,
-        observations: [],
-        resolved: false,
-        isPriority: isPriority,
-        googleDocId: null 
+    const priorityTargets = allActiveTargets.filter(target => target.isPriority);
+
+    if (priorityTargets.length === 0) {
+        section.style.display = 'block';
+        container.innerHTML = `<p class="empty-message">Nenhum alvo prioritário definido.</p>`;
+        return;
+    }
+
+    section.style.display = 'block';
+    container.innerHTML = ''; 
+
+    const config = {
+        showCreationDate: true, showCategory: true, showDeadline: true, showDetails: true,
+        showObservations: true, showActions: false, showPrayButton: true,
+        isPriorityPanel: true, showForms: true, isEditingEnabled: false, 
+        showDriveStatus: true 
     };
-    try {
-        await Service.addNewPrayerTarget(state.user.uid, newTarget);
-        showToast("Alvo adicionado com sucesso!", "success");
-        document.getElementById('prayerForm').reset();
-        document.getElementById('deadlineContainer').style.display = 'none';
-
-        await loadDataForUser(state.user);
-        
-        const newTargetInState = state.prayerTargets.find(t => t.title === newTarget.title && !t.googleDocId);
-
-        if (newTargetInState) {
-            console.log(`[App] Disparando sincronização IMEDIATA para o novo alvo ID: ${newTargetInState.id}`);
-            // A sincronização de um alvo novo é imediata, não debounced.
-            await syncTarget(newTargetInState.id);
-        } else {
-            console.error("[App] Não foi possível encontrar o alvo recém-criado no estado para iniciar a sincronização.");
-        }
-
-        UI.showPanel('mainPanel');
-    } catch (error) {
-        console.error("Erro ao adicionar novo alvo:", error);
-        showToast("Falha ao adicionar alvo: " + error.message, "error");
-    }
+    
+    priorityTargets.forEach(target => {
+        const div = document.createElement("div");
+        div.className = "target priority-target-item target-fade-in";
+        div.dataset.targetId = target.id;
+        div.innerHTML = createTargetHTML(target, config, dailyTargetsData);
+        container.appendChild(div);
+    });
 }
 
-// =================================================================
-// === Handlers de Ação Dedicados ===
-// =================================================================
-
-async function handlePray(targetId) {
-    const targetToPray = state.prayerTargets.find(t => t.id === targetId);
-    if (!targetToPray || state.dailyTargets.completed.some(t => t.id === targetId)) return;
-
-    const targetIndex = state.dailyTargets.pending.findIndex(t => t.id === targetId);
-    if (targetIndex > -1) {
-        const [movedTarget] = state.dailyTargets.pending.splice(targetIndex, 1);
-        state.dailyTargets.completed.push(movedTarget);
+export function renderTargets(targets, total, page, perPage, dailyTargetsData) {
+    const container = document.getElementById('targetList');
+    container.innerHTML = '';
+    if (targets.length === 0) {
+        container.innerHTML = '<p>Nenhum alvo de oração encontrado com os filtros atuais.</p>';
     } else {
-        state.dailyTargets.completed.push(targetToPray);
+        const config = {
+            showCreationDate: true, showCategory: true, showDeadline: true, showDetails: true,
+            showElapsedTime: true, showObservations: true, showActions: true,
+            showResolveButton: true, showArchiveButton: true, showTogglePriorityButton: true,
+            showAddObservationButton: true, showEditDeadlineButton: true, showEditCategoryButton: true,
+            showDownloadButton: true, showForms: true, showPrayButton: false, isEditingEnabled: true,
+            showDriveStatus: true
+        };
+        targets.forEach(target => {
+            const div = document.createElement("div");
+            div.className = "target";
+            div.dataset.targetId = target.id;
+            div.innerHTML = createTargetHTML(target, config, dailyTargetsData);
+            container.appendChild(div);
+        });
     }
-    UI.renderDailyTargets(state.dailyTargets.pending, state.dailyTargets.completed);
-    UI.renderPriorityTargets(state.prayerTargets, state.dailyTargets);
+    renderPagination('mainPanel', page, total, perPage);
+}
+
+export function renderArchivedTargets(targets, total, page, perPage, dailyTargetsData) {
+    const container = document.getElementById('archivedList');
+    container.innerHTML = '';
+    if (targets.length === 0) {
+        container.innerHTML = '<p>Nenhum alvo arquivado encontrado.</p>';
+    } else {
+        targets.forEach(target => {
+            const div = document.createElement("div");
+            div.className = `target archived ${target.resolved ? 'resolved' : ''}`;
+            div.dataset.targetId = target.id;
+            
+            const config = {
+                showCreationDate: true, showCategory: true, showResolvedDate: true,
+                showDetails: true, showArchivedDate: true, showObservations: true,
+                showActions: true, showDeleteButton: true,
+                showDownloadButton: true, showForms: true, isEditingEnabled: true,
+                showDriveStatus: true
+            };
+            div.innerHTML = createTargetHTML(target, config, dailyTargetsData);
+            container.appendChild(div);
+        });
+    }
+    renderPagination('archivedPanel', page, total, perPage);
+}
+
+export function renderResolvedTargets(targets, total, page, perPage) {
+    const container = document.getElementById('resolvedList');
+    container.innerHTML = '';
+    if (targets.length === 0) {
+        container.innerHTML = '<p>Nenhum alvo respondido encontrado.</p>';
+    } else {
+        const config = {
+            showCategory: true, showResolvedDate: true, showTimeToResolution: true,
+            showObservations: true, showActions: false, showDownloadButton: true,
+            showForms: true, isEditingEnabled: true,
+            showDriveStatus: true
+        };
+        targets.forEach(target => {
+            const div = document.createElement("div");
+            div.className = 'target resolved';
+            div.dataset.targetId = target.id;
+            div.innerHTML = createTargetHTML(target, config);
+            container.appendChild(div);
+        });
+    }
+    renderPagination('resolvedPanel', page, total, perPage);
+}
+
+export function renderDailyTargets(pending, completed, dailyTargetsData) {
+    const container = document.getElementById("dailyTargets");
+    container.innerHTML = '';
+
+    if (pending.length === 0 && completed.length === 0) {
+        container.innerHTML = "<p>Nenhum alvo de oração selecionado para hoje.</p>";
+        return;
+    }
+
+    if (pending.length > 0) {
+        const config = {
+            showCreationDate: true, showCategory: true, showDeadline: true, showDetails: true,
+            showObservations: true, showActions: false, showPrayButton: true, 
+            showForms: true, isEditingEnabled: false,
+            showDriveStatus: true
+        };
+        pending.forEach(target => {
+            const div = document.createElement("div");
+            div.className = 'target target-fade-in';
+            div.dataset.targetId = target.id;
+            div.innerHTML = createTargetHTML(target, config, dailyTargetsData);
+            container.appendChild(div);
+        });
+    } else if (completed.length > 0) {
+        container.innerHTML = "<p>Você já orou por todos os alvos de hoje!</p>";
+        displayCompletionPopup();
+    }
+
+    if (completed.length > 0) {
+        const separator = document.createElement('hr');
+        separator.className = 'section-separator';
+        const completedTitle = document.createElement('h3');
+        completedTitle.textContent = "Concluídos Hoje";
+        completedTitle.style.textAlign = 'center';
+        container.appendChild(separator);
+        container.appendChild(completedTitle);
+
+        completed.forEach(target => {
+            const div = document.createElement("div");
+            const isSub = target.isSubTarget;
+            div.className = 'target completed-target target-fade-in';
+            div.dataset.targetId = target.id || target.targetId;
+            div.innerHTML = `<h3>${isSub ? '↳ ' : ''}${target.title || 'Alvo concluído'}</h3>`;
+            container.appendChild(div);
+        });
+    }
+}
+
+// --- Funções de Componentes de UI ---
+
+export function renderPagination(panelId, currentPage, totalItems, itemsPerPage) {
+    const paginationDiv = document.getElementById(`pagination-${panelId}`);
+    if (!paginationDiv) return;
+
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    if (totalPages <= 1) {
+        paginationDiv.style.display = 'none';
+        return;
+    }
+
+    paginationDiv.style.display = 'flex';
+    paginationDiv.innerHTML = `
+        <a href="#" class="page-link ${currentPage <= 1 ? 'disabled' : ''}" data-page="${currentPage - 1}" data-panel="${panelId}">« Anterior</a>
+        <span>Página ${currentPage} de ${totalPages}</span>
+        <a href="#" class="page-link ${currentPage >= totalPages ? 'disabled' : ''}" data-page="${currentPage + 1}" data-panel="${panelId}">Próxima »</a>
+    `;
+}
+
+export function updatePerseveranceUI(data, isNewRecord = false) {
+    const { consecutiveDays = 0, recordDays = 0 } = data;
+    const progressBar = document.getElementById('perseveranceProgressBar');
+    const currentDaysEl = document.getElementById('currentDaysText');
+    const recordDaysEl = document.getElementById('recordDaysText');
+    const perseveranceSection = document.getElementById('perseveranceSection');
+    const iconsContainer = document.getElementById('milestoneIconsArea');
+
+    if (!progressBar || !currentDaysEl || !recordDaysEl || !perseveranceSection || !iconsContainer) return;
+
+    perseveranceSection.style.display = 'block';
+
+    const percentage = recordDays > 0 ? Math.min((consecutiveDays / recordDays) * 100, 100) : 0;
+    progressBar.style.width = `${percentage}%`;
+    currentDaysEl.textContent = consecutiveDays;
+    recordDaysEl.textContent = recordDays;
+
+    if (isNewRecord) {
+        progressBar.classList.add('new-record-animation');
+        setTimeout(() => progressBar.classList.remove('new-record-animation'), 2000);
+    }
     
-    showToast(`Oração por "${targetToPray.title}" registrada!`, "success");
+    const achievedMilestones = calculateMilestones(consecutiveDays);
+    iconsContainer.innerHTML = '';
 
-    try {
-        await Service.updateDailyTargetStatus(state.user.uid, targetId, true);
-        const { isNewRecord } = await Service.recordUserInteraction(state.user.uid, state.perseveranceData, state.weeklyPrayerData);
-        const [perseveranceData, weeklyData] = await Promise.all([
-            Service.loadPerseveranceData(state.user.uid),
-            Service.loadWeeklyPrayerData(state.user.uid)
-        ]);
-        state.perseveranceData = perseveranceData;
-        state.weeklyPrayerData = weeklyData;
-        UI.updatePerseveranceUI(state.perseveranceData, isNewRecord);
-        UI.updateWeeklyChart(state.weeklyPrayerData);
+    if (achievedMilestones.length > 0) {
+        achievedMilestones.forEach(ms => {
+            const group = document.createElement('div');
+            group.className = 'milestone-group';
+            const iconSpan = document.createElement('span');
+            iconSpan.className = 'milestone-icon';
+            iconSpan.textContent = ms.icon;
+            group.appendChild(iconSpan);
+            if (ms.count > 1) {
+                const counterSpan = document.createElement('span');
+                counterSpan.className = 'milestone-counter';
+                counterSpan.textContent = `x${ms.count}`;
+                group.appendChild(counterSpan);
+            }
+            iconsContainer.appendChild(group);
+        });
+    } else {
+        iconsContainer.innerHTML = '<span class="milestone-legend" style="font-size: 1em;">Continue para conquistar seu primeiro marco! 🌱</span>';
+    }
+}
 
-        if (targetToPray.isPriority) {
-            const priorityTargets = state.prayerTargets.filter(t => t.isPriority);
-            const allPriorityPrayed = priorityTargets.every(p =>
-                state.dailyTargets.completed.some(c => c.id === p.id)
-            );
-            if (allPriorityPrayed) {
-                setTimeout(() => {
-                    showToast("Parabéns! Você orou por todos os seus alvos prioritários de hoje!", "info");
-                }, 500);
+export function updateWeeklyChart(data) {
+    const { interactions = {} } = data;
+    const now = new Date();
+    const localDayOfWeek = now.getDay(); 
+    const firstDayOfWeek = new Date(now);
+    firstDayOfWeek.setDate(now.getDate() - localDayOfWeek);
+    firstDayOfWeek.setHours(0, 0, 0, 0);
+
+    for (let i = 0; i < 7; i++) { 
+        const dayTick = document.getElementById(`day-${i}`);
+        if (!dayTick) continue;
+
+        const dayContainer = dayTick.parentElement;
+        if (dayContainer) dayContainer.classList.remove('current-day-container');
+        dayTick.className = 'day-tick'; 
+
+        if (i === localDayOfWeek) {
+            dayTick.classList.add('current-day');
+            if (dayContainer) dayContainer.classList.add('current-day-container');
+        }
+
+        const currentTickDate = new Date(firstDayOfWeek);
+        currentTickDate.setDate(firstDayOfWeek.getDate() + i);
+        
+        const dateStringUTC = `${currentTickDate.getUTCFullYear()}-${String(currentTickDate.getUTCMonth() + 1).padStart(2, '0')}-${String(currentTickDate.getUTCDate()).padStart(2, '0')}`;
+
+        if (interactions[dateStringUTC]) {
+            dayTick.classList.add('active'); 
+        } else if (new Date() > currentTickDate) { 
+            dayTick.classList.add('inactive'); 
+        }
+    }
+}
+
+export function resetPerseveranceUI() {
+    updatePerseveranceUI({ consecutiveDays: 0, recordDays: 0 });
+    const perseveranceSection = document.getElementById('perseveranceSection');
+    if(perseveranceSection) perseveranceSection.style.display = 'none';
+}
+
+export function resetWeeklyChart() {
+    updateWeeklyChart({});
+}
+
+export function showPanel(panelId) {
+    const allPanels = ['appContent', 'dailySection', 'mainPanel', 'archivedPanel', 'resolvedPanel', 'prioritySection'];
+    const mainMenuElements = ['mainMenu', 'secondaryMenu'];
+    const dailyRelatedElements = ['weeklyPerseveranceChart', 'perseveranceSection', 'sectionSeparator'];
+
+    [...allPanels, ...mainMenuElements, ...dailyRelatedElements].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
+
+    const panelEl = document.getElementById(panelId);
+    if (panelEl) panelEl.style.display = 'block';
+
+    const authSection = document.getElementById('authSection');
+    if (!authSection || authSection.classList.contains('hidden')) {
+        mainMenuElements.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'block';
+        });
+    }
+
+    if (panelId === 'dailySection') {
+        dailyRelatedElements.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'block';
+        });
+        const priorityEl = document.getElementById('prioritySection');
+        if(priorityEl) priorityEl.style.display = 'block';
+    }
+}
+
+export function toggleAddObservationForm(targetId) {
+    const formDiv = document.getElementById(`observationForm-${targetId}`);
+    if (!formDiv) return;
+    const isVisible = formDiv.style.display === 'block';
+
+    document.getElementById(`editCategoryForm-${targetId}`).style.display = 'none';
+
+    if (isVisible) {
+        formDiv.style.display = 'none';
+        formDiv.innerHTML = '';
+    } else {
+        formDiv.innerHTML = `
+            <textarea id="observationText-${targetId}" placeholder="Nova observação..." rows="3" style="width: 95%;"></textarea>
+            <input type="date" id="observationDate-${targetId}" style="width: 95%;">
+            <button class="btn" data-action="add-new-observation" data-id="${targetId}" style="background-color: #7cb17c;">Salvar Observação</button>
+            <button type="button" class="btn cancel-btn" onclick="document.getElementById('observationForm-${targetId}').style.display='none';" style="background-color: #f44336;">Cancelar</button>
+        `;
+        document.getElementById(`observationDate-${targetId}`).value = formatDateToISO(new Date());
+        formDiv.style.display = 'block';
+        formDiv.querySelector('textarea')?.focus();
+    }
+}
+
+export function toggleEditCategoryForm(targetId, currentCategory) {
+    const formDiv = document.getElementById(`editCategoryForm-${targetId}`);
+    if (!formDiv) return;
+    const isVisible = formDiv.style.display === 'block';
+
+    document.getElementById(`observationForm-${targetId}`).style.display = 'none';
+    
+    if (isVisible) {
+        formDiv.style.display = 'none';
+        formDiv.innerHTML = '';
+    } else {
+        const categories = ["Família", "Pessoal", "Igreja", "Trabalho", "Sonho", "Profético", "Promessas", "Esposa", "Filhas", "Ministério de Intercessão", "Outros"];
+        const optionsHTML = categories.map(cat => 
+            `<option value="${cat}" ${cat === currentCategory ? 'selected' : ''}>${cat}</option>`
+        ).join('');
+
+        formDiv.innerHTML = `
+            <label for="categorySelect-${targetId}">Nova Categoria:</label>
+            <select id="categorySelect-${targetId}" style="width: 95%;">
+                <option value="">-- Nenhuma --</option>
+                ${optionsHTML}
+            </select>
+            <button class="btn save-category-btn" data-action="save-category" data-id="${targetId}">Salvar Categoria</button>
+            <button type="button" class="btn cancel-category-btn" onclick="document.getElementById('editCategoryForm-${targetId}').style.display='none';">Cancelar</button>
+        `;
+        formDiv.style.display = 'block';
+        formDiv.querySelector('select')?.focus();
+    }
+}
+
+export function toggleEditForm(type, targetId, options = {}) {
+    const { currentValue = '', obsIndex = -1, subObsIndex = -1, saveAction, eventTarget } = options;
+    document.querySelectorAll('.inline-edit-form').forEach(form => form.remove());
+    
+    let targetNode;
+    let insertionPoint = 'appendChild';
+
+    if (type === 'Deadline' || type === 'Category') {
+        targetNode = eventTarget.closest('.target-actions');
+        insertionPoint = 'afterend';
+    } else if (type === 'Title' || type === 'Details') {
+        targetNode = document.querySelector(`[data-target-id="${targetId}"]`);
+    } else if (type === 'Observation' || type === 'SubTargetTitle' || type === 'SubTargetDetails') {
+        targetNode = document.querySelector(`[data-id="${targetId}"][data-obs-index="${obsIndex}"]`).closest('.observation-item');
+    } else if (type === 'SubObservation') {
+        targetNode = document.querySelector(`[data-id="${targetId}"][data-obs-index="${obsIndex}"][data-sub-obs-index="${subObsIndex}"]`).closest('.sub-observation-item');
+    }
+
+    if (!targetNode) {
+        console.error("Nó de referência para o formulário de edição não encontrado para o tipo:", type);
+        return;
+    }
+
+    const formDiv = document.createElement('div');
+    formDiv.className = 'inline-edit-form';
+    let inputElement, removeButtonHTML = '';
+
+    if (type === 'Deadline') {
+        const currentDateValue = currentValue ? formatDateToISO(currentValue) : '';
+        inputElement = `<label for="inline-deadline-${targetId}">Novo Prazo:</label><input type="date" id="inline-deadline-${targetId}" class="inline-edit-input" value="${currentDateValue}">`;
+        removeButtonHTML = `<button type="button" class="btn-small remove-btn" data-action="remove-deadline" data-id="${targetId}">Remover Prazo</button>`;
+    } else {
+        const isTextarea = type.includes('Details') || type.includes('Observation');
+        inputElement = isTextarea
+            ? `<textarea class="inline-edit-textarea" placeholder="Digite aqui...">${currentValue}</textarea>`
+            : `<input type="text" class="inline-edit-input" value="${currentValue}" placeholder="Digite o novo valor">`;
+    }
+    
+    const finalSaveAction = saveAction || `save-${type.toLowerCase().replace(' ', '-')}`;
+    const obsIndexAttr = obsIndex > -1 ? `data-obs-index="${obsIndex}"` : '';
+    const subObsIndexAttr = subObsIndex > -1 ? `data-sub-obs-index="${subObsIndex}"` : '';
+
+    formDiv.innerHTML = `
+        ${inputElement}
+        <div class="form-actions">
+            ${removeButtonHTML}
+            <div style="margin-left: auto;">
+                <button type="button" class="btn-small cancel-btn" data-action="cancel-edit">Cancelar</button>
+                <button class="btn-small save-btn" data-action="${finalSaveAction}" data-id="${targetId}" ${obsIndexAttr} ${subObsIndexAttr}>Salvar</button>
+            </div>
+        </div>
+    `;
+
+    if (insertionPoint === 'appendChild') {
+        targetNode.appendChild(formDiv);
+    } else {
+        targetNode.insertAdjacentElement(insertionPoint, formDiv);
+    }
+    
+    const inputField = formDiv.querySelector('input, textarea');
+    if (inputField) {
+        inputField.focus();
+        if(inputField.select) inputField.select();
+    }
+}
+
+export function showExpiredTargetsToast(expiredTargets) {
+    const toast = document.getElementById('expiredToast');
+    const messageEl = document.getElementById('expiredToastMessage');
+    const closeBtn = document.getElementById('closeExpiredToast');
+
+    if (!toast || !messageEl || !closeBtn || expiredTargets.length === 0) return;
+    
+    const count = expiredTargets.length;
+    messageEl.textContent = `Você tem ${count} alvo${count > 1 ? 's' : ''} com prazo vencido!`;
+    toast.classList.remove('hidden');
+    
+    closeBtn.onclick = () => toast.classList.add('hidden');
+    setTimeout(() => toast.classList.add('hidden'), 8000); 
+}
+
+export function toggleManualTargetModal(show) {
+    const modal = document.getElementById('manualTargetModal');
+    if (modal) {
+        modal.style.display = show ? 'flex' : 'none';
+        if (!show) document.getElementById('manualTargetSearchInput').value = '';
+    }
+}
+
+export function renderManualSearchResults(results, allTargets, searchTerm = '') {
+    const container = document.getElementById('manualTargetSearchResults');
+    container.innerHTML = '';
+
+    if (searchTerm.trim() === '' && allTargets.length > 0) {
+        container.innerHTML = '<p>Digite para buscar entre seus alvos ativos.</p>';
+        return;
+    }
+    
+    if (results.length === 0) {
+        container.innerHTML = '<p>Nenhum alvo encontrado com esse termo.</p>';
+        return;
+    }
+
+    results.forEach(target => {
+        const item = document.createElement('div');
+        item.className = 'manual-target-item';
+        item.dataset.action = 'select-manual-target'; 
+        item.dataset.id = target.id;
+        item.innerHTML = `
+            <h4 data-action="select-manual-target" data-id="${target.id}">${target.title}</h4>
+            <span data-action="select-manual-target" data-id="${target.id}">${target.details || 'Sem detalhes.'}</span>
+        `;
+        container.appendChild(item);
+    });
+}
+
+export function toggleDateRangeModal(show) {
+    const modal = document.getElementById('dateRangeModal');
+    if (modal) {
+        modal.style.display = show ? 'flex' : 'none';
+        if (show) {
+            const today = new Date();
+            const lastMonth = new Date();
+            lastMonth.setMonth(today.getMonth() - 1);
+            document.getElementById('endDate').value = formatDateToISO(today);
+            document.getElementById('startDate').value = formatDateToISO(lastMonth);
+        }
+    }
+}
+
+export function toggleCategoryModal(show, allTargets = []) {
+    const modal = document.getElementById('categorySelectionModal');
+    if (modal) {
+        modal.style.display = show ? 'flex' : 'none';
+        if (show) {
+            const container = document.getElementById('categoryCheckboxesContainer');
+            container.innerHTML = '';
+            
+            const categories = [...new Set(allTargets.map(t => t.category).filter(Boolean))];
+            if (categories.length === 0) {
+                container.innerHTML = '<p>Nenhuma categoria encontrada nos seus alvos.</p>';
+            } else {
+                categories.sort().forEach(category => {
+                    container.innerHTML += `
+                        <div class="category-checkbox-item">
+                            <input type="checkbox" id="cat-${category}" value="${category}" checked>
+                            <label for="cat-${category}">${category}</label>
+                        </div>
+                    `;
+                });
             }
         }
-    } catch (error) {
-        console.error("Erro ao processar 'Orei!':", error);
-        showToast("Erro ao registrar oração. Desfazendo.", "error");
-        const completedIndex = state.dailyTargets.completed.findIndex(t => t.id === targetId);
-        if (completedIndex > -1) {
-            const [revertedTarget] = state.dailyTargets.completed.splice(completedIndex, 1);
-            if (state.dailyTargets.targetIds.includes(targetId)) {
-                 state.dailyTargets.pending.unshift(revertedTarget);
-            }
+    }
+}
+
+export function generateViewHTML(targets, pageTitle, selectedCategories = []) {
+    const groupedTargets = {};
+    const useGrouping = selectedCategories.length > 0;
+
+    if (useGrouping) {
+        for (const category of selectedCategories.sort()) {
+            groupedTargets[category] = [];
         }
-        UI.renderDailyTargets(state.dailyTargets.pending, state.dailyTargets.completed);
-        UI.renderPriorityTargets(state.prayerTargets, state.dailyTargets);
+        if (targets.some(t => !t.category)) {
+            groupedTargets['Sem Categoria'] = [];
+        }
     }
-}
 
-async function handleResolveTarget(target) {
-    if (!confirm("Marcar como respondido?")) return;
-    const index = state.prayerTargets.findIndex(t => t.id === target.id);
-    if (index === -1) return;
-    
-    // UI Update Otimista
-    const [targetToResolve] = state.prayerTargets.splice(index, 1);
-    targetToResolve.resolved = true;
-    targetToResolve.resolutionDate = new Date();
-    state.resolvedTargets.unshift(targetToResolve);
-    applyFiltersAndRender('mainPanel');
-    applyFiltersAndRender('resolvedPanel');
-
-    try {
-        await Service.markAsResolved(state.user.uid, targetToResolve);
-        showToast("Alvo marcado como respondido!", "success");
-        requestSync(target.id); // Sincronização com debounce
-    } catch (error) {
-        showToast("Erro ao salvar a alteração. A ação será desfeita.", "error");
-        // Reversão
-        state.resolvedTargets.shift();
-        state.prayerTargets.splice(index, 0, targetToResolve);
-        applyFiltersAndRender('mainPanel');
-        applyFiltersAndRender('resolvedPanel');
-    }
-}
-
-async function handleArchiveTarget(target) {
-    if (!confirm("Arquivar este alvo?")) return;
-    const index = state.prayerTargets.findIndex(t => t.id === target.id);
-    if (index === -1) return;
-
-    // UI Update Otimista
-    const [targetToArchive] = state.prayerTargets.splice(index, 1);
-    targetToArchive.archived = true;
-    targetToArchive.archivedDate = new Date();
-    state.archivedTargets.unshift(targetToArchive);
-    applyFiltersAndRender('mainPanel');
-    applyFiltersAndRender('archivedPanel');
-
-    try {
-        await Service.archiveTarget(state.user.uid, targetToArchive);
-        showToast("Alvo arquivado.", "info");
-        requestSync(target.id); // Sincronização com debounce
-    } catch (error) {
-        showToast("Erro ao salvar a alteração. A ação será desfeita.", "error");
-        // Reversão
-        state.archivedTargets.shift();
-        state.prayerTargets.splice(index, 0, targetToArchive);
-        applyFiltersAndRender('mainPanel');
-        applyFiltersAndRender('archivedPanel');
-    }
-}
-
-async function handleDeleteArchivedTarget(targetId) {
-    if (!confirm("EXCLUIR PERMANENTEMENTE? Esta ação não pode ser desfeita.")) return;
-    const index = state.archivedTargets.findIndex(t => t.id === targetId);
-    if (index === -1) return;
-
-    const [deletedTarget] = state.archivedTargets.splice(index, 1);
-    applyFiltersAndRender('archivedPanel');
-
-    try {
-        await Service.deleteArchivedTarget(state.user.uid, targetId);
-        showToast("Alvo excluído permanentemente.", "info");
-        // Não há necessidade de sincronizar com o Drive, já que o doc pode ser deixado órfão ou deletado em outra rotina
-    } catch (error) {
-        showToast("Erro ao excluir. O item será restaurado.", "error");
-        state.archivedTargets.splice(index, 0, deletedTarget);
-        applyFiltersAndRender('archivedPanel');
-    }
-}
-
-async function handleAddObservation(target, isArchived, panelId) {
-    const text = document.getElementById(`observationText-${target.id}`).value.trim();
-    const dateStr = document.getElementById(`observationDate-${target.id}`).value;
-    if (!text || !dateStr) return showToast("Preencha o texto e a data.", "error");
-    
-    const newObservation = { text, date: new Date(dateStr + 'T12:00:00Z'), isSubTarget: false };
-    
-    if (!target.observations) target.observations = [];
-    target.observations.push(newObservation);
-    UI.toggleAddObservationForm(target.id);
-    applyFiltersAndRender(panelId);
-
-    try {
-        await Service.addObservationToTarget(state.user.uid, target.id, isArchived, newObservation);
-        showToast("Observação adicionada.", "success");
-        requestSync(target.id); // Sincronização com debounce
-    } catch(error) {
-        showToast("Falha ao salvar. A alteração será desfeita.", "error");
-        target.observations.pop();
-        applyFiltersAndRender(panelId);
-    }
-}
-
-async function handleSaveCategory(target, isArchived, panelId) {
-    const newCategory = document.getElementById(`categorySelect-${target.id}`).value;
-    const oldCategory = target.category;
-    
-    target.category = newCategory;
-    UI.toggleEditCategoryForm(target.id);
-    applyFiltersAndRender(panelId);
-
-    try {
-        await Service.updateTargetField(state.user.uid, target.id, isArchived, { category: newCategory });
-        showToast("Categoria atualizada.", "success");
-        requestSync(target.id); // Sincronização com debounce
-    } catch(error) {
-        showToast("Falha ao salvar. A alteração foi desfeita.", "error");
-        target.category = oldCategory;
-        applyFiltersAndRender(panelId);
-    }
-}
-
-async function handleTogglePriority(target) {
-    const newStatus = !target.isPriority;
-    const oldStatus = target.isPriority;
-    
-    target.isPriority = newStatus;
-    applyFiltersAndRender('mainPanel');
-    UI.renderPriorityTargets(state.prayerTargets, state.dailyTargets);
-
-    try {
-        await Service.updateTargetField(state.user.uid, target.id, false, { isPriority: newStatus });
-        showToast(newStatus ? "Alvo marcado como prioritário." : "Alvo removido dos prioritários.", "info");
-        requestSync(target.id); // Sincronização com debounce
-    } catch (error) {
-        showToast("Erro ao salvar. A alteração foi desfeita.", "error");
-        target.isPriority = oldStatus;
-        applyFiltersAndRender('mainPanel');
-        UI.renderPriorityTargets(state.prayerTargets, state.dailyTargets);
-    }
-}
-
-
-// ===============================================
-// === PONTO DE ENTRADA DA APLICAÇÃO E EVENTOS ===
-// ===============================================
-document.addEventListener('DOMContentLoaded', () => {
-    Auth.initializeAuth(user => {
-        if (user) {
-            showToast(`Bem-vindo(a), ${user.email || user.displayName}!`, 'success');
-            UI.updateAuthUI(user);
-            loadDataForUser(user);
+    for (const target of targets) {
+        if (useGrouping) {
+            const category = target.category || 'Sem Categoria';
+            if (groupedTargets[category]) {
+                groupedTargets[category].push(target);
+            }
         } else {
-            UI.updateAuthUI(null);
-            handleLogoutState();
+            if (!groupedTargets['all']) groupedTargets['all'] = [];
+            groupedTargets['all'].push(target);
         }
-    });
+    }
 
-    // --- Listeners de Ações Gerais ---
-    document.getElementById('btnGoogleSignIn').addEventListener('click', handleGoogleSignIn);
-    document.getElementById('btnLogout').addEventListener('click', () => Auth.handleSignOut());
-    document.getElementById('prayerForm').addEventListener('submit', handleAddNewTarget);
-    document.getElementById('backToMainButton').addEventListener('click', () => UI.showPanel('dailySection'));
-    document.getElementById('addNewTargetButton').addEventListener('click', () => UI.showPanel('appContent'));
-    document.getElementById('viewAllTargetsButton').addEventListener('click', () => UI.showPanel('mainPanel'));
-    document.getElementById('viewArchivedButton').addEventListener('click', () => UI.showPanel('archivedPanel'));
-    document.getElementById('viewResolvedButton').addEventListener('click', () => UI.showPanel('resolvedPanel'));
-    document.getElementById('forceDriveSyncButton').addEventListener('click', handleForceSync);
-    
-    // --- Listeners da Seção Diária, Relatórios, Modais e Filtros ---
-    document.getElementById('refreshDaily').addEventListener('click', async () => { if(confirm("Deseja gerar uma nova lista de alvos para hoje? A lista atual será substituída.")) { await Service.forceGenerateDailyTargets(state.user.uid, state.prayerTargets); await loadDataForUser(state.user); showToast("Nova lista gerada!", "success"); } });
-    document.getElementById('copyDaily').addEventListener('click', () => { const text = state.dailyTargets.pending.map(t => `- ${t.title}`).join('\n'); navigator.clipboard.writeText(text); showToast("Alvos pendentes copiados!", "success"); });
-    document.getElementById('viewDaily').addEventListener('click', () => { const allTargets = [...state.dailyTargets.pending, ...state.dailyTargets.completed]; const html = UI.generateViewHTML(allTargets, "Alvos do Dia"); const newWindow = window.open(); newWindow.document.write(html); newWindow.document.close(); });
-    document.getElementById('addManualTargetButton').addEventListener('click', () => { UI.renderManualSearchResults([], state.prayerTargets); UI.toggleManualTargetModal(true); });
-    document.getElementById('generateViewButton').addEventListener('click', () => { const html = UI.generateViewHTML(state.prayerTargets, "Visualização de Alvos Ativos"); const newWindow = window.open(); newWindow.document.write(html); newWindow.document.close(); });
-    document.getElementById('generateCategoryViewButton').addEventListener('click', () => { const allTargets = [...state.prayerTargets, ...state.archivedTargets, ...state.resolvedTargets]; UI.toggleCategoryModal(true, allTargets); });
-    document.getElementById('viewResolvedViewButton').addEventListener('click', () => { UI.toggleDateRangeModal(true); });
-    
-    document.getElementById('viewPerseveranceReportButton').addEventListener('click', () => { 
-        const reportData = { 
-            ...state.perseveranceData, 
-            lastInteractionDate: state.perseveranceData.lastInteractionDate ? formatDateForDisplay(state.perseveranceData.lastInteractionDate) : "Nenhuma",
-            interactionDates: Object.keys(state.weeklyPrayerData.interactions || {}) 
-        }; 
-        const html = UI.generatePerseveranceReportHTML(reportData); 
-        const newWindow = window.open(); 
-        newWindow.document.write(html); 
-        newWindow.document.close(); 
-    });
+    let bodyContent = '';
+    const categoriesToRender = useGrouping ? Object.keys(groupedTargets) : ['all'];
 
-    document.getElementById('viewInteractionReportButton').addEventListener('click', () => { window.location.href = 'orei.html'; });
-    document.getElementById('closeDateRangeModal').addEventListener('click', () => UI.toggleDateRangeModal(false));
-    document.getElementById('cancelDateRange').addEventListener('click', () => UI.toggleDateRangeModal(false));
-
-    document.getElementById('generateResolvedView').addEventListener('click', () => { 
-        const startDate = new Date(document.getElementById('startDate').value + 'T00:00:00Z'); 
-        const endDate = new Date(document.getElementById('endDate').value + 'T23:59:59Z'); 
-        const filtered = state.resolvedTargets.filter(t => t.resolutionDate >= startDate && t.resolutionDate <= endDate); 
-        const html = UI.generateViewHTML(filtered, `Alvos Respondidos de ${formatDateForDisplay(startDate)} a ${formatDateForDisplay(endDate)}`);
-        const newWindow = window.open(); 
-        newWindow.document.write(html); 
-        newWindow.document.close(); 
-        UI.toggleDateRangeModal(false); 
-    });
-    
-    document.getElementById('closeCategoryModal').addEventListener('click', () => UI.toggleCategoryModal(false));
-    document.getElementById('cancelCategoryView').addEventListener('click', () => UI.toggleCategoryModal(false));
-    
-    document.getElementById('confirmCategoryView').addEventListener('click', () => {
-        const selectedCategories = Array.from(document.querySelectorAll('#categoryCheckboxesContainer input:checked')).map(cb => cb.value);
-        const allTargets = [...state.prayerTargets, ...state.archivedTargets, ...state.resolvedTargets];
-        const filtered = allTargets.filter(t => selectedCategories.includes(t.category));
-        const html = UI.generateViewHTML(filtered, "Visualização por Categorias Selecionadas", selectedCategories);
-        const newWindow = window.open();
-        newWindow.document.write(html);
-        newWindow.document.close();
-        UI.toggleCategoryModal(false);
-    });
-
-    document.getElementById('hasDeadline').addEventListener('change', e => { document.getElementById('deadlineContainer').style.display = e.target.checked ? 'block' : 'none'; });
-    ['searchMain', 'searchArchived', 'searchResolved'].forEach(id => { document.getElementById(id).addEventListener('input', e => { const panelId = id.replace('search', '').toLowerCase() + 'Panel'; state.filters[panelId].searchTerm = e.target.value; state.pagination[panelId].currentPage = 1; applyFiltersAndRender(panelId); }); });
-    ['showDeadlineOnly', 'showExpiredOnlyMain'].forEach(id => { document.getElementById(id).addEventListener('change', e => { const filterName = id === 'showDeadlineOnly' ? 'showDeadlineOnly' : 'showExpiredOnly'; state.filters.mainPanel[filterName] = e.target.checked; state.pagination.mainPanel.currentPage = 1; applyFiltersAndRender('mainPanel'); }); });
-    document.getElementById('closeManualTargetModal').addEventListener('click', () => UI.toggleManualTargetModal(false));
-    document.getElementById('manualTargetSearchInput').addEventListener('input', e => { const searchTerm = e.target.value.toLowerCase(); const filtered = state.prayerTargets.filter(t => t.title.toLowerCase().includes(searchTerm) || (t.details && t.details.toLowerCase().includes(searchTerm))); UI.renderManualSearchResults(filtered, state.prayerTargets, searchTerm); });
-
-    // --- DELEGAÇÃO DE EVENTOS CENTRALIZADA ---
-    document.body.addEventListener('click', async e => {
-        const { action, id, page, panel, obsIndex, subObsIndex } = e.target.dataset;
-        if (!state.user && action) return;
-
-        if (page && panel) {
-            e.preventDefault();
-            if (e.target.classList.contains('disabled')) return;
-            state.pagination[panel].currentPage = parseInt(page);
-            applyFiltersAndRender(panel);
-            return;
+    for (const category of categoriesToRender) {
+        if (groupedTargets[category] && groupedTargets[category].length > 0) {
+            if (useGrouping) {
+                bodyContent += `<h2 class="category-title">${category}</h2>`;
+            }
+            bodyContent += groupedTargets[category].map(target => `
+                <div class="target-view-item">
+                    <h3>${target.title}</h3>
+                    <p><strong>Detalhes:</strong> ${target.details || 'N/A'}</p>
+                    <p><strong>Data de Criação:</strong> ${formatDateForDisplay(target.date)}</p>
+                    ${target.observations && target.observations.length > 0 ? '<h4>Observações:</h4>' + createObservationsHTML(target.observations, target.id) : ''}
+                </div>
+            `).join('<hr class="view-separator-light">');
         }
-        
-        if (action === 'cancel-edit') {
-            const form = e.target.closest('.inline-edit-form');
-            if (form) form.remove();
-            return;
+    }
+    
+    if (bodyContent === '') {
+        bodyContent = '<p>Nenhum alvo encontrado para os filtros selecionados.</p>';
+    }
+
+    return `
+        <!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${pageTitle}</title>
+        <style>
+            body { font-family: 'Playfair Display', serif; margin: 20px; line-height: 1.6; color: #333; }
+            .header { text-align: center; border-bottom: 2px solid #654321; padding-bottom: 10px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; }
+            h1 { color: #333; margin: 0; flex-grow: 1; }
+            h2.category-title { font-size: 1.5em; color: #654321; border-bottom: 1px solid #e29420; padding-bottom: 5px; margin-top: 30px; }
+            h3 { margin-bottom: 5px; color: #7a5217; }
+            h4 { margin-top: 15px; margin-bottom: 5px; color: #444; }
+            p { margin: 4px 0; color: #555; }
+            .target-view-item { margin-bottom: 15px; padding: 10px; border: 1px solid #f0f0f0; border-radius: 4px; background-color: #fdfdfd; }
+            .observations { margin-top: 10px; padding-left: 15px; border-left: 2px solid #eee; }
+            .observation-item { font-size: 0.9em; }
+            .view-separator-light { border: 0; border-top: 1px solid #eee; margin: 15px 0; }
+            .print-button { padding: 10px 18px; font-size: 14px; background-color: #7a5217; color: white; border: none; border-radius: 5px; cursor: pointer; }
+            @media print { .no-print { display: none !important; } }
+        </style>
+        </head><body>
+            <div class="header no-print">
+                 <button class="print-button" onclick="window.print()">Imprimir Relatório</button>
+                 <h1>${pageTitle}</h1>
+                 <div style="width: 140px;"></div>
+            </div>
+            <div class="report-content">${bodyContent}</div>
+        </body></html>
+    `;
+}
+
+export function generatePerseveranceReportHTML(data) {
+    const milestonesHTML = MILESTONES.map(milestone => {
+        if (data.consecutiveDays >= milestone.days) {
+            return `<li class="achieved">${milestone.icon} ${milestone.name} (${milestone.days} dias) - <strong>Atingido!</strong></li>`;
+        } else {
+            return `<li class="pending">${milestone.icon} ${milestone.name} (${milestone.days} dias) - Faltam ${milestone.days - data.consecutiveDays} dia(s).</li>`;
         }
-        
-        if (!action || !id) return;
+    }).join('');
 
-        const { target, isArchived, panelId } = findTargetInState(id);
-        if (!target && !['select-manual-target', 'add-new-observation'].includes(action)) return;
+    let historyHTML = '';
+    if (data.interactionDates && data.interactionDates.length > 0) {
+        historyHTML = data.interactionDates.map(dateStr => `<li>${formatDateForDisplay(new Date(dateStr + 'T12:00:00Z'))}</li>`).join('');
+    } else {
+        historyHTML = '<li>Nenhuma interação registrada na semana atual.</li>';
+    }
 
-        switch(action) {
-            case 'pray':
-            case 'pray-priority':
-                await handlePray(id);
-                break;
-            case 'resolve':
-                await handleResolveTarget(target);
-                break;
-            case 'archive':
-                await handleArchiveTarget(target);
-                break;
-            case 'delete-archived':
-                await handleDeleteArchivedTarget(id);
-                break;
-            case 'toggle-observation':
-                UI.toggleAddObservationForm(id);
-                break;
-            case 'add-new-observation':
-                if (target) await handleAddObservation(target, isArchived, panelId);
-                break;
-            case 'edit-title':
-                if (target) UI.toggleEditForm('Title', id, { currentValue: target.title, saveAction: 'save-title', eventTarget: e.target });
-                break;
-            case 'edit-details':
-                if (target) UI.toggleEditForm('Details', id, { currentValue: target.details, saveAction: 'save-details', eventTarget: e.target });
-                break;
-            case 'edit-observation':
-                if (target && target.observations[obsIndex]) UI.toggleEditForm('Observation', id, { currentValue: target.observations[obsIndex].text, obsIndex, saveAction: 'save-observation', eventTarget: e.target });
-                break;
-            case 'edit-sub-target-title':
-                if (target && target.observations[obsIndex]) UI.toggleEditForm('SubTargetTitle', id, { currentValue: target.observations[obsIndex].subTargetTitle, obsIndex, saveAction: 'save-sub-target-title', eventTarget: e.target });
-                break;
-            case 'edit-sub-target-details':
-                if (target && target.observations[obsIndex]) UI.toggleEditForm('SubTargetDetails', id, { currentValue: target.observations[obsIndex].text, obsIndex, saveAction: 'save-sub-target-details', eventTarget: e.target });
-                break;
-            case 'edit-sub-observation':
-                const subObs = target?.observations[obsIndex]?.subObservations?.[subObsIndex];
-                if (subObs) UI.toggleEditForm('SubObservation', id, { currentValue: subObs.text, obsIndex, subObsIndex, saveAction: 'save-sub-observation', eventTarget: e.target });
-                break;
+    return `
+        <!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório de Perseverança Pessoal</title>
+        <style>
+            body { font-family: 'Segoe UI', sans-serif; margin: 25px; background-color: #f4f7f6; }
+            .container { max-width: 750px; margin: auto; padding: 30px; background-color: #fff; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+            h1 { text-align: center; color: #2c3e50; border-bottom: 2px solid #e29420; padding-bottom: 15px; margin-bottom: 25px; }
+            h2 { color: #34495e; border-bottom: 1px solid #eaeaea; padding-bottom: 8px; }
+            .stat-item { font-size: 1.1em; margin-bottom: 12px; }
+            ul { list-style-type: none; padding-left: 0; }
+            li { background-color: #fdfdfd; border-left: 4px solid #ccc; margin-bottom: 8px; padding: 12px 15px; border-radius: 4px; }
+            li.achieved { border-left-color: #27ae60; }
+            li.pending { opacity: 0.8; }
+        </style>
+        </head><body>
+        <div class="container">
+            <h1>Relatório de Perseverança Pessoal</h1>
+            <h2>Resumo Geral</h2>
+            <div class="stat-item"><strong>Sequência Atual:</strong> ${data.consecutiveDays} dia(s)</div>
+            <div class="stat-item"><strong>Recorde Pessoal:</strong> ${data.recordDays} dia(s)</div>
+            <div class="stat-item"><strong>Última Interação:</strong> ${data.lastInteractionDate}</div>
+            <h2>Marcos da Sequência Atual</h2>
+            <ul>${milestonesHTML}</ul>
+            <h2>Interações Recentes (Semana Atual)</h2>
+            <ul>${historyHTML}</ul>
+        </div>
+        </body></html>
+    `;
+}
 
-            case 'save-title': {
-                const form = e.target.closest('.inline-edit-form');
-                if (!form || !target) break;
-                const newTitle = form.querySelector('input').value.trim();
-                if (newTitle === '' || newTitle === target.title) { form.remove(); break; }
-                const oldTitle = target.title;
-                target.title = newTitle;
-                applyFiltersAndRender(panelId);
-                try {
-                    await Service.updateTargetField(state.user.uid, id, isArchived, { title: newTitle });
-                    showToast("Título atualizado!", "success");
-                    requestSync(id);
-                } catch (error) {
-                    target.title = oldTitle;
-                    applyFiltersAndRender(panelId);
-                    showToast("Falha ao atualizar o título.", "error");
-                }
-                break;
-            }
-
-            case 'save-details': {
-                const form = e.target.closest('.inline-edit-form');
-                if (!form || !target) break;
-                const newDetails = form.querySelector('textarea').value.trim();
-                if (newDetails === target.details) { form.remove(); break; }
-                const oldDetails = target.details;
-                target.details = newDetails;
-                applyFiltersAndRender(panelId);
-                try {
-                    await Service.updateTargetField(state.user.uid, id, isArchived, { details: newDetails });
-                    showToast("Detalhes atualizados!", "success");
-                    requestSync(id);
-                } catch (error) {
-                    target.details = oldDetails;
-                    applyFiltersAndRender(panelId);
-                    showToast("Falha ao atualizar os detalhes.", "error");
-                }
-                break;
-            }
-            
-            case 'save-observation': {
-                const form = e.target.closest('.inline-edit-form');
-                if (!form || !target) break;
-                const newText = form.querySelector('textarea').value.trim();
-                if (newText === '' || newText === target.observations[obsIndex].text) { form.remove(); break; }
-                const oldText = target.observations[obsIndex].text;
-                target.observations[obsIndex].text = newText;
-                applyFiltersAndRender(panelId);
-                try {
-                    await Service.updateObservationInTarget(state.user.uid, id, isArchived, obsIndex, { text: newText });
-                    showToast("Observação atualizada!", "success");
-                    requestSync(id);
-                } catch (error) {
-                    target.observations[obsIndex].text = oldText;
-                    applyFiltersAndRender(panelId);
-                    showToast("Falha ao atualizar a observação.", "error");
-                }
-                break;
-            }
-
-            case 'save-sub-target-title':
-            case 'save-sub-target-details': {
-                const form = e.target.closest('.inline-edit-form');
-                if (!form || !target) break;
-                const newText = form.querySelector('input, textarea').value.trim();
-                const obsToUpdate = target.observations[obsIndex];
-                const isTitle = action === 'save-sub-target-title';
-                const fieldToUpdate = isTitle ? 'subTargetTitle' : 'text';
-                if (newText === '' || newText === obsToUpdate[fieldToUpdate]) { form.remove(); break; }
-                const oldText = obsToUpdate[fieldToUpdate];
-                obsToUpdate[fieldToUpdate] = newText;
-                applyFiltersAndRender(panelId);
-                try {
-                    await Service.updateObservationInTarget(state.user.uid, id, isArchived, obsIndex, { [fieldToUpdate]: newText });
-                    showToast("Sub-alvo atualizado!", "success");
-                    requestSync(id);
-                } catch (error) {
-                    obsToUpdate[fieldToUpdate] = oldText;
-                    applyFiltersAndRender(panelId);
-                    showToast("Falha ao atualizar sub-alvo.", "error");
-                }
-                break;
-            }
-
-            case 'save-sub-observation': {
-                const form = e.target.closest('.inline-edit-form');
-                if (!form || !target) break;
-                const newText = form.querySelector('textarea').value.trim();
-                const subObsToUpdate = target.observations[obsIndex].subObservations[subObsIndex];
-                if (newText === '' || newText === subObsToUpdate.text) { form.remove(); break; }
-                const oldText = subObsToUpdate.text;
-                subObsToUpdate.text = newText;
-                applyFiltersAndRender(panelId);
-                try {
-                    await Service.updateSubObservationInTarget(state.user.uid, id, isArchived, obsIndex, subObsIndex, { text: newText });
-                    showToast("Observação do sub-alvo atualizada!", "success");
-                    requestSync(id);
-                } catch (error) {
-                    subObsToUpdate.text = oldText;
-                    applyFiltersAndRender(panelId);
-                    showToast("Falha ao atualizar observação.", "error");
-                }
-                break;
-            }
-            
-            case 'edit-deadline':
-                if (target) UI.toggleEditForm('Deadline', id, { currentValue: target.deadlineDate, saveAction: 'save-deadline', eventTarget: e.target });
-                break;
-
-            case 'save-deadline': {
-                const form = e.target.closest('.inline-edit-form');
-                if (!form || !target) break;
-                const newDeadlineStr = form.querySelector('input[type="date"]').value;
-                if (!newDeadlineStr) break;
-                const newDeadlineDate = new Date(newDeadlineStr + 'T12:00:00Z');
-                const oldDeadlineDate = target.deadlineDate;
-                const oldHasDeadline = target.hasDeadline;
-                target.deadlineDate = newDeadlineDate;
-                target.hasDeadline = true;
-                applyFiltersAndRender(panelId);
-                try {
-                    await Service.updateTargetField(state.user.uid, target.id, isArchived, { hasDeadline: true, deadlineDate: newDeadlineDate });
-                    showToast("Prazo atualizado!", "success");
-                    requestSync(id);
-                } catch(error) {
-                    target.deadlineDate = oldDeadlineDate;
-                    target.hasDeadline = oldHasDeadline;
-                    applyFiltersAndRender(panelId);
-                    showToast("Falha ao salvar prazo.", "error");
-                }
-                break;
-            }
-
-            case 'remove-deadline': {
-                if (!target || !confirm("Tem certeza que deseja remover o prazo deste alvo?")) break;
-                const oldDeadlineDate = target.deadlineDate;
-                const oldHasDeadline = target.hasDeadline;
-                target.deadlineDate = null;
-                target.hasDeadline = false;
-                applyFiltersAndRender(panelId);
-                try {
-                    await Service.updateTargetField(state.user.uid, target.id, isArchived, { hasDeadline: false, deadlineDate: null });
-                    showToast("Prazo removido.", "info");
-                    requestSync(id);
-                } catch(error) {
-                    target.deadlineDate = oldDeadlineDate;
-                    target.hasDeadline = oldHasDeadline;
-                    applyFiltersAndRender(panelId);
-                    showToast("Falha ao remover prazo.", "error");
-                }
-                break;
-            }
-
-            case 'edit-category':
-                UI.toggleEditCategoryForm(id, target?.category);
-                break;
-            case 'save-category':
-                await handleSaveCategory(target, isArchived, panelId);
-                break;
-            case 'toggle-priority':
-                await handleTogglePriority(target);
-                break;
-            case 'download-target-pdf':
-                if (target) { generateAndDownloadPdf(target); showToast(`Gerando PDF para "${target.title}"...`, 'success'); }
-                break;
-            case 'select-manual-target':
-                try {
-                    await Service.addManualTargetToDailyList(state.user.uid, id);
-                    UI.toggleManualTargetModal(false);
-                    await loadDataForUser(state.user);
-                    showToast("Alvo adicionado à lista do dia!", "success");
-                } catch (error) {
-                    showToast(error.message, "error");
-                }
-                break;
-
-            case 'promote-observation': {
-                if (!confirm("Deseja promover esta observação a um sub-alvo?")) break;
-                const newTitle = prompt("Qual será o título deste novo sub-alvo?", target.observations[parseInt(obsIndex)].text.substring(0, 50));
-                if (!newTitle || newTitle.trim() === '') break;
-
-                const updatedObservationData = { isSubTarget: true, subTargetTitle: newTitle.trim(), subTargetStatus: 'active', interactionCount: 0, subObservations: [] };
-                const originalObservation = { ...target.observations[parseInt(obsIndex)] };
-                Object.assign(target.observations[parseInt(obsIndex)], updatedObservationData);
-                applyFiltersAndRender(panelId);
-                try {
-                    await Service.updateObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), updatedObservationData);
-                    showToast("Observação promovida a sub-alvo!", "success");
-                    requestSync(id);
-                } catch (error) {
-                    target.observations[parseInt(obsIndex)] = originalObservation;
-                    applyFiltersAndRender(panelId);
-                    showToast("Falha ao salvar. A alteração foi desfeita.", "error");
-                }
-                break;
-            }
-            
-            case 'pray-sub-target': {
-                try {
-                    e.target.disabled = true;
-                    e.target.textContent = '✓ Orado!';
-                    e.target.classList.add('prayed');
-                    
-                    const subTargetId = `${id}_${obsIndex}`;
-                    
-                    const { target: parentTarget } = findTargetInState(id);
-                    if (parentTarget) {
-                        state.dailyTargets.completed.push({ targetId: subTargetId, isSubTarget: true, title: parentTarget.observations[obsIndex].subTargetTitle });
-                    }
-                    
-                    await Service.recordInteractionForSubTarget(state.user.uid, subTargetId);
-                    const { isNewRecord } = await Service.recordUserInteraction(state.user.uid, state.perseveranceData, state.weeklyPrayerData);
-                    
-                    const [perseveranceData, weeklyData] = await Promise.all([ Service.loadPerseveranceData(state.user.uid), Service.loadWeeklyPrayerData(state.user.uid) ]);
-                    state.perseveranceData = perseveranceData;
-                    state.weeklyPrayerData = weeklyData;
-                    UI.updatePerseveranceUI(state.perseveranceData, isNewRecord);
-                    UI.updateWeeklyChart(state.weeklyPrayerData);
-                    showToast("Interação com sub-alvo registrada!", "success");
-                } catch (error) {
-                    showToast("Falha ao registrar interação. Tente novamente.", "error");
-                    e.target.disabled = false;
-                    e.target.textContent = 'Orei!';
-                    e.target.classList.remove('prayed');
-                }
-                break;
-            }
-
-            case 'demote-sub-target': {
-                if (!confirm("Tem certeza que deseja reverter este sub-alvo para uma observação comum?")) break;
-                const originalSubTarget = { ...target.observations[parseInt(obsIndex)] };
-                const updatedObservation = { ...originalSubTarget, isSubTarget: false };
-                delete updatedObservation.subTargetTitle; delete updatedObservation.subTargetStatus; delete updatedObservation.interactionCount; delete updatedObservation.subObservations;
-                target.observations[parseInt(obsIndex)] = updatedObservation;
-                applyFiltersAndRender(panelId);
-                try {
-                    await Service.updateObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), updatedObservation);
-                    showToast("Sub-alvo revertido para observação.", "info");
-                    requestSync(id);
-                } catch (error) {
-                    target.observations[parseInt(obsIndex)] = originalSubTarget;
-                    applyFiltersAndRender(panelId);
-                    showToast("Erro ao reverter. A alteração foi desfeita.", "error");
-                }
-                break;
-            }
-
-            case 'resolve-sub-target': {
-                if (!confirm("Marcar este sub-alvo como respondido?")) break;
-                const originalSubTarget = { ...target.observations[parseInt(obsIndex)] };
-                const updatedObservation = { subTargetStatus: 'resolved' };
-                Object.assign(target.observations[parseInt(obsIndex)], updatedObservation);
-                applyFiltersAndRender(panelId);
-                try {
-                    await Service.updateObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), updatedObservation);
-                    showToast("Sub-alvo marcado como respondido!", "success");
-                    requestSync(id);
-                } catch (error) {
-                    target.observations[parseInt(obsIndex)] = originalSubTarget;
-                    applyFiltersAndRender(panelId);
-                    showToast("Erro ao salvar. A alteração foi desfeita.", "error");
-                }
-                break;
-            }
-
-            case 'add-sub-observation': {
-                const text = prompt("Digite a nova observação para este sub-alvo:");
-                if (!text || text.trim() === '') break;
-                const newSubObservation = { text: text.trim(), date: new Date() };
-                const subTarget = target.observations[parseInt(obsIndex)];
-                if (!Array.isArray(subTarget.subObservations)) subTarget.subObservations = [];
-                subTarget.subObservations.push(newSubObservation);
-                applyFiltersAndRender(panelId);
-                try {
-                    await Service.addSubObservationToTarget(state.user.uid, id, isArchived, parseInt(obsIndex), newSubObservation);
-                    showToast("Observação adicionada ao sub-alvo.", "success");
-                    requestSync(id);
-                } catch (error) {
-                    subTarget.subObservations.pop();
-                    applyFiltersAndRender(panelId);
-                    showToast("Erro ao salvar. A alteração foi desfeita.", "error");
-                }
-                break;
-            }
+export function displayCompletionPopup() {
+    const popup = document.getElementById('completionPopup');
+    const verses = [
+        "“Entrega o teu caminho ao Senhor; confia nele, e ele tudo fará.” - Salmos 37:5",
+        "“Orai sem cessar.” - 1 Tessalonicenses 5:17",
+        "“Pedi, e dar-se-vos-á; buscai, e encontrareis; batei, e abrir-se-vos-á.” - Mateus 7:7"
+    ];
+    if (popup) {
+        popup.style.display = 'flex';
+        const popupVerseEl = popup.querySelector('#popupVerse');
+        if (popupVerseEl) {
+            popupVerseEl.textContent = verses[Math.floor(Math.random() * verses.length)];
         }
-    });
+        popup.querySelector('#closePopup').onclick = () => popup.style.display = 'none';
+    }
+}
 
-    initializeFloatingNav(state);
-});
+/**
+ * MODIFICADO: Atualiza a UI de autenticação e o novo status do Drive.
+ * @param {object|null} user - O objeto do usuário do Firebase ou nulo.
+ * @param {string} message - Mensagem opcional para exibir (ex: erro, reset de senha).
+ * @param {boolean} isError - Se a mensagem é um erro.
+ */
+export function updateAuthUI(user, message = '', isError = false) {
+    const authSection = document.getElementById('authSection');
+    if (!authSection) return;
+
+    const googleAuthContainer = document.getElementById('googleAuthContainer');
+    const authStatusContainer = authSection.querySelector('.auth-status-container');
+    const authStatusP = document.getElementById('authStatus');
+    const btnLogout = document.getElementById('btnLogout');
+    const userStatusTop = document.getElementById('userStatusTop');
+    
+    if (user) {
+        // Oculta a seção inteira, pois a informação principal estará na barra superior
+        authSection.classList.add('hidden');
+        if (userStatusTop) {
+            userStatusTop.textContent = `Logado: ${user.email}`;
+            userStatusTop.style.display = 'inline-block';
+        }
+
+    } else {
+        // Garante que o estado de logout esteja correto
+        authSection.classList.remove('hidden');
+        if (googleAuthContainer) googleAuthContainer.style.display = 'block';
+        if (authStatusContainer) authStatusContainer.style.display = 'none'; // Garante que status de logout esteja oculto
+        if (userStatusTop) userStatusTop.style.display = 'none';
+    }
+}
+
+
+/**
+ * NOVO: Atualiza o indicador de status global do Google Drive.
+ * @param {'connected' | 'error' | 'syncing' | 'disconnected'} status - O estado da conexão.
+ * @param {string} [message] - Uma mensagem opcional.
+ */
+export function updateDriveStatusUI(status, message) {
+    const driveStatusTop = document.getElementById('driveStatusTop');
+    if (!driveStatusTop) return;
+
+    switch (status) {
+        case 'connected':
+            driveStatusTop.textContent = message || 'Drive Conectado ✓';
+            driveStatusTop.style.backgroundColor = '#0f9d58';
+            driveStatusTop.style.display = 'inline-block';
+            break;
+        case 'error':
+            driveStatusTop.textContent = message || 'Erro no Drive ✗';
+            driveStatusTop.style.backgroundColor = '#dc3545';
+            driveStatusTop.style.display = 'inline-block';
+            break;
+        case 'syncing':
+            driveStatusTop.textContent = message || 'Sincronizando...';
+            driveStatusTop.style.backgroundColor = '#f4b400';
+            driveStatusTop.style.display = 'inline-block';
+            break;
+        case 'disconnected':
+        default:
+            driveStatusTop.style.display = 'none';
+            break;
+    }
+}
