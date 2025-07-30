@@ -81,7 +81,7 @@ function _buildMultipartBody(metadata, fileContent) {
 
 
 /**
- * (PRIORIDADE 1) Procura pela pasta da aplicação no Drive ou a cria se não existir.
+ * (PRIORIDADE 1 - CORRIGIDO COM LOG DE DIAGNÓSTICO) Procura pela pasta da aplicação no Drive ou a cria se não existir.
  * Utiliza a 'appDataFolder' para armazenar um marcador com o ID da pasta visível.
  * @returns {Promise<string>} - O ID da pasta.
  */
@@ -92,14 +92,34 @@ async function findOrCreateAppFolder() {
     }
 
     const markerFileName = '.meu-diario-oracao-folder-id';
-    // Busca o arquivo marcador APENAS na pasta de dados oculta do aplicativo
     const searchMarkerQuery = `name='${markerFileName}' and 'appDataFolder' in parents`;
 
-    let response = await gapi.client.drive.files.list({
-        q: searchMarkerQuery,
-        fields: 'files(id, appProperties)',
-        spaces: 'appDataFolder' // Garante que a busca seja feita no espaço correto
-    });
+    let response;
+    try {
+        // Este é o ponto exato da falha. Vamos envolvê-lo em um try-catch detalhado.
+        response = await gapi.client.drive.files.list({
+            q: searchMarkerQuery,
+            fields: 'files(id, appProperties)',
+            spaces: 'appDataFolder'
+        });
+
+    } catch (err) {
+        // LOG APRIMORADO: Este é o log que resolverá o mistério.
+        console.error('%c[Drive Service] FALHA CRÍTICA ao tentar listar arquivos na appDataFolder (findOrCreateAppFolder).', 'color: red; font-weight: bold;');
+        
+        if (err.result && err.result.error && Array.isArray(err.result.error.errors)) {
+            console.error('==================== DIAGNÓSTICO DO ERRO 403 ====================');
+            console.error('Mensagem da API:', err.result.error.message);
+            console.error('RAZÃO ESPECÍFICA (A PISTA PRINCIPAL):', err.result.error.errors[0].reason);
+            console.error('Domínio do Erro:', err.result.error.errors[0].domain);
+            console.error('INSTRUÇÃO: Use a "RAZÃO ESPECÍFICA" acima para seguir o guia de verificação no Google Cloud Console. Se for "accessNotConfigured", a API do Drive não está habilitada. Se for "forbidden", verifique a tela de consentimento.');
+            console.error('================================================================');
+        } else {
+            console.error('Detalhes completos do erro (formato não padrão):', err);
+        }
+        // Re-lança o erro para que a sincronização falhe e a UI seja atualizada.
+        throw err;
+    }
 
     // Se o arquivo marcador for encontrado, lê o ID da pasta de suas propriedades
     if (response.result.files && response.result.files.length > 0) {
@@ -226,23 +246,9 @@ export async function backupTargetToDrive(target, googleDocId = null) {
         return { success: true, docId: docId };
 
     } catch (err) {
-        // LOG 4.1: Analisar a resposta de ERRO (BLOCO ATUALIZADO CONFORME SUGESTÃO)
+        // LOG 4.1: Analisar a resposta de ERRO
         console.error(`%c[Drive Service] A API do Google retornou um ERRO para '${target.title}'.`, 'color: red; font-weight: bold;');
-        
-        // Análise detalhada do objeto de erro da API do Google
-        if (err.result && err.result.error && Array.isArray(err.result.error.errors)) {
-            console.error('==================== DETALHES DO ERRO DA API ====================');
-            console.error('Status Code:', err.code);
-            console.error('Mensagem Principal:', err.result.error.message);
-            console.error('Domínio do Erro:', err.result.error.errors[0].domain);
-            console.error('RAZÃO DO ERRO (A PISTA PRINCIPAL):', err.result.error.errors[0].reason);
-            console.error('INSTRUÇÃO: Use a "RAZÃO DO ERRO" acima para diagnosticar o problema no Google Cloud Console, seguindo o guia fornecido.');
-            console.error('================================================================');
-        } else {
-            // Log genérico se o formato do erro for inesperado
-            console.error('Detalhes completos do erro (formato não padrão):', err);
-        }
-
+        console.error('Detalhes do erro da API:', err); // Este é o log mais importante!
         throw err; // Re-lança o erro para ser pego pelo script.js
     }
 }
