@@ -120,15 +120,14 @@ async function syncTarget(targetId) {
         console.log(`Alvo '${target.title}' sincronizado com sucesso.`);
 
     } catch (error) {
-        console.error(`Falha ao sincronizar o alvo ${targetId}:`, error);
-        target.driveStatus = 'error';
-        // Melhoria Prioridade 2: Armazena a mensagem de erro específica no estado do alvo para depuração e UI.
-        target.driveErrorMessage = error.result?.error?.message || error.message || 'Erro desconhecido. Verifique o console.';
-        showToast(`Erro ao sincronizar "${target.title}" com o Drive.`, "error");
-    } finally {
-        // Renderiza novamente a UI para refletir o status final (sucesso, erro, etc.)
-        applyFiltersAndRender(panelId);
-    }
+    // LOG 5: Capturar o erro completo que vem do GoogleDriveService
+    console.error(`%c[App] Erro CRÍTICO ao sincronizar o alvo '${target.title}'.`, 'color: red; font-weight: bold;');
+    console.error('Objeto do Erro:', error); // Mostra o erro completo no console
+    target.driveStatus = 'error';
+    showToast(`Erro ao sincronizar "${target.title}" com o Drive.`, "error");
+} finally {
+    applyFiltersAndRender(panelId);
+}
 }
 
 /**
