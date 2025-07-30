@@ -1,7 +1,7 @@
 // --- START OF FILE google-drive-service.js ---
 // Responsabilidade: Conter toda a lógica de comunicação com a API do Google Drive.
 // Este módulo lida com a criação e atualização de backups de alvos.
-// VERSÃO ATUALIZADA: Inclui refatoração e correção de busca de pasta.
+// VERSÃO ATUALIZADA: Inclui logs de diagnóstico e correção na construção da requisição.
 
 // Flag para garantir que a API do Google só seja carregada uma vez.
 let gapiInitialized = false;
@@ -42,10 +42,10 @@ export async function initializeDriveService(accessToken) {
                     gapiInitialized = true;
                     resolve(true);
                 } catch (error) {
-    // LOG 2: Verificar falha na inicialização do GAPI
-    console.error("%c[Drive Service] Erro ao inicializar o cliente GAPI. Verifique as configurações no Google Console.", 'color: red; font-weight: bold;', error);
-    reject(error);
-}
+                    // LOG 2: Verificar falha na inicialização do GAPI
+                    console.error("%c[Drive Service] Erro ao inicializar o cliente GAPI. Verifique as configurações no Google Console.", 'color: red; font-weight: bold;', error);
+                    reject(error);
+                }
             });
         };
         script.onerror = () => reject(new Error("Falha ao carregar o script da API do Google."));
@@ -53,7 +53,7 @@ export async function initializeDriveService(accessToken) {
 }
 
 /**
- * (PRIORIDADE 1 - CORRIGIDO) Constrói o corpo da requisição multipart para a API do Drive.
+ * (PRIORIDADE 3 - CORRIGIDO) Constrói o corpo da requisição multipart para a API do Drive.
  * Abstrai a lógica de criação do corpo para evitar duplicação.
  * @param {object} metadata - Os metadados do arquivo (nome, mimeType, etc.).
  * @param {string} fileContent - O conteúdo de texto do arquivo.
@@ -173,7 +173,7 @@ function formatTargetForDoc(target) {
 }
 
 /**
- * (FUNÇÃO PRINCIPAL) Cria ou atualiza o backup de um alvo no Google Drive.
+ * (FUNÇÃO PRINCIPAL - COM LOGS) Cria ou atualiza o backup de um alvo no Google Drive.
  * @param {object} target - O objeto completo do alvo.
  * @param {string | null} googleDocId - O ID do documento do Drive se já existir, ou nulo.
  * @returns {Promise<{success: boolean, docId: string}>} - Retorna o status e o ID do documento.
@@ -182,53 +182,53 @@ export async function backupTargetToDrive(target, googleDocId = null) {
     if (!gapiInitialized) {
         throw new Error("O serviço do Google Drive não foi inicializado.");
     }
-    
-    // Define o conteúdo e o nome do arquivo. O nome do arquivo será 'Alvo - {Título do Alvo}'.
+
     const fileContent = formatTargetForDoc(target);
     const fileName = `Alvo - ${target.title}`;
+    let metadata, path, method;
 
     if (googleDocId) {
         // --- LÓGICA DE ATUALIZAÇÃO (UPDATE) ---
-        console.log(`[Drive Service] ATUALIZANDO documento. ID: ${googleDocId}, Novo Título: ${fileName}`);
-        const updateMetadata = { name: fileName }; // Garante que o nome seja atualizado se o título do alvo mudar
-        
-        // Utiliza a função auxiliar para construir o corpo da requisição
-        const { boundary, body } = _buildMultipartBody(updateMetadata, fileContent);
-
-        await gapi.client.request({
-            path: `/upload/drive/v3/files/${googleDocId}`,
-            method: 'PATCH',
-            params: { uploadType: 'multipart' },
-            headers: { 'Content-Type': `multipart/related; boundary="${boundary}"` },
-            body: body
-        });
-        
-        console.log(`[Drive Service] Resposta da API de atualização recebida para o alvo '${target.title}'.`);
-        return { success: true, docId: googleDocId };
-
+        metadata = { name: fileName };
+        path = `/upload/drive/v3/files/${googleDocId}`;
+        method = 'PATCH';
     } else {
         // --- LÓGICA DE CRIAÇÃO (CREATE) ---
         const parentFolderId = await findOrCreateAppFolder();
-        console.log(`[Drive Service] CRIANDO novo documento. Título: ${fileName}, na pasta ID: ${parentFolderId}`);
-        const createMetadata = {
+        metadata = {
             'name': fileName,
             'mimeType': 'application/vnd.google-apps.document', // Cria como um Google Doc
             'parents': [parentFolderId]
         };
+        path = '/upload/drive/v3/files';
+        method = 'POST';
+    }
 
-        // Utiliza a função auxiliar para construir o corpo da requisição
-        const { boundary, body } = _buildMultipartBody(createMetadata, fileContent);
+    const { boundary, body } = _buildMultipartBody(metadata, fileContent);
 
+    // LOG 3: Inspecionar o que está sendo enviado para a API
+    console.log(`%c[Drive Service] Preparando para ${method} o alvo: '${target.title}'`, 'color: blue; font-weight: bold;');
+    console.log('[Drive Service] Metadados:', metadata);
+    console.log('[Drive Service] Corpo da Requisição (Body):', body);
+
+    try {
         const response = await gapi.client.request({
-            path: '/upload/drive/v3/files',
-            method: 'POST',
+            path: path,
+            method: method,
             params: { uploadType: 'multipart', fields: 'id' },
             headers: { 'Content-Type': `multipart/related; boundary="${boundary}"` },
             body: body
         });
-        
-        const newDocId = response.result.id;
-        console.log(`[Drive Service] Documento criado com sucesso. Novo ID do Documento: ${newDocId}`);
-        return { success: true, docId: newDocId };
+
+        // LOG 4: Analisar a resposta de sucesso
+        console.log(`%c[Drive Service] Resposta de SUCESSO da API para '${target.title}'.`, 'color: green; font-weight: bold;', response);
+        const docId = response.result.id || googleDocId;
+        return { success: true, docId: docId };
+
+    } catch (err) {
+        // LOG 4.1: Analisar a resposta de ERRO
+        console.error(`%c[Drive Service] A API do Google retornou um ERRO para '${target.title}'.`, 'color: red; font-weight: bold;');
+        console.error('Detalhes do erro da API:', err); // Este é o log mais importante!
+        throw err; // Re-lança o erro para ser pego pelo script.js
     }
 }
