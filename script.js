@@ -209,6 +209,13 @@ async function handleGoogleSignIn() {
     try {
         console.log("[App] Iniciando o fluxo de login com Google...");
         const { user, accessToken } = await Auth.signInWithGoogle();
+
+        if (accessToken) {
+            console.log('%c[App] Access Token recebido com sucesso.', 'color: green; font-weight: bold;', accessToken);
+        } else {
+            console.error('%c[App] Access Token NÃO foi recebido do Firebase Auth.', 'color: red; font-weight: bold;');
+            return;
+        }
         
         if (user && accessToken) {
             console.log("[App] Login com Google bem-sucedido. Usuário:", user.uid);
