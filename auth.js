@@ -54,27 +54,41 @@ export async function signInWithEmailAndPassword(email, password) {
  * @returns {Promise<{user: import("firebase/auth").User, accessToken: string}>} - Resolve com o objeto do usuário e o token de acesso para a API do Google.
  * @throws {Error} - Lança um erro se a permissão para o Drive for negada ou se o login falhar.
  */
+import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+import { app } from './firebase-config.js';
+
+const auth = getAuth(app);
+
 export async function signInWithGoogle() {
     const provider = new GoogleAuthProvider();
-    
-    // ** Ponto Crítico da Correção **
-    // Adicionamos o escopo 'drive.appdata' que é essencial para criar e
-    // buscar o arquivo marcador na pasta de dados oculta da aplicação.
-    // O escopo 'drive.file' permite criar a pasta visível e os documentos dentro dela.
+
+    // --- INÍCIO DA CORREÇÃO CRÍTICA ---
+    // Adicionamos os escopos necessários para o Google Drive.
+    // drive.file: Permite criar e gerenciar arquivos que o próprio app criou.
     provider.addScope('https://www.googleapis.com/auth/drive.file');
+    // drive.appdata: Permite acessar a pasta de dados oculta do aplicativo. ESTA É A CHAVE.
     provider.addScope('https://www.googleapis.com/auth/drive.appdata');
+    // --- FIM DA CORREÇÃO CRÍTICA ---
 
-    const result = await signInWithPopup(auth, provider);
-    
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-    const accessToken = credential.accessToken;
-    
-    if (!accessToken) {
-        console.error("[Auth] Falha crítica: O token de acesso do Google não foi retornado.");
-        throw new Error("Não foi possível obter o token de acesso do Google. A permissão para o Drive pode ter sido negada.");
+    try {
+        const result = await signInWithPopup(auth, provider);
+        
+        // O OAuth Access Token nos dá acesso às APIs do Google em nome do usuário.
+        const credential = GoogleAuthProvider.credentialFromResult(result);
+        const accessToken = credential.accessToken;
+        const user = result.user;
+
+        console.log("[Auth] Login com Google concluído. Token de acesso obtido.");
+        return { user, accessToken };
+
+    } catch (error) {
+        console.error("Erro durante o login com Google Popup:", error);
+        // Melhora a mensagem de erro para o usuário
+        if (error.code === 'auth/popup-closed-by-user') {
+            throw new Error("A janela de login com o Google foi fechada antes da conclusão.");
+        }
+        throw new Error("Ocorreu um erro ao tentar fazer login com o Google.");
     }
-
-    return { user: result.user, accessToken: accessToken };
 }
 
 /**
