@@ -914,33 +914,74 @@ export function displayCompletionPopup() {
     }
 }
 
+// Em ui.js, substitua a função updateAuthUI existente por esta versão completa:
+
 /**
- * MODIFICADO: Atualiza a UI de autenticação para o novo layout da barra superior.
+ * MODIFICADO: Atualiza a UI de autenticação e o novo status do Drive.
+ * Gerencia a visibilidade da seção de login, da barra de status superior
+ * e do novo botão de logout discreto.
  * @param {object|null} user - O objeto do usuário do Firebase ou nulo.
+ * @param {string} message - Mensagem opcional para exibir (ex: erro, reset de senha).
+ * @param {boolean} isError - Se a mensagem é um erro.
  */
-export function updateAuthUI(user) {
+export function updateAuthUI(user, message = '', isError = false) {
     const authSection = document.getElementById('authSection');
     if (!authSection) return;
 
+    // Elementos da seção de autenticação principal
     const googleAuthContainer = document.getElementById('googleAuthContainer');
+    const authStatusContainer = authSection.querySelector('.auth-status-container');
+    const authStatusP = document.getElementById('authStatus');
+    const btnLogout = document.getElementById('btnLogout'); // Botão de sair antigo/grande
+
+    // Elementos da barra superior
     const userStatusTop = document.getElementById('userStatusTop');
-    const userEmailSpan = document.getElementById('userEmail');
+    const btnLogoutTop = document.getElementById('btnLogoutTop'); // NOVO: Botão de sair discreto
 
     if (user) {
-        // Esconde a seção de login principal e mostra o status na barra superior
+        // --- ESTADO LOGADO ---
+
+        // 1. Oculta a seção de autenticação principal, pois não é mais necessária.
         authSection.classList.add('hidden');
-        if (userStatusTop && userEmailSpan) {
-            userEmailSpan.textContent = user.email;
-            userStatusTop.style.display = 'inline-flex';
+        authSection.style.display = 'none'; // Garante que esteja oculta
+
+        // 2. Exibe o status do usuário na barra superior.
+        if (userStatusTop) {
+            userStatusTop.textContent = `Logado: ${user.email}`;
+            userStatusTop.style.display = 'inline-block';
         }
+
+        // 3. (NOVO) Exibe o botão de "Sair" discreto na barra superior.
+        if (btnLogoutTop) {
+            btnLogoutTop.style.display = 'inline-block';
+        }
+
     } else {
-        // Mostra a seção de login e esconde o status da barra superior
+        // --- ESTADO DESLOGADO ---
+
+        // 1. Exibe a seção de autenticação principal.
         authSection.classList.remove('hidden');
-        if (googleAuthContainer) googleAuthContainer.style.display = 'block';
-        if (userStatusTop) userStatusTop.style.display = 'none';
+        authSection.style.display = 'flex'; // ou 'block', dependendo do seu CSS original
+
+        // 2. Garante que apenas o container de login inicial esteja visível.
+        if (googleAuthContainer) {
+            googleAuthContainer.style.display = 'block';
+        }
+        if (authStatusContainer) {
+            authStatusContainer.style.display = 'none'; // Oculta a área de status de login antigo
+        }
+        
+        // 3. Oculta os elementos da barra superior relacionados ao usuário.
+        if (userStatusTop) {
+            userStatusTop.style.display = 'none';
+        }
+
+        // 4. (NOVO) Oculta o botão de "Sair" discreto na barra superior.
+        if (btnLogoutTop) {
+            btnLogoutTop.style.display = 'none';
+        }
     }
 }
-
 
 /**
  * NOVO: Atualiza o indicador de status global do Google Drive.
