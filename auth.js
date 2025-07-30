@@ -1,25 +1,30 @@
 // --- START OF FILE auth.js ---
-// Responsabilidade: Conter as funções que interagem diretamente com o serviço Firebase Auth.
-// Este módulo não deve manipular o DOM diretamente.
-// (VERSÃO COM LOGS DE DIAGNÓSTICO)
+// Responsabilidade: Conter as funções que interagem com o Firebase Auth.
+// ARQUIVO CONSOLIDADO E CORRIGIDO: Remove duplicatas e adiciona escopos do Drive.
 
-import { auth } from './firebase-config.js';
-import { 
-    signOut, 
-    onAuthStateChanged, 
+// ETAPA 1: Centralizar TODAS as importações necessárias em um único local no topo do arquivo.
+import {
+    getAuth,
+    signOut,
+    onAuthStateChanged,
     createUserWithEmailAndPassword as firebaseCreateUser,
     signInWithEmailAndPassword as firebaseSignIn,
     sendPasswordResetEmail as firebaseSendPasswordReset,
     GoogleAuthProvider,
-    signInWithPopup,
-    getAdditionalUserInfo,
-    OAuthProvider
+    signInWithPopup
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+
+// Importa a configuração do Firebase
+import { app } from './firebase-config.js';
+
+// ETAPA 2: Inicializar o serviço de autenticação UMA ÚNICA VEZ para todo o módulo.
+const auth = getAuth(app);
+
+// --- Daqui para baixo, todas as funções exportadas estão limpas e usam as constantes definidas acima ---
 
 /**
  * Inicializa o listener de estado de autenticação.
- * Esta função é o ponto de entrada principal para saber se um usuário está logado ou não.
- * @param {function} onUserAuthenticated - Callback a ser executado quando o estado de autenticação muda. Recebe o objeto 'user' ou 'null'.
+ * @param {function} onUserAuthenticated - Callback que recebe o objeto 'user' ou 'null'.
  */
 export function initializeAuth(onUserAuthenticated) {
     onAuthStateChanged(auth, (user) => {
@@ -29,10 +34,6 @@ export function initializeAuth(onUserAuthenticated) {
 
 /**
  * Cadastra um novo usuário usando e-mail e senha.
- * @param {string} email - O e-mail do usuário.
- * @param {string} password - A senha do usuário.
- * @returns {Promise<import("firebase/auth").UserCredential>} - Uma promessa que resolve com as credenciais do usuário em caso de sucesso.
- * @throws {Error} - Lança um erro em caso de falha no cadastro.
  */
 export async function signUpWithEmailPassword(email, password) {
     return await firebaseCreateUser(auth, email, password);
@@ -40,50 +41,37 @@ export async function signUpWithEmailPassword(email, password) {
 
 /**
  * Autentica um usuário existente com e-mail e senha.
- * @param {string} email - O e-mail do usuário.
- * @param {string} password - A senha do usuário.
- * @returns {Promise<import("firebase/auth").UserCredential>} - Uma promessa que resolve com as credenciais do usuário em caso de sucesso.
- * @throws {Error} - Lança um erro em caso de falha na autenticação.
  */
 export async function signInWithEmailAndPassword(email, password) {
     return await firebaseSignIn(auth, email, password);
 }
 
 /**
- * Autentica um usuário com o Google, solicita permissão para o Google Drive e adiciona logs de diagnóstico.
- * @returns {Promise<{user: import("firebase/auth").User, accessToken: string}>} - Resolve com o objeto do usuário e o token de acesso para a API do Google.
- * @throws {Error} - Lança um erro se a permissão para o Drive for negada ou se o login falhar.
+ * (VERSÃO CORRIGIDA) Autentica um usuário com o Google, solicitando as permissões corretas para o Drive.
+ * @returns {Promise<{user: import("firebase/auth").User, accessToken: string}>}
  */
-import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-import { app } from './firebase-config.js';
-
-const auth = getAuth(app);
-
 export async function signInWithGoogle() {
     const provider = new GoogleAuthProvider();
 
-    // --- INÍCIO DA CORREÇÃO CRÍTICA ---
-    // Adicionamos os escopos necessários para o Google Drive.
-    // drive.file: Permite criar e gerenciar arquivos que o próprio app criou.
+    // Adiciona os escopos (permissões) necessários para o Google Drive.
+    // 'drive.file' -> Permite acesso apenas aos arquivos criados por este app.
     provider.addScope('https://www.googleapis.com/auth/drive.file');
-    // drive.appdata: Permite acessar a pasta de dados oculta do aplicativo. ESTA É A CHAVE.
+    // 'drive.appdata' -> Permite acesso à pasta de dados oculta do app. ESSENCIAL PARA A CORREÇÃO.
     provider.addScope('https://www.googleapis.com/auth/drive.appdata');
-    // --- FIM DA CORREÇÃO CRÍTICA ---
 
     try {
         const result = await signInWithPopup(auth, provider);
         
-        // O OAuth Access Token nos dá acesso às APIs do Google em nome do usuário.
+        // Extrai o token de acesso OAuth, que será usado para chamar a API do Drive.
         const credential = GoogleAuthProvider.credentialFromResult(result);
         const accessToken = credential.accessToken;
         const user = result.user;
 
-        console.log("[Auth] Login com Google concluído. Token de acesso obtido.");
+        console.log("[Auth] Login com Google bem-sucedido. Token de acesso obtido.");
         return { user, accessToken };
 
     } catch (error) {
-        console.error("Erro durante o login com Google Popup:", error);
-        // Melhora a mensagem de erro para o usuário
+        console.error("Erro durante o login com Google:", error);
         if (error.code === 'auth/popup-closed-by-user') {
             throw new Error("A janela de login com o Google foi fechada antes da conclusão.");
         }
@@ -93,9 +81,6 @@ export async function signInWithGoogle() {
 
 /**
  * Envia um e-mail para redefinição de senha.
- * @param {string} email - O e-mail para o qual o link de redefinição será enviado.
- * @returns {Promise<void>} - Uma promessa que resolve quando o e-mail é enviado.
- * @throws {Error} - Lança um erro se o e-mail não for válido ou houver outro problema.
  */
 export async function resetPassword(email) {
     if (!email) {
@@ -106,8 +91,6 @@ export async function resetPassword(email) {
 
 /**
  * Desconecta o usuário atualmente autenticado.
- * @returns {Promise<void>} - Uma promessa que resolve quando o logout é concluído.
- * @throws {Error} - Lança um erro se houver falha no logout.
  */
 export async function handleSignOut() {
     return await signOut(auth);
