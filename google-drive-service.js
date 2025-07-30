@@ -42,9 +42,10 @@ export async function initializeDriveService(accessToken) {
                     gapiInitialized = true;
                     resolve(true);
                 } catch (error) {
-                    console.error("Erro ao inicializar o cliente GAPI:", error);
-                    reject(error);
-                }
+    // LOG 2: Verificar falha na inicialização do GAPI
+    console.error("%c[Drive Service] Erro ao inicializar o cliente GAPI. Verifique as configurações no Google Console.", 'color: red; font-weight: bold;', error);
+    reject(error);
+}
             });
         };
         script.onerror = () => reject(new Error("Falha ao carregar o script da API do Google."));
