@@ -52,7 +52,7 @@ export async function initializeDriveService(accessToken) {
 }
 
 /**
- * (PRIORIDADE 3 - CORRIGIDO) Constrói o corpo da requisição multipart para a API do Drive.
+ * (PRIORIDADE 1 - CORRIGIDO) Constrói o corpo da requisição multipart para a API do Drive.
  * Abstrai a lógica de criação do corpo para evitar duplicação.
  * @param {object} metadata - Os metadados do arquivo (nome, mimeType, etc.).
  * @param {string} fileContent - O conteúdo de texto do arquivo.
@@ -80,7 +80,7 @@ function _buildMultipartBody(metadata, fileContent) {
 
 
 /**
- * (PRIORIDADE 1 - CORRIGIDO) Procura pela pasta da aplicação no Drive ou a cria se não existir.
+ * (PRIORIDADE 1) Procura pela pasta da aplicação no Drive ou a cria se não existir.
  * Utiliza a 'appDataFolder' para armazenar um marcador com o ID da pasta visível.
  * @returns {Promise<string>} - O ID da pasta.
  */
