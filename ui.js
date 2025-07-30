@@ -1,3 +1,4 @@
+Generated javascript
 // ui.js
 // Responsável por toda a manipulação do DOM e renderização da interface.
 // ARQUITETURA REVISADA: Inclui formulários inline, sistema de notificações e integração visual com Google Drive.
@@ -194,7 +195,7 @@ function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
                 break;
             case 'pending':
             default:
-                icon = ''; // Ícone de relógio ou nuvem
+                icon = '☁️'; // Ícone de nuvem para garantir visibilidade
                 title = 'Sincronização pendente...';
                 statusClass = 'pending';
                 break;
@@ -551,7 +552,7 @@ export function showPanel(panelId) {
     if (panelEl) panelEl.style.display = 'block';
 
     const authSection = document.getElementById('authSection');
-    if (!authSection || authSection.classList.contains('hidden')) {
+    if (!authSection || authSection.style.display === 'none') {
         mainMenuElements.forEach(id => {
             const el = document.getElementById(id);
             if (el) el.style.display = 'block';
@@ -924,26 +925,44 @@ export function updateAuthUI(user, message = '', isError = false) {
     const authSection = document.getElementById('authSection');
     if (!authSection) return;
 
-    const googleAuthContainer = document.getElementById('googleAuthContainer');
-    const authStatusContainer = authSection.querySelector('.auth-status-container');
-    const authStatusP = document.getElementById('authStatus');
     const btnLogout = document.getElementById('btnLogout');
     const userStatusTop = document.getElementById('userStatusTop');
-    
+    const topBar = document.querySelector('.top-bar');
+    const mainMenu = document.getElementById('mainMenu');
+    const authStatusContainer = authSection.querySelector('.auth-status-container');
+
     if (user) {
-        // Oculta a seção inteira, pois a informação principal estará na barra superior
-        authSection.classList.add('hidden');
+        // Usuário está logado: esconder a seção de autenticação e mostrar o status na barra superior.
+        authSection.style.display = 'none';
+        
         if (userStatusTop) {
             userStatusTop.textContent = `Logado: ${user.email}`;
             userStatusTop.style.display = 'inline-block';
         }
 
+        if (btnLogout && mainMenu) {
+            // Move o botão de logout para o menu principal para que fique sempre acessível.
+            if (!mainMenu.contains(btnLogout)) {
+                mainMenu.appendChild(btnLogout);
+            }
+            btnLogout.style.display = 'inline-block';
+        }
+
     } else {
-        // Garante que o estado de logout esteja correto
-        authSection.classList.remove('hidden');
-        if (googleAuthContainer) googleAuthContainer.style.display = 'block';
-        if (authStatusContainer) authStatusContainer.style.display = 'none'; // Garante que status de logout esteja oculto
-        if (userStatusTop) userStatusTop.style.display = 'none';
+        // Usuário deslogado: mostrar a seção de autenticação.
+        authSection.style.display = 'flex';
+        
+        if (userStatusTop) {
+            userStatusTop.style.display = 'none';
+        }
+        
+        if (btnLogout && authStatusContainer) {
+            // Move o botão de logout de volta ao seu container original e o esconde.
+            if (!authStatusContainer.contains(btnLogout)) {
+                authStatusContainer.appendChild(btnLogout);
+            }
+            btnLogout.style.display = 'none';
+        }
     }
 }
 
