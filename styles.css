@@ -1805,3 +1805,24 @@ input[type="date"] {
     white-space: nowrap;
     transform: translateY(-120%);
 }
+
+/* Cole estas novas regras no final do arquivo styles.css */
+.btn-logout-top {
+    float: right;
+    padding: 5px 12px;
+    font-size: 0.9em;
+    font-family: 'Playfair Display', serif;
+    color: #c0392b; /* Um tom de vermelho suave */
+    background-color: transparent;
+    border: 1px solid #e74c3c;
+    border-radius: 15px;
+    margin-left: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: none; /* Controlado por JS */
+}
+
+.btn-logout-top:hover {
+    background-color: #e74c3c;
+    color: #fff;
+}
