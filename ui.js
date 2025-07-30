@@ -920,14 +920,6 @@ export function displayCompletionPopup() {
  * @param {string} message - Mensagem opcional para exibir (ex: erro, reset de senha).
  * @param {boolean} isError - Se a mensagem é um erro.
  */
-// No arquivo ui.js, substitua a função updateAuthUI
-
-/**
- * MODIFICADO: Atualiza a UI de autenticação e o novo status do Drive.
- * @param {object|null} user - O objeto do usuário do Firebase ou nulo.
- * @param {string} message - Mensagem opcional para exibir (ex: erro, reset de senha).
- * @param {boolean} isError - Se a mensagem é um erro.
- */
 export function updateAuthUI(user, message = '', isError = false) {
     const authSection = document.getElementById('authSection');
     if (!authSection) return;
@@ -952,39 +944,6 @@ export function updateAuthUI(user, message = '', isError = false) {
         if (googleAuthContainer) googleAuthContainer.style.display = 'block';
         if (authStatusContainer) authStatusContainer.style.display = 'none'; // Garante que status de logout esteja oculto
         if (userStatusTop) userStatusTop.style.display = 'none';
-    }
-}
-
-
-/**
- * NOVO: Atualiza o indicador de status global do Google Drive.
- * @param {'connected' | 'error' | 'syncing' | 'disconnected'} status - O estado da conexão.
- * @param {string} [message] - Uma mensagem opcional.
- */
-export function updateDriveStatusUI(status, message) {
-    const driveStatusTop = document.getElementById('driveStatusTop');
-    if (!driveStatusTop) return;
-
-    switch (status) {
-        case 'connected':
-            driveStatusTop.textContent = message || 'Drive Conectado ✓';
-            driveStatusTop.style.backgroundColor = '#0f9d58';
-            driveStatusTop.style.display = 'inline-block';
-            break;
-        case 'error':
-            driveStatusTop.textContent = message || 'Erro no Drive ✗';
-            driveStatusTop.style.backgroundColor = '#dc3545';
-            driveStatusTop.style.display = 'inline-block';
-            break;
-        case 'syncing':
-            driveStatusTop.textContent = message || 'Sincronizando...';
-            driveStatusTop.style.backgroundColor = '#f4b400';
-            driveStatusTop.style.display = 'inline-block';
-            break;
-        case 'disconnected':
-        default:
-            driveStatusTop.style.display = 'none';
-            break;
     }
 }
 
