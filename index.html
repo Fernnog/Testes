@@ -12,15 +12,12 @@
 </head>
 <body>
 
-<!-- Na parte superior do body -->
+<!-- Em index.html, localize a div.top-bar e adicione o botão #btnLogoutTop -->
 <div class="top-bar">
-    <!-- MODIFICADO: O status do Drive será atualizado para ser mais dinâmico -->
+    <!-- MODIFICADO: Adicionado o novo botão de Sair -->
     <span id="driveStatusTop" class="drive-status-top" style="display: none;">Conectado ao Drive ✓</span>
-    <!-- MODIFICADO: O status do usuário agora contém o e-mail e um botão de sair discreto -->
-    <span id="userStatusTop" class="user-status-top" style="display: none;">
-        <span id="userEmail"></span>
-        <button id="btnTopBarLogout" class="btn-logout-discreet">Sair</button>
-    </span>
+    <span id="userStatusTop" class="user-status-top" style="display: none;"></span>
+    <button id="btnLogoutTop" class="btn-logout-top" style="display: none;">Sair</button>
 </div>
 
 <div class="logo-container">
