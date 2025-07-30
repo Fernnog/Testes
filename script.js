@@ -105,6 +105,8 @@ async function syncTarget(targetId) {
 
     try {
         target.driveStatus = 'syncing';
+        // Limpa a mensagem de erro anterior ao tentar sincronizar novamente
+        delete target.driveErrorMessage;
         applyFiltersAndRender(panelId);
 
         const result = await GoogleDriveService.backupTargetToDrive(target, target.googleDocId);
@@ -120,11 +122,14 @@ async function syncTarget(targetId) {
     } catch (error) {
         console.error(`Falha ao sincronizar o alvo ${targetId}:`, error);
         target.driveStatus = 'error';
+        // PRIORIDADE 2: Armazena a mensagem de erro específica no objeto do alvo.
+        target.driveErrorMessage = error.message || 'Erro desconhecido. Verifique as permissões ou a conexão.';
         showToast(`Erro ao sincronizar "${target.title}" com o Drive.`, "error");
     } finally {
         applyFiltersAndRender(panelId);
     }
 }
+
 
 /**
  * (MELHORIA PRIORIDADE 2) Solicita uma sincronização para um alvo, aplicando um debounce.
@@ -157,24 +162,48 @@ async function handleForceSync() {
     
     if (!confirm("Deseja forçar a sincronização de todos os alvos com o Google Drive agora?")) return;
 
+    // PRIORIDADE 2: Usa o status global da UI para dar feedback sobre a operação em massa.
+    UI.updateDriveStatusUI('syncing', 'Sincronizando...');
     showToast("Iniciando sincronização manual completa...", "info");
     console.log('[App] Iniciando sincronização manual em massa...');
 
-    state.prayerTargets.forEach(t => t.driveStatus = 'pending');
-    state.archivedTargets.forEach(t => t.driveStatus = 'pending');
-    state.resolvedTargets.forEach(t => t.driveStatus = 'pending');
+    // Limpa status e mensagens de erro anteriores
+    state.prayerTargets.forEach(t => { t.driveStatus = 'pending'; delete t.driveErrorMessage; });
+    state.archivedTargets.forEach(t => { t.driveStatus = 'pending'; delete t.driveErrorMessage; });
+    state.resolvedTargets.forEach(t => { t.driveStatus = 'pending'; delete t.driveErrorMessage; });
     
     applyFiltersAndRender('mainPanel');
     applyFiltersAndRender('archivedPanel');
     applyFiltersAndRender('resolvedPanel');
 
     const allTargetsToSync = [...state.prayerTargets, ...state.archivedTargets, ...state.resolvedTargets];
-    for (const target of allTargetsToSync) {
-        await new Promise(resolve => setTimeout(resolve, 200)); 
-        await syncTarget(target.id);
+    let hasError = false;
+
+    try {
+        for (const target of allTargetsToSync) {
+            await new Promise(resolve => setTimeout(resolve, 200)); 
+            await syncTarget(target.id);
+            
+            // Verifica se este alvo específico falhou para determinar o status final
+            const { target: updatedTarget } = findTargetInState(target.id);
+            if (updatedTarget && updatedTarget.driveStatus === 'error') {
+                hasError = true;
+            }
+        }
+    } catch (error) {
+        console.error("[App] Erro geral durante a sincronização forçada:", error);
+        hasError = true;
+        showToast("Ocorreu um erro inesperado durante a sincronização.", "error");
+    } finally {
+        // PRIORIDADE 2: Atualiza o status global da UI com base no resultado da operação.
+        if (hasError) {
+            UI.updateDriveStatusUI('error', 'Erro na Sincronização');
+            showToast("Sincronização concluída com erros. Verifique os alvos marcados com '✗'.", "error");
+        } else {
+            UI.updateDriveStatusUI('connected');
+            showToast("Sincronização manual concluída!", "success");
+        }
     }
-    
-    showToast("Sincronização manual concluída!", "success");
 }
 
 
