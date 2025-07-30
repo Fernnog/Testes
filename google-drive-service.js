@@ -1,7 +1,7 @@
 // --- START OF FILE google-drive-service.js ---
 // Responsabilidade: Conter toda a lógica de comunicação com a API do Google Drive.
 // Este módulo lida com a criação e atualização de backups de alvos.
-// VERSÃO COM LOGS DE DIAGNÓSTICO AVANÇADOS
+// VERSÃO ATUALIZADA: Inclui refatoração e correção de busca de pasta.
 
 // Flag para garantir que a API do Google só seja carregada uma vez.
 let gapiInitialized = false;
@@ -12,107 +12,130 @@ const FOLDER_NAME = "Meus Alvos de Oração";
 
 /**
  * Carrega e inicializa a biblioteca cliente da API do Google (GAPI).
- * @param {string} accessToken - O token de acesso OAuth.
- * @returns {Promise<boolean>}
+ * Esta função deve ser chamada na inicialização da aplicação após o login com Google.
+ * @param {string} accessToken - O token de acesso OAuth obtido do Firebase Auth.
+ * @returns {Promise<boolean>} - Resolve para 'true' se a inicialização for bem-sucedida.
  */
 export async function initializeDriveService(accessToken) {
     if (gapiInitialized) {
-        console.log("[Drive Service] GAPI já inicializado. Apenas revalidando token.");
+        // Se já foi inicializado, apenas revalida o token
         gapi.auth.setToken({ access_token: accessToken });
         return true;
     }
 
     return new Promise((resolve, reject) => {
-        console.log("[Drive Service] Carregando script da API do Google (gapi.js)...");
+        // Cria um elemento <script> para carregar a biblioteca GAPI
         const script = document.createElement("script");
         script.src = "https://apis.google.com/js/api.js";
         document.body.appendChild(script);
 
         script.onload = () => {
-            console.log("[Drive Service] Script gapi.js carregado. Inicializando cliente...");
+            // Após carregar o script, carrega o módulo 'client' do GAPI
             gapi.load('client', async () => {
                 try {
+                    // Inicializa o cliente com a API do Drive v3
                     await gapi.client.init({
                         'discoveryDocs': ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest']
                     });
-                    console.log("[Drive Service] Cliente GAPI inicializado com sucesso.");
+                    // Define o token de acesso para autorizar as chamadas
                     gapi.auth.setToken({ access_token: accessToken });
                     gapiInitialized = true;
                     resolve(true);
                 } catch (error) {
-                    console.error("[Drive Service] CRITICAL ERROR: Falha ao inicializar o cliente GAPI.", error);
+                    console.error("Erro ao inicializar o cliente GAPI:", error);
                     reject(error);
                 }
             });
         };
-        script.onerror = (err) => {
-            console.error("[Drive Service] CRITICAL ERROR: Falha ao carregar o script da API do Google.", err);
-            reject(new Error("Falha ao carregar o script da API do Google."));
-        };
+        script.onerror = () => reject(new Error("Falha ao carregar o script da API do Google."));
     });
 }
 
 /**
- * Procura pela pasta da aplicação no Drive ou a cria se não existir.
+ * (PRIORIDADE 3) Constrói o corpo da requisição multipart para a API do Drive.
+ * Abstrai a lógica de criação do corpo para evitar duplicação.
+ * @param {object} metadata - Os metadados do arquivo (nome, mimeType, etc.).
+ * @param {string} fileContent - O conteúdo de texto do arquivo.
+ * @returns {{boundary: string, body: string}} - O limite e o corpo da requisição.
+ */
+function _buildMultipartBody(metadata, fileContent) {
+    const boundary = '---------' + Date.now();
+    const body = `
+--${boundary}
+Content-Type: application/json; charset=UTF-8
+
+${JSON.stringify(metadata)}
+--${boundary}
+Content-Type: text/plain
+
+${fileContent}
+--${boundary}--`;
+    return { boundary, body };
+}
+
+
+/**
+ * (PRIORIDADE 1) Procura pela pasta da aplicação no Drive ou a cria se não existir.
+ * Utiliza a 'appDataFolder' para armazenar um marcador com o ID da pasta visível.
  * @returns {Promise<string>} - O ID da pasta.
  */
 async function findOrCreateAppFolder() {
     if (appFolderId) {
-        console.log(`[Drive Service] Usando ID da pasta em cache: ${appFolderId}`);
+        console.log("[Drive Service] Usando ID da pasta em cache:", appFolderId);
         return appFolderId;
     }
 
     const markerFileName = '.meu-diario-oracao-folder-id';
+    // Busca o arquivo marcador APENAS na pasta de dados oculta do aplicativo
     const searchMarkerQuery = `name='${markerFileName}' and 'appDataFolder' in parents`;
 
-    try {
-        console.log("[Drive Service] Buscando arquivo marcador na pasta de dados da aplicação...");
-        const response = await gapi.client.drive.files.list({
-            q: searchMarkerQuery,
-            fields: 'files(id, appProperties)',
-            spaces: 'appDataFolder'
-        });
+    let response = await gapi.client.drive.files.list({
+        q: searchMarkerQuery,
+        fields: 'files(id, appProperties)',
+        spaces: 'appDataFolder' // Garante que a busca seja feita no espaço correto
+    });
 
-        console.log("[Drive Service] Resposta da API (Busca de Marcador):", response.result);
-
-        if (response.result.files && response.result.files.length > 0) {
-            const folderId = response.result.files[0].appProperties.folderId;
-            if (folderId) {
-                console.log(`[Drive Service] Marcador encontrado! ID da pasta: ${folderId}`);
-                appFolderId = folderId;
-                return appFolderId;
-            }
+    // Se o arquivo marcador for encontrado, lê o ID da pasta de suas propriedades
+    if (response.result.files && response.result.files.length > 0) {
+        const folderId = response.result.files[0].appProperties?.folderId;
+        if (folderId) {
+            console.log(`[Drive Service] Marcador encontrado. Usando ID da pasta existente: ${folderId}`);
+            appFolderId = folderId;
+            return appFolderId;
         }
-
-        console.log("[Drive Service] Marcador não encontrado ou inválido. Criando nova pasta visível...");
-        const folderMetadata = {
-            'name': FOLDER_NAME,
-            'mimeType': 'application/vnd.google-apps.folder'
-        };
-        const createFolderResponse = await gapi.client.drive.files.create({
-            resource: folderMetadata,
-            fields: 'id'
-        });
-        const newFolderId = createFolderResponse.result.id;
-        console.log(`[Drive Service] Pasta visível criada com sucesso. ID: ${newFolderId}`);
-        
-        console.log("[Drive Service] Criando arquivo marcador oculto para persistir o ID da pasta...");
-        const markerMetadata = {
-            name: markerFileName,
-            parents: ['appDataFolder'],
-            appProperties: { folderId: newFolderId }
-        };
-        await gapi.client.drive.files.create({ resource: markerMetadata });
-        console.log("[Drive Service] Arquivo marcador criado com sucesso.");
-
-        appFolderId = newFolderId;
-        return appFolderId;
-
-    } catch (error) {
-        console.error("[Drive Service] CRITICAL ERROR em findOrCreateAppFolder:", error);
-        throw error; // Re-lança o erro para a camada superior (script.js) tratar
     }
+    
+    // --- Se o marcador não for encontrado, cria a pasta e o marcador ---
+    console.log("[Drive Service] Marcador não encontrado. Criando nova pasta e marcador.");
+    
+    // 1. Cria a pasta visível para o usuário
+    const folderMetadata = {
+        'name': FOLDER_NAME,
+        'mimeType': 'application/vnd.google-apps.folder'
+    };
+    const createFolderResponse = await gapi.client.drive.files.create({
+        resource: folderMetadata,
+        fields: 'id'
+    });
+    const newFolderId = createFolderResponse.result.id;
+    console.log(`[Drive Service] Pasta visível criada com ID: ${newFolderId}`);
+    
+    // 2. Cria o arquivo marcador na pasta de dados do aplicativo
+    const markerMetadata = {
+        name: markerFileName,
+        parents: ['appDataFolder'], // Importante: define o pai como a pasta oculta
+        appProperties: { // Salva o ID da pasta visível como uma propriedade do marcador
+            folderId: newFolderId
+        }
+    };
+    await gapi.client.drive.files.create({ resource: markerMetadata });
+    console.log("[Drive Service] Arquivo marcador criado com sucesso na appDataFolder.");
+
+    // Armazena em cache e retorna o ID da nova pasta
+    appFolderId = newFolderId;
+    return appFolderId;
 }
+
 
 /**
  * Formata o conteúdo de um alvo para um formato de texto legível.
@@ -120,7 +143,6 @@ async function findOrCreateAppFolder() {
  * @returns {string} - O conteúdo formatado.
  */
 function formatTargetForDoc(target) {
-    // (Esta função não precisa de logs, pois é síncrona e não faz chamadas de API)
     let content = `[Este documento é um backup gerado pela aplicação 'Meus Alvos de Oração']\n\n`;
     content += `TÍTULO: ${target.title}\n`;
     content += `==============================================\n\n`;
@@ -134,6 +156,7 @@ function formatTargetForDoc(target) {
     if (target.observations && target.observations.length > 0) {
         content += `-----------------\n`;
         content += `HISTÓRICO DE OBSERVAÇÕES:\n\n`;
+        // Ordena as observações da mais antiga para a mais recente
         const sortedObs = [...target.observations].sort((a, b) => new Date(a.date) - new Date(b.date));
         sortedObs.forEach(obs => {
             const obsDate = obs.date ? new Date(obs.date).toLocaleDateString('pt-BR') : 'Data desconhecida';
@@ -146,69 +169,60 @@ function formatTargetForDoc(target) {
 /**
  * (FUNÇÃO PRINCIPAL) Cria ou atualiza o backup de um alvo no Google Drive.
  * @param {object} target - O objeto completo do alvo.
- * @param {string | null} googleDocId - O ID do documento do Drive se já existir.
- * @returns {Promise<{success: boolean, docId: string}>}
+ * @param {string | null} googleDocId - O ID do documento do Drive se já existir, ou nulo.
+ * @returns {Promise<{success: boolean, docId: string}>} - Retorna o status e o ID do documento.
  */
 export async function backupTargetToDrive(target, googleDocId = null) {
     if (!gapiInitialized) {
-        console.error("[Drive Service] Tentativa de backup falhou: serviço não inicializado.");
         throw new Error("O serviço do Google Drive não foi inicializado.");
     }
     
+    // Define o conteúdo e o nome do arquivo. O nome do arquivo será 'Alvo - {Título do Alvo}'.
     const fileContent = formatTargetForDoc(target);
     const fileName = `Alvo - ${target.title}`;
 
-    try {
-        if (googleDocId) {
-            // --- LÓGICA DE ATUALIZAÇÃO (UPDATE) ---
-            console.log(`[Drive Service] ATUALIZANDO doc. ID: ${googleDocId}, Título: ${fileName}`);
-            const updateMetadata = { name: fileName };
-            
-            const boundary = '---------' + Date.now();
-            const body = `--${boundary}\nContent-Type: application/json; charset=UTF-8\n\n${JSON.stringify(updateMetadata)}\n--${boundary}\nContent-Type: text/plain\n\n${fileContent}\n--${boundary}--`;
+    if (googleDocId) {
+        // --- LÓGICA DE ATUALIZAÇÃO (UPDATE) ---
+        console.log(`[Drive Service] ATUALIZANDO documento. ID: ${googleDocId}, Novo Título: ${fileName}`);
+        const updateMetadata = { name: fileName }; // Garante que o nome seja atualizado se o título do alvo mudar
+        
+        // (PRIORIDADE 3) Utiliza a função auxiliar para construir o corpo da requisição
+        const { boundary, body } = _buildMultipartBody(updateMetadata, fileContent);
 
-            await gapi.client.request({
-                path: `/upload/drive/v3/files/${googleDocId}`,
-                method: 'PATCH',
-                params: { uploadType: 'multipart' },
-                headers: { 'Content-Type': `multipart/related; boundary="${boundary}"` },
-                body: body
-            });
-            
-            console.log(`[Drive Service] Documento '${target.title}' ATUALIZADO com sucesso.`);
-            return { success: true, docId: googleDocId };
+        await gapi.client.request({
+            path: `/upload/drive/v3/files/${googleDocId}`,
+            method: 'PATCH',
+            params: { uploadType: 'multipart' },
+            headers: { 'Content-Type': `multipart/related; boundary="${boundary}"` },
+            body: body
+        });
+        
+        console.log(`[Drive Service] Resposta da API de atualização recebida para o alvo '${target.title}'.`);
+        return { success: true, docId: googleDocId };
 
-        } else {
-            // --- LÓGICA DE CRIAÇÃO (CREATE) ---
-            const parentFolderId = await findOrCreateAppFolder();
-            console.log(`[Drive Service] CRIANDO doc. Título: ${fileName}, na pasta ID: ${parentFolderId}`);
-            const createMetadata = {
-                'name': fileName,
-                'mimeType': 'application/vnd.google-apps.document',
-                'parents': [parentFolderId]
-            };
+    } else {
+        // --- LÓGICA DE CRIAÇÃO (CREATE) ---
+        const parentFolderId = await findOrCreateAppFolder();
+        console.log(`[Drive Service] CRIANDO novo documento. Título: ${fileName}, na pasta ID: ${parentFolderId}`);
+        const createMetadata = {
+            'name': fileName,
+            'mimeType': 'application/vnd.google-apps.document', // Cria como um Google Doc
+            'parents': [parentFolderId]
+        };
 
-            const boundary = '---------' + Date.now();
-            const body = `--${boundary}\nContent-Type: application/json; charset=UTF-8\n\n${JSON.stringify(createMetadata)}\n--${boundary}\nContent-Type: text/plain\n\n${fileContent}\n--${boundary}--`;
+        // (PRIORIDADE 3) Utiliza a função auxiliar para construir o corpo da requisição
+        const { boundary, body } = _buildMultipartBody(createMetadata, fileContent);
 
-            const response = await gapi.client.request({
-                path: '/upload/drive/v3/files',
-                method: 'POST',
-                params: { uploadType: 'multipart', fields: 'id' },
-                headers: { 'Content-Type': `multipart/related; boundary="${boundary}"` },
-                body: body
-            });
-            
-            const newDocId = response.result.id;
-            console.log(`[Drive Service] Documento criado. Novo ID: ${newDocId}`);
-            return { success: true, docId: newDocId };
-        }
-    } catch (error) {
-        console.error(`[Drive Service] CRITICAL ERROR durante o backup do alvo '${target.title}':`, error);
-        // Adiciona o corpo do erro ao log, se disponível, para mais detalhes
-        if (error.body) {
-            console.error("[Drive Service] Detalhes do erro da API:", JSON.parse(error.body));
-        }
-        throw error;
+        const response = await gapi.client.request({
+            path: '/upload/drive/v3/files',
+            method: 'POST',
+            params: { uploadType: 'multipart', fields: 'id' },
+            headers: { 'Content-Type': `multipart/related; boundary="${boundary}"` },
+            body: body
+        });
+        
+        const newDocId = response.result.id;
+        console.log(`[Drive Service] Documento criado com sucesso. Novo ID do Documento: ${newDocId}`);
+        return { success: true, docId: newDocId };
     }
 }
