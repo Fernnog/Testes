@@ -54,8 +54,6 @@ export async function signInWithEmailAndPassword(email, password) {
  * @returns {Promise<{user: import("firebase/auth").User, accessToken: string}>} - Resolve com o objeto do usuário e o token de acesso para a API do Google.
  * @throws {Error} - Lança um erro se a permissão para o Drive for negada ou se o login falhar.
  */
-// No arquivo auth.js, substitua a função signInWithGoogle
-
 export async function signInWithGoogle() {
     const provider = new GoogleAuthProvider();
     
