@@ -541,31 +541,36 @@ async function handleTogglePriority(target) {
 // ===============================================
 // === PONTO DE ENTRADA DA APLICAÇÃO E EVENTOS ===
 // ===============================================
+// Em script.js, substitua o listener de DOMContentLoaded existente por este bloco completo.
+
 document.addEventListener('DOMContentLoaded', () => {
-    // (Prioridade 1) O callback do listener de autenticação agora é ASYNC
+    // Lógica de inicialização principal com a correção de estado.
     Auth.initializeAuth(async (user) => {
         if (user) {
+            // Passo 1: Atualiza a UI imediatamente para mostrar o status de "logado".
             UI.updateAuthUI(user);
-            
-            // PONTO-CHAVE DA CORREÇÃO:
-            // Tenta inicializar o Drive em TODAS as cargas de página em que o usuário está logado.
-            try {
-                console.log("[App] Usuário detectado. Tentando inicializar o serviço do Drive...");
-                const initialized = await GoogleDriveService.initializeDriveService(); // Não passa mais token
-                if (initialized) {
-                    console.log("[App] Serviço do Drive pronto.");
-                    state.isDriveEnabled = true;
-                    UI.updateDriveStatusUI('connected'); // Prioridade 2
-                }
-            } catch (error) {
-                console.error("[App] Falha ao re-inicializar o serviço do Drive:", error);
+
+            // Passo 2: Verifica se o provedor de login é o Google.
+            const isGoogleUser = user.providerData.some(
+                (provider) => provider.providerId === 'google.com'
+            );
+
+            if (isGoogleUser) {
+                // Passo 3: Se for um usuário do Google, reexecuta o fluxo de login de forma silenciosa.
+                // Isso obtém um novo token de acesso e reinicializa o serviço do Drive,
+                // resolvendo o problema de estado ao recarregar a página.
+                await handleGoogleSignIn();
+                // A função loadDataForUser já é chamada dentro de handleGoogleSignIn (se bem-sucedido)
+                // ou no próprio fluxo de inicialização do Auth, então não precisa ser chamada aqui novamente.
+            } else {
+                // Caso de borda: o usuário está logado, mas não com o Google.
+                showToast("A sincronização com o Drive requer autenticação com o Google.", "error");
                 state.isDriveEnabled = false;
-                UI.updateDriveStatusUI('error', 'Reconecte ao Drive'); // Prioridade 2
+                UI.updateDriveStatusUI('disconnected');
+                await loadDataForUser(user); // Carrega os dados, mas sem a funcionalidade do Drive.
             }
-
-            await loadDataForUser(user); // Carrega os dados após a tentativa de inicialização do Drive
-
         } else {
+            // Se não houver usuário, reseta completamente o estado da aplicação.
             UI.updateAuthUI(null);
             handleLogoutState();
         }
@@ -573,8 +578,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Listeners de Ações Gerais ---
     document.getElementById('btnGoogleSignIn').addEventListener('click', handleGoogleSignIn);
-    // (Prioridade 1) Novo listener para o logout discreto na barra superior
-    document.getElementById('btnTopBarLogout').addEventListener('click', () => Auth.handleSignOut());
+    document.getElementById('btnLogout').addEventListener('click', () => Auth.handleSignOut());
+    // NOVO LISTENER: Adicionado para o botão de sair na barra superior.
+    document.getElementById('btnLogoutTop').addEventListener('click', () => Auth.handleSignOut());
     
     document.getElementById('prayerForm').addEventListener('submit', handleAddNewTarget);
     document.getElementById('backToMainButton').addEventListener('click', () => UI.showPanel('dailySection'));
@@ -582,12 +588,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('viewAllTargetsButton').addEventListener('click', () => UI.showPanel('mainPanel'));
     document.getElementById('viewArchivedButton').addEventListener('click', () => UI.showPanel('archivedPanel'));
     document.getElementById('viewResolvedButton').addEventListener('click', () => UI.showPanel('resolvedPanel'));
+    document.getElementById('forceDriveSyncButton').addEventListener('click', handleForceSync);
     
     // --- Listeners da Seção Diária, Relatórios, Modais e Filtros ---
     document.getElementById('refreshDaily').addEventListener('click', async () => { if(confirm("Deseja gerar uma nova lista de alvos para hoje? A lista atual será substituída.")) { await Service.forceGenerateDailyTargets(state.user.uid, state.prayerTargets); await loadDataForUser(state.user); showToast("Nova lista gerada!", "success"); } });
     document.getElementById('copyDaily').addEventListener('click', () => { const text = state.dailyTargets.pending.map(t => `- ${t.title}`).join('\n'); navigator.clipboard.writeText(text); showToast("Alvos pendentes copiados!", "success"); });
     document.getElementById('viewDaily').addEventListener('click', () => { const allTargets = [...state.dailyTargets.pending, ...state.dailyTargets.completed]; const html = UI.generateViewHTML(allTargets, "Alvos do Dia"); const newWindow = window.open(); newWindow.document.write(html); newWindow.document.close(); });
-    document.getElementById('addManualTargetButton').addEventListener('click', () => { UI.renderManualSearchResults([], state.prayerTargets, ""); UI.toggleManualTargetModal(true); });
+    document.getElementById('addManualTargetButton').addEventListener('click', () => { UI.renderManualSearchResults([], state.prayerTargets); UI.toggleManualTargetModal(true); });
     document.getElementById('generateViewButton').addEventListener('click', () => { const html = UI.generateViewHTML(state.prayerTargets, "Visualização de Alvos Ativos"); const newWindow = window.open(); newWindow.document.write(html); newWindow.document.close(); });
     document.getElementById('generateCategoryViewButton').addEventListener('click', () => { const allTargets = [...state.prayerTargets, ...state.archivedTargets, ...state.resolvedTargets]; UI.toggleCategoryModal(true, allTargets); });
     document.getElementById('viewResolvedViewButton').addEventListener('click', () => { UI.toggleDateRangeModal(true); });
@@ -639,7 +646,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('closeManualTargetModal').addEventListener('click', () => UI.toggleManualTargetModal(false));
     document.getElementById('manualTargetSearchInput').addEventListener('input', e => { const searchTerm = e.target.value.toLowerCase(); const filtered = state.prayerTargets.filter(t => t.title.toLowerCase().includes(searchTerm) || (t.details && t.details.toLowerCase().includes(searchTerm))); UI.renderManualSearchResults(filtered, state.prayerTargets, searchTerm); });
 
-    // --- DELEGAÇÃO DE EVENTOS CENTRALIZADA ---
+    // --- DELEGAÇÃO DE EVENTOS CENTRALIZADA (Permanece inalterada) ---
     document.body.addEventListener('click', async e => {
         const { action, id, page, panel, obsIndex, subObsIndex } = e.target.dataset;
         if (!state.user && action) return;
@@ -660,7 +667,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (!action || !id) return;
 
-        const { target, isArchived, panelId } = findTargetInState(id);
+        const { target, isArchived, panelId: resolvedPanelId } = findTargetInState(id);
         if (!target && !['select-manual-target', 'add-new-observation'].includes(action)) return;
 
         switch(action) {
@@ -681,7 +688,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 UI.toggleAddObservationForm(id);
                 break;
             case 'add-new-observation':
-                if (target) await handleAddObservation(target, isArchived, panelId);
+                if (target) await handleAddObservation(target, isArchived, resolvedPanelId);
                 break;
             case 'edit-title':
                 if (target) UI.toggleEditForm('Title', id, { currentValue: target.title, saveAction: 'save-title', eventTarget: e.target });
@@ -710,14 +717,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (newTitle === '' || newTitle === target.title) { form.remove(); break; }
                 const oldTitle = target.title;
                 target.title = newTitle;
-                applyFiltersAndRender(panelId);
+                applyFiltersAndRender(resolvedPanelId);
                 try {
                     await Service.updateTargetField(state.user.uid, id, isArchived, { title: newTitle });
                     showToast("Título atualizado!", "success");
                     requestSync(id);
                 } catch (error) {
                     target.title = oldTitle;
-                    applyFiltersAndRender(panelId);
+                    applyFiltersAndRender(resolvedPanelId);
                     showToast("Falha ao atualizar o título.", "error");
                 }
                 break;
@@ -730,14 +737,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (newDetails === target.details) { form.remove(); break; }
                 const oldDetails = target.details;
                 target.details = newDetails;
-                applyFiltersAndRender(panelId);
+                applyFiltersAndRender(resolvedPanelId);
                 try {
                     await Service.updateTargetField(state.user.uid, id, isArchived, { details: newDetails });
                     showToast("Detalhes atualizados!", "success");
                     requestSync(id);
                 } catch (error) {
                     target.details = oldDetails;
-                    applyFiltersAndRender(panelId);
+                    applyFiltersAndRender(resolvedPanelId);
                     showToast("Falha ao atualizar os detalhes.", "error");
                 }
                 break;
@@ -750,14 +757,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (newText === '' || newText === target.observations[obsIndex].text) { form.remove(); break; }
                 const oldText = target.observations[obsIndex].text;
                 target.observations[obsIndex].text = newText;
-                applyFiltersAndRender(panelId);
+                applyFiltersAndRender(resolvedPanelId);
                 try {
                     await Service.updateObservationInTarget(state.user.uid, id, isArchived, obsIndex, { text: newText });
                     showToast("Observação atualizada!", "success");
                     requestSync(id);
                 } catch (error) {
                     target.observations[obsIndex].text = oldText;
-                    applyFiltersAndRender(panelId);
+                    applyFiltersAndRender(resolvedPanelId);
                     showToast("Falha ao atualizar a observação.", "error");
                 }
                 break;
@@ -774,14 +781,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (newText === '' || newText === obsToUpdate[fieldToUpdate]) { form.remove(); break; }
                 const oldText = obsToUpdate[fieldToUpdate];
                 obsToUpdate[fieldToUpdate] = newText;
-                applyFiltersAndRender(panelId);
+                applyFiltersAndRender(resolvedPanelId);
                 try {
                     await Service.updateObservationInTarget(state.user.uid, id, isArchived, obsIndex, { [fieldToUpdate]: newText });
                     showToast("Sub-alvo atualizado!", "success");
                     requestSync(id);
                 } catch (error) {
                     obsToUpdate[fieldToUpdate] = oldText;
-                    applyFiltersAndRender(panelId);
+                    applyFiltersAndRender(resolvedPanelId);
                     showToast("Falha ao atualizar sub-alvo.", "error");
                 }
                 break;
@@ -795,14 +802,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (newText === '' || newText === subObsToUpdate.text) { form.remove(); break; }
                 const oldText = subObsToUpdate.text;
                 subObsToUpdate.text = newText;
-                applyFiltersAndRender(panelId);
+                applyFiltersAndRender(resolvedPanelId);
                 try {
                     await Service.updateSubObservationInTarget(state.user.uid, id, isArchived, obsIndex, subObsIndex, { text: newText });
                     showToast("Observação do sub-alvo atualizada!", "success");
                     requestSync(id);
                 } catch (error) {
                     subObsToUpdate.text = oldText;
-                    applyFiltersAndRender(panelId);
+                    applyFiltersAndRender(resolvedPanelId);
                     showToast("Falha ao atualizar observação.", "error");
                 }
                 break;
@@ -822,7 +829,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const oldHasDeadline = target.hasDeadline;
                 target.deadlineDate = newDeadlineDate;
                 target.hasDeadline = true;
-                applyFiltersAndRender(panelId);
+                applyFiltersAndRender(resolvedPanelId);
                 try {
                     await Service.updateTargetField(state.user.uid, target.id, isArchived, { hasDeadline: true, deadlineDate: newDeadlineDate });
                     showToast("Prazo atualizado!", "success");
@@ -830,7 +837,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } catch(error) {
                     target.deadlineDate = oldDeadlineDate;
                     target.hasDeadline = oldHasDeadline;
-                    applyFiltersAndRender(panelId);
+                    applyFiltersAndRender(resolvedPanelId);
                     showToast("Falha ao salvar prazo.", "error");
                 }
                 break;
@@ -842,7 +849,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const oldHasDeadline = target.hasDeadline;
                 target.deadlineDate = null;
                 target.hasDeadline = false;
-                applyFiltersAndRender(panelId);
+                applyFiltersAndRender(resolvedPanelId);
                 try {
                     await Service.updateTargetField(state.user.uid, target.id, isArchived, { hasDeadline: false, deadlineDate: null });
                     showToast("Prazo removido.", "info");
@@ -850,7 +857,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } catch(error) {
                     target.deadlineDate = oldDeadlineDate;
                     target.hasDeadline = oldHasDeadline;
-                    applyFiltersAndRender(panelId);
+                    applyFiltersAndRender(resolvedPanelId);
                     showToast("Falha ao remover prazo.", "error");
                 }
                 break;
@@ -860,7 +867,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 UI.toggleEditCategoryForm(id, target?.category);
                 break;
             case 'save-category':
-                await handleSaveCategory(target, isArchived, panelId);
+                await handleSaveCategory(target, isArchived, resolvedPanelId);
                 break;
             case 'toggle-priority':
                 await handleTogglePriority(target);
@@ -887,14 +894,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const updatedObservationData = { isSubTarget: true, subTargetTitle: newTitle.trim(), subTargetStatus: 'active', interactionCount: 0, subObservations: [] };
                 const originalObservation = { ...target.observations[parseInt(obsIndex)] };
                 Object.assign(target.observations[parseInt(obsIndex)], updatedObservationData);
-                applyFiltersAndRender(panelId);
+                applyFiltersAndRender(resolvedPanelId);
                 try {
                     await Service.updateObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), updatedObservationData);
                     showToast("Observação promovida a sub-alvo!", "success");
                     requestSync(id);
                 } catch (error) {
                     target.observations[parseInt(obsIndex)] = originalObservation;
-                    applyFiltersAndRender(panelId);
+                    applyFiltersAndRender(resolvedPanelId);
                     showToast("Falha ao salvar. A alteração foi desfeita.", "error");
                 }
                 break;
@@ -937,14 +944,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const updatedObservation = { ...originalSubTarget, isSubTarget: false };
                 delete updatedObservation.subTargetTitle; delete updatedObservation.subTargetStatus; delete updatedObservation.interactionCount; delete updatedObservation.subObservations;
                 target.observations[parseInt(obsIndex)] = updatedObservation;
-                applyFiltersAndRender(panelId);
+                applyFiltersAndRender(resolvedPanelId);
                 try {
                     await Service.updateObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), updatedObservation);
                     showToast("Sub-alvo revertido para observação.", "info");
                     requestSync(id);
                 } catch (error) {
                     target.observations[parseInt(obsIndex)] = originalSubTarget;
-                    applyFiltersAndRender(panelId);
+                    applyFiltersAndRender(resolvedPanelId);
                     showToast("Erro ao reverter. A alteração foi desfeita.", "error");
                 }
                 break;
@@ -955,14 +962,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const originalSubTarget = { ...target.observations[parseInt(obsIndex)] };
                 const updatedObservation = { subTargetStatus: 'resolved' };
                 Object.assign(target.observations[parseInt(obsIndex)], updatedObservation);
-                applyFiltersAndRender(panelId);
+                applyFiltersAndRender(resolvedPanelId);
                 try {
                     await Service.updateObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), updatedObservation);
                     showToast("Sub-alvo marcado como respondido!", "success");
                     requestSync(id);
                 } catch (error) {
                     target.observations[parseInt(obsIndex)] = originalSubTarget;
-                    applyFiltersAndRender(panelId);
+                    applyFiltersAndRender(resolvedPanelId);
                     showToast("Erro ao salvar. A alteração foi desfeita.", "error");
                 }
                 break;
@@ -975,14 +982,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const subTarget = target.observations[parseInt(obsIndex)];
                 if (!Array.isArray(subTarget.subObservations)) subTarget.subObservations = [];
                 subTarget.subObservations.push(newSubObservation);
-                applyFiltersAndRender(panelId);
+                applyFiltersAndRender(resolvedPanelId);
                 try {
                     await Service.addSubObservationToTarget(state.user.uid, id, isArchived, parseInt(obsIndex), newSubObservation);
                     showToast("Observação adicionada ao sub-alvo.", "success");
                     requestSync(id);
                 } catch (error) {
                     subTarget.subObservations.pop();
-                    applyFiltersAndRender(panelId);
+                    applyFiltersAndRender(resolvedPanelId);
                     showToast("Erro ao salvar. A alteração foi desfeita.", "error");
                 }
                 break;
