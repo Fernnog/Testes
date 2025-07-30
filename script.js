@@ -34,10 +34,7 @@ let state = {
     isDriveEnabled: false
 };
 
-// =================================================================
-// === MELHORIA DE UX: Notificações Toast Não-Bloqueantes ===
-// =================================================================
-
+// --- MELHORIA DE UX: Notificações Toast Não-Bloqueantes ---
 function showToast(message, type = 'success') {
     const toast = document.createElement('div');
     toast.textContent = message;
@@ -74,9 +71,10 @@ function showToast(message, type = 'success') {
     }, 3000);
 }
 
-// =================================================================
-// === LÓGICA DE SINCRONIZAÇÃO COM GOOGLE DRIVE (NOVO) ===
-// =================================================================
+// --- LÓGICA DE SINCRONIZAÇÃO COM GOOGLE DRIVE (COM DEBOUNCE) ---
+
+// Mapa para guardar os temporizadores do debounce para cada alvo
+const syncDebounceTimers = new Map();
 
 // Função auxiliar para encontrar o alvo em qualquer lista do estado
 const findTargetInState = (targetId) => {
@@ -129,7 +127,27 @@ async function syncTarget(targetId) {
 }
 
 /**
- * (NOVO) Handler para forçar a sincronização de todos os alvos.
+ * (MELHORIA PRIORIDADE 2) Solicita uma sincronização para um alvo, aplicando um debounce.
+ * Evita chamadas excessivas à API ao fazer edições rápidas.
+ * @param {string} targetId - O ID do alvo a ser sincronizado.
+ */
+function requestSync(targetId) {
+    if (syncDebounceTimers.has(targetId)) {
+        clearTimeout(syncDebounceTimers.get(targetId));
+    }
+
+    console.log(`[Debounce] Sincronização para o alvo ${targetId} agendada em 2 segundos.`);
+    const timer = setTimeout(() => {
+        console.log(`[Debounce] Executando sincronização para o alvo ${targetId}.`);
+        syncTarget(targetId);
+        syncDebounceTimers.delete(targetId);
+    }, 2000); // Atraso de 2 segundos
+
+    syncDebounceTimers.set(targetId, timer);
+}
+
+/**
+ * Handler para forçar a sincronização de todos os alvos. Não usa debounce.
  */
 async function handleForceSync() {
     if (!state.isDriveEnabled) {
@@ -142,12 +160,10 @@ async function handleForceSync() {
     showToast("Iniciando sincronização manual completa...", "info");
     console.log('[App] Iniciando sincronização manual em massa...');
 
-    // Define todos os alvos como pendentes para feedback visual
     state.prayerTargets.forEach(t => t.driveStatus = 'pending');
     state.archivedTargets.forEach(t => t.driveStatus = 'pending');
     state.resolvedTargets.forEach(t => t.driveStatus = 'pending');
     
-    // Re-renderiza tudo para mostrar o status "pendente"
     applyFiltersAndRender('mainPanel');
     applyFiltersAndRender('archivedPanel');
     applyFiltersAndRender('resolvedPanel');
@@ -166,30 +182,6 @@ async function handleForceSync() {
 // === LÓGICA DE AUTENTICAÇÃO E FLUXO DE DADOS ===
 // =================================================================
 
-async function handleSignUp() {
-    const email = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value;
-    if (!email || !password) return showToast("Por favor, preencha e-mail e senha.", "error");
-    try {
-        await Auth.signUpWithEmailPassword(email, password);
-    } catch (error) {
-        console.error("Erro ao cadastrar:", error);
-        UI.updateAuthUI(null, "Erro ao cadastrar: " + error.message, true);
-    }
-}
-
-async function handleSignIn() {
-    const email = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value;
-    if (!email || !password) return showToast("Por favor, preencha e-mail e senha.", "error");
-    try {
-        await Auth.signInWithEmailPassword(email, password);
-    } catch (error) {
-        console.error("Erro ao entrar:", error);
-        UI.updateAuthUI(null, "Erro ao entrar: " + error.message, true);
-    }
-}
-
 async function handleGoogleSignIn() {
     try {
         console.log("[App] Iniciando o fluxo de login com Google...");
@@ -207,7 +199,6 @@ async function handleGoogleSignIn() {
                 state.isDriveEnabled = true;
                 UI.updateDriveStatusUI('connected');
                 showToast("Conexão com Google Drive estabelecida!", "success");
-                // Recarrega os dados para iniciar a sincronização em massa, se já estiver logado
                 if (state.user) {
                    await loadDataForUser(state.user);
                 }
@@ -220,22 +211,6 @@ async function handleGoogleSignIn() {
         showToast(error.message, "error");
         UI.updateDriveStatusUI('error');
         state.isDriveEnabled = false;
-    }
-}
-
-
-async function handlePasswordReset() {
-    const email = document.getElementById('email').value.trim();
-    if (!email) {
-        showToast("Por favor, insira seu e-mail para redefinir a senha.", "error");
-        return;
-    }
-    try {
-        await Auth.resetPassword(email);
-        UI.updateAuthUI(null, "Um e-mail de redefinição de senha foi enviado para " + email + ".");
-    } catch (error) {
-        console.error("Erro ao redefinir senha:", error);
-        UI.updateAuthUI(null, "Erro ao redefinir senha: " + error.message, true);
     }
 }
 
@@ -298,7 +273,6 @@ function applyFiltersAndRender(panelId) {
 
 async function loadDataForUser(user) {
     try {
-        // 1. Busca de dados primários do Firestore
         const [prayerData, archivedData, perseveranceData, weeklyData] = await Promise.all([
             Service.fetchPrayerTargets(user.uid),
             Service.fetchArchivedTargets(user.uid),
@@ -307,7 +281,6 @@ async function loadDataForUser(user) {
         ]);
 
         state.user = user;
-        // 2. Atribuição de estado inicial de sincronização
         state.prayerTargets = prayerData.map(t => ({ ...t, driveStatus: 'pending' }));
         const allArchived = archivedData.map(t => ({ ...t, driveStatus: 'pending' }));
         state.archivedTargets = allArchived.filter(t => !t.resolved);
@@ -318,7 +291,6 @@ async function loadDataForUser(user) {
         const dailyTargetsData = await Service.loadDailyTargets(user.uid, state.prayerTargets);
         state.dailyTargets = dailyTargetsData;
 
-        // 3. Renderização inicial da UI com o status 'pending'
         applyFiltersAndRender('mainPanel');
         applyFiltersAndRender('archivedPanel');
         applyFiltersAndRender('resolvedPanel');
@@ -328,20 +300,16 @@ async function loadDataForUser(user) {
         UI.updateWeeklyChart(state.weeklyPrayerData);
         UI.showPanel('dailySection');
 
-        // --- Ponto Crítico da Correção ---
-        // 4. Dispara a sincronização em massa para todos os alvos carregados
         if (state.isDriveEnabled) {
             console.log('[App] Iniciando sincronização em massa para todos os alvos...');
             showToast('Iniciando sincronização com o Google Drive...', 'info');
             const allTargetsToSync = [...state.prayerTargets, ...state.archivedTargets, ...state.resolvedTargets];
             for (const target of allTargetsToSync) {
-                // Adiciona um pequeno delay para não sobrecarregar a API do Google
                 await new Promise(resolve => setTimeout(resolve, 200)); 
                 await syncTarget(target.id);
             }
         }
         
-        // Lógica existente de toast de prazos vencidos
         const now = new Date();
         const todayUTCStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
         const expiredTargets = state.prayerTargets.filter(target =>
@@ -358,7 +326,6 @@ async function loadDataForUser(user) {
         handleLogoutState();
     }
 }
-
 
 function handleLogoutState() {
     state = { user: null, prayerTargets: [], archivedTargets: [], resolvedTargets: [], perseveranceData: { consecutiveDays: 0, recordDays: 0, lastInteractionDate: null }, weeklyPrayerData: { weekId: null, interactions: {} }, dailyTargets: { pending: [], completed: [], targetIds: [] }, pagination: { mainPanel: { currentPage: 1, targetsPerPage: 10 }, archivedPanel: { currentPage: 1, targetsPerPage: 10 }, resolvedPanel: { currentPage: 1, targetsPerPage: 10 }}, filters: { mainPanel: { searchTerm: '', showDeadlineOnly: false, showExpiredOnly: false, startDate: null, endDate: null }, archivedPanel: { searchTerm: '', startDate: null, endDate: null }, resolvedPanel: { searchTerm: '' }}, isDriveEnabled: false };
@@ -400,7 +367,8 @@ async function handleAddNewTarget(event) {
         const newTargetInState = state.prayerTargets.find(t => t.title === newTarget.title && !t.googleDocId);
 
         if (newTargetInState) {
-            console.log(`[App] Disparando sincronização para o novo alvo ID: ${newTargetInState.id}`);
+            console.log(`[App] Disparando sincronização IMEDIATA para o novo alvo ID: ${newTargetInState.id}`);
+            // A sincronização de um alvo novo é imediata, não debounced.
             await syncTarget(newTargetInState.id);
         } else {
             console.error("[App] Não foi possível encontrar o alvo recém-criado no estado para iniciar a sincronização.");
@@ -412,7 +380,6 @@ async function handleAddNewTarget(event) {
         showToast("Falha ao adicionar alvo: " + error.message, "error");
     }
 }
-
 
 // =================================================================
 // === Handlers de Ação Dedicados ===
@@ -451,7 +418,6 @@ async function handlePray(targetId) {
             const allPriorityPrayed = priorityTargets.every(p =>
                 state.dailyTargets.completed.some(c => c.id === p.id)
             );
-
             if (allPriorityPrayed) {
                 setTimeout(() => {
                     showToast("Parabéns! Você orou por todos os seus alvos prioritários de hoje!", "info");
@@ -473,11 +439,12 @@ async function handlePray(targetId) {
     }
 }
 
-async function handleResolveTarget(target, panelId) {
+async function handleResolveTarget(target) {
     if (!confirm("Marcar como respondido?")) return;
     const index = state.prayerTargets.findIndex(t => t.id === target.id);
     if (index === -1) return;
     
+    // UI Update Otimista
     const [targetToResolve] = state.prayerTargets.splice(index, 1);
     targetToResolve.resolved = true;
     targetToResolve.resolutionDate = new Date();
@@ -488,9 +455,10 @@ async function handleResolveTarget(target, panelId) {
     try {
         await Service.markAsResolved(state.user.uid, targetToResolve);
         showToast("Alvo marcado como respondido!", "success");
-        await syncTarget(target.id);
+        requestSync(target.id); // Sincronização com debounce
     } catch (error) {
-        showToast("Erro ao sincronizar. A ação será desfeita.", "error");
+        showToast("Erro ao salvar a alteração. A ação será desfeita.", "error");
+        // Reversão
         state.resolvedTargets.shift();
         state.prayerTargets.splice(index, 0, targetToResolve);
         applyFiltersAndRender('mainPanel');
@@ -498,11 +466,12 @@ async function handleResolveTarget(target, panelId) {
     }
 }
 
-async function handleArchiveTarget(target, panelId) {
+async function handleArchiveTarget(target) {
     if (!confirm("Arquivar este alvo?")) return;
     const index = state.prayerTargets.findIndex(t => t.id === target.id);
     if (index === -1) return;
 
+    // UI Update Otimista
     const [targetToArchive] = state.prayerTargets.splice(index, 1);
     targetToArchive.archived = true;
     targetToArchive.archivedDate = new Date();
@@ -513,9 +482,10 @@ async function handleArchiveTarget(target, panelId) {
     try {
         await Service.archiveTarget(state.user.uid, targetToArchive);
         showToast("Alvo arquivado.", "info");
-        await syncTarget(target.id);
+        requestSync(target.id); // Sincronização com debounce
     } catch (error) {
-        showToast("Erro ao sincronizar. A ação será desfeita.", "error");
+        showToast("Erro ao salvar a alteração. A ação será desfeita.", "error");
+        // Reversão
         state.archivedTargets.shift();
         state.prayerTargets.splice(index, 0, targetToArchive);
         applyFiltersAndRender('mainPanel');
@@ -534,8 +504,9 @@ async function handleDeleteArchivedTarget(targetId) {
     try {
         await Service.deleteArchivedTarget(state.user.uid, targetId);
         showToast("Alvo excluído permanentemente.", "info");
+        // Não há necessidade de sincronizar com o Drive, já que o doc pode ser deixado órfão ou deletado em outra rotina
     } catch (error) {
-        showToast("Erro ao sincronizar. O item será restaurado.", "error");
+        showToast("Erro ao excluir. O item será restaurado.", "error");
         state.archivedTargets.splice(index, 0, deletedTarget);
         applyFiltersAndRender('archivedPanel');
     }
@@ -556,7 +527,7 @@ async function handleAddObservation(target, isArchived, panelId) {
     try {
         await Service.addObservationToTarget(state.user.uid, target.id, isArchived, newObservation);
         showToast("Observação adicionada.", "success");
-        await syncTarget(target.id);
+        requestSync(target.id); // Sincronização com debounce
     } catch(error) {
         showToast("Falha ao salvar. A alteração será desfeita.", "error");
         target.observations.pop();
@@ -575,7 +546,7 @@ async function handleSaveCategory(target, isArchived, panelId) {
     try {
         await Service.updateTargetField(state.user.uid, target.id, isArchived, { category: newCategory });
         showToast("Categoria atualizada.", "success");
-        await syncTarget(target.id);
+        requestSync(target.id); // Sincronização com debounce
     } catch(error) {
         showToast("Falha ao salvar. A alteração foi desfeita.", "error");
         target.category = oldCategory;
@@ -585,6 +556,7 @@ async function handleSaveCategory(target, isArchived, panelId) {
 
 async function handleTogglePriority(target) {
     const newStatus = !target.isPriority;
+    const oldStatus = target.isPriority;
     
     target.isPriority = newStatus;
     applyFiltersAndRender('mainPanel');
@@ -593,10 +565,10 @@ async function handleTogglePriority(target) {
     try {
         await Service.updateTargetField(state.user.uid, target.id, false, { isPriority: newStatus });
         showToast(newStatus ? "Alvo marcado como prioritário." : "Alvo removido dos prioritários.", "info");
-        await syncTarget(target.id);
+        requestSync(target.id); // Sincronização com debounce
     } catch (error) {
-        showToast("Erro ao sincronizar. A alteração foi desfeita.", "error");
-        target.isPriority = !newStatus;
+        showToast("Erro ao salvar. A alteração foi desfeita.", "error");
+        target.isPriority = oldStatus;
         applyFiltersAndRender('mainPanel');
         UI.renderPriorityTargets(state.prayerTargets, state.dailyTargets);
     }
@@ -628,8 +600,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('viewArchivedButton').addEventListener('click', () => UI.showPanel('archivedPanel'));
     document.getElementById('viewResolvedButton').addEventListener('click', () => UI.showPanel('resolvedPanel'));
     document.getElementById('forceDriveSyncButton').addEventListener('click', handleForceSync);
-    
-   
     
     // --- Listeners da Seção Diária, Relatórios, Modais e Filtros ---
     document.getElementById('refreshDaily').addEventListener('click', async () => { if(confirm("Deseja gerar uma nova lista de alvos para hoje? A lista atual será substituída.")) { await Service.forceGenerateDailyTargets(state.user.uid, state.prayerTargets); await loadDataForUser(state.user); showToast("Nova lista gerada!", "success"); } });
@@ -674,9 +644,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedCategories = Array.from(document.querySelectorAll('#categoryCheckboxesContainer input:checked')).map(cb => cb.value);
         const allTargets = [...state.prayerTargets, ...state.archivedTargets, ...state.resolvedTargets];
         const filtered = allTargets.filter(t => selectedCategories.includes(t.category));
-        
         const html = UI.generateViewHTML(filtered, "Visualização por Categorias Selecionadas", selectedCategories);
-        
         const newWindow = window.open();
         newWindow.document.write(html);
         newWindow.document.close();
@@ -689,7 +657,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('closeManualTargetModal').addEventListener('click', () => UI.toggleManualTargetModal(false));
     document.getElementById('manualTargetSearchInput').addEventListener('input', e => { const searchTerm = e.target.value.toLowerCase(); const filtered = state.prayerTargets.filter(t => t.title.toLowerCase().includes(searchTerm) || (t.details && t.details.toLowerCase().includes(searchTerm))); UI.renderManualSearchResults(filtered, state.prayerTargets, searchTerm); });
 
-    // --- DELEGAÇÃO DE EVENTOS CENTRALIZADA (VERSÃO ATUALIZADA) ---
+    // --- DELEGAÇÃO DE EVENTOS CENTRALIZADA ---
     document.body.addEventListener('click', async e => {
         const { action, id, page, panel, obsIndex, subObsIndex } = e.target.dataset;
         if (!state.user && action) return;
@@ -704,120 +672,71 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (action === 'cancel-edit') {
             const form = e.target.closest('.inline-edit-form');
-            if (form) {
-                form.remove();
-            }
+            if (form) form.remove();
             return;
         }
         
-        if (!action || !id) {
-            return;
-        }
+        if (!action || !id) return;
 
         const { target, isArchived, panelId } = findTargetInState(id);
         if (!target && !['select-manual-target', 'add-new-observation'].includes(action)) return;
 
-        // --- Switch de Ações ---
         switch(action) {
             case 'pray':
             case 'pray-priority':
                 await handlePray(id);
                 break;
-            
             case 'resolve':
-                await handleResolveTarget(target, panelId);
+                await handleResolveTarget(target);
                 break;
-
             case 'archive':
-                await handleArchiveTarget(target, panelId);
+                await handleArchiveTarget(target);
                 break;
-            
             case 'delete-archived':
                 await handleDeleteArchivedTarget(id);
                 break;
-
             case 'toggle-observation':
                 UI.toggleAddObservationForm(id);
                 break;
-
             case 'add-new-observation':
-                if (target) {
-                    await handleAddObservation(target, isArchived, panelId);
-                }
+                if (target) await handleAddObservation(target, isArchived, panelId);
                 break;
-
             case 'edit-title':
                 if (target) UI.toggleEditForm('Title', id, { currentValue: target.title, saveAction: 'save-title', eventTarget: e.target });
                 break;
-
             case 'edit-details':
                 if (target) UI.toggleEditForm('Details', id, { currentValue: target.details, saveAction: 'save-details', eventTarget: e.target });
                 break;
-
             case 'edit-observation':
-                if (target && target.observations[obsIndex]) {
-                    UI.toggleEditForm('Observation', id, { 
-                        currentValue: target.observations[obsIndex].text, 
-                        obsIndex, 
-                        saveAction: 'save-observation',
-                        eventTarget: e.target
-                    });
-                }
+                if (target && target.observations[obsIndex]) UI.toggleEditForm('Observation', id, { currentValue: target.observations[obsIndex].text, obsIndex, saveAction: 'save-observation', eventTarget: e.target });
                 break;
-            
             case 'edit-sub-target-title':
-                if (target && target.observations[obsIndex]) {
-                    UI.toggleEditForm('SubTargetTitle', id, {
-                        currentValue: target.observations[obsIndex].subTargetTitle,
-                        obsIndex,
-                        saveAction: 'save-sub-target-title',
-                        eventTarget: e.target
-                    });
-                }
+                if (target && target.observations[obsIndex]) UI.toggleEditForm('SubTargetTitle', id, { currentValue: target.observations[obsIndex].subTargetTitle, obsIndex, saveAction: 'save-sub-target-title', eventTarget: e.target });
                 break;
-
             case 'edit-sub-target-details':
-                if (target && target.observations[obsIndex]) {
-                    UI.toggleEditForm('SubTargetDetails', id, {
-                        currentValue: target.observations[obsIndex].text,
-                        obsIndex,
-                        saveAction: 'save-sub-target-details',
-                        eventTarget: e.target
-                    });
-                }
+                if (target && target.observations[obsIndex]) UI.toggleEditForm('SubTargetDetails', id, { currentValue: target.observations[obsIndex].text, obsIndex, saveAction: 'save-sub-target-details', eventTarget: e.target });
                 break;
-
             case 'edit-sub-observation':
                 const subObs = target?.observations[obsIndex]?.subObservations?.[subObsIndex];
-                if (subObs) {
-                    UI.toggleEditForm('SubObservation', id, {
-                        currentValue: subObs.text,
-                        obsIndex,
-                        subObsIndex,
-                        saveAction: 'save-sub-observation',
-                        eventTarget: e.target
-                    });
-                }
+                if (subObs) UI.toggleEditForm('SubObservation', id, { currentValue: subObs.text, obsIndex, subObsIndex, saveAction: 'save-sub-observation', eventTarget: e.target });
                 break;
 
             case 'save-title': {
                 const form = e.target.closest('.inline-edit-form');
                 if (!form || !target) break;
                 const newTitle = form.querySelector('input').value.trim();
-                if (newTitle === '') break;
-                
+                if (newTitle === '' || newTitle === target.title) { form.remove(); break; }
                 const oldTitle = target.title;
                 target.title = newTitle;
-                
+                applyFiltersAndRender(panelId);
                 try {
                     await Service.updateTargetField(state.user.uid, id, isArchived, { title: newTitle });
-                    showToast("Título atualizado com sucesso!", "success");
-                    await syncTarget(id);
+                    showToast("Título atualizado!", "success");
+                    requestSync(id);
                 } catch (error) {
                     target.title = oldTitle;
-                    showToast("Falha ao atualizar o título.", "error");
-                } finally {
                     applyFiltersAndRender(panelId);
+                    showToast("Falha ao atualizar o título.", "error");
                 }
                 break;
             }
@@ -826,19 +745,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 const form = e.target.closest('.inline-edit-form');
                 if (!form || !target) break;
                 const newDetails = form.querySelector('textarea').value.trim();
-
+                if (newDetails === target.details) { form.remove(); break; }
                 const oldDetails = target.details;
                 target.details = newDetails;
-
+                applyFiltersAndRender(panelId);
                 try {
                     await Service.updateTargetField(state.user.uid, id, isArchived, { details: newDetails });
-                    showToast("Detalhes atualizados com sucesso!", "success");
-                    await syncTarget(id);
+                    showToast("Detalhes atualizados!", "success");
+                    requestSync(id);
                 } catch (error) {
                     target.details = oldDetails;
-                    showToast("Falha ao atualizar os detalhes.", "error");
-                } finally {
                     applyFiltersAndRender(panelId);
+                    showToast("Falha ao atualizar os detalhes.", "error");
                 }
                 break;
             }
@@ -847,20 +765,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 const form = e.target.closest('.inline-edit-form');
                 if (!form || !target) break;
                 const newText = form.querySelector('textarea').value.trim();
-                if (newText === '') break;
-
+                if (newText === '' || newText === target.observations[obsIndex].text) { form.remove(); break; }
                 const oldText = target.observations[obsIndex].text;
                 target.observations[obsIndex].text = newText;
-                
+                applyFiltersAndRender(panelId);
                 try {
                     await Service.updateObservationInTarget(state.user.uid, id, isArchived, obsIndex, { text: newText });
                     showToast("Observação atualizada!", "success");
-                    await syncTarget(id);
+                    requestSync(id);
                 } catch (error) {
                     target.observations[obsIndex].text = oldText;
-                    showToast("Falha ao atualizar a observação.", "error");
-                } finally {
                     applyFiltersAndRender(panelId);
+                    showToast("Falha ao atualizar a observação.", "error");
                 }
                 break;
             }
@@ -870,23 +786,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 const form = e.target.closest('.inline-edit-form');
                 if (!form || !target) break;
                 const newText = form.querySelector('input, textarea').value.trim();
-                if (newText === '') break;
-                
                 const obsToUpdate = target.observations[obsIndex];
                 const isTitle = action === 'save-sub-target-title';
                 const fieldToUpdate = isTitle ? 'subTargetTitle' : 'text';
+                if (newText === '' || newText === obsToUpdate[fieldToUpdate]) { form.remove(); break; }
                 const oldText = obsToUpdate[fieldToUpdate];
                 obsToUpdate[fieldToUpdate] = newText;
-
+                applyFiltersAndRender(panelId);
                 try {
                     await Service.updateObservationInTarget(state.user.uid, id, isArchived, obsIndex, { [fieldToUpdate]: newText });
                     showToast("Sub-alvo atualizado!", "success");
-                    await syncTarget(id);
+                    requestSync(id);
                 } catch (error) {
                     obsToUpdate[fieldToUpdate] = oldText;
-                    showToast("Falha ao atualizar sub-alvo.", "error");
-                } finally {
                     applyFiltersAndRender(panelId);
+                    showToast("Falha ao atualizar sub-alvo.", "error");
                 }
                 break;
             }
@@ -895,82 +809,67 @@ document.addEventListener('DOMContentLoaded', () => {
                 const form = e.target.closest('.inline-edit-form');
                 if (!form || !target) break;
                 const newText = form.querySelector('textarea').value.trim();
-                if (newText === '') break;
-
                 const subObsToUpdate = target.observations[obsIndex].subObservations[subObsIndex];
+                if (newText === '' || newText === subObsToUpdate.text) { form.remove(); break; }
                 const oldText = subObsToUpdate.text;
                 subObsToUpdate.text = newText;
-
+                applyFiltersAndRender(panelId);
                 try {
                     await Service.updateSubObservationInTarget(state.user.uid, id, isArchived, obsIndex, subObsIndex, { text: newText });
                     showToast("Observação do sub-alvo atualizada!", "success");
-                    await syncTarget(id);
+                    requestSync(id);
                 } catch (error) {
                     subObsToUpdate.text = oldText;
-                    showToast("Falha ao atualizar observação.", "error");
-                } finally {
                     applyFiltersAndRender(panelId);
+                    showToast("Falha ao atualizar observação.", "error");
                 }
                 break;
             }
             
             case 'edit-deadline':
-                if (target) {
-                    UI.toggleEditForm('Deadline', id, {
-                        currentValue: target.deadlineDate,
-                        saveAction: 'save-deadline',
-                        eventTarget: e.target
-                    });
-                }
+                if (target) UI.toggleEditForm('Deadline', id, { currentValue: target.deadlineDate, saveAction: 'save-deadline', eventTarget: e.target });
                 break;
 
             case 'save-deadline': {
                 const form = e.target.closest('.inline-edit-form');
                 if (!form || !target) break;
-                
                 const newDeadlineStr = form.querySelector('input[type="date"]').value;
                 if (!newDeadlineStr) break;
-
                 const newDeadlineDate = new Date(newDeadlineStr + 'T12:00:00Z');
                 const oldDeadlineDate = target.deadlineDate;
                 const oldHasDeadline = target.hasDeadline;
-
                 target.deadlineDate = newDeadlineDate;
                 target.hasDeadline = true;
-
+                applyFiltersAndRender(panelId);
                 try {
                     await Service.updateTargetField(state.user.uid, target.id, isArchived, { hasDeadline: true, deadlineDate: newDeadlineDate });
-                    showToast("Prazo atualizado com sucesso!", "success");
-                    await syncTarget(id);
+                    showToast("Prazo atualizado!", "success");
+                    requestSync(id);
                 } catch(error) {
-                    showToast("Falha ao salvar prazo. A alteração foi desfeita.", "error");
                     target.deadlineDate = oldDeadlineDate;
                     target.hasDeadline = oldHasDeadline;
-                } finally {
                     applyFiltersAndRender(panelId);
+                    showToast("Falha ao salvar prazo.", "error");
                 }
                 break;
             }
 
             case 'remove-deadline': {
                 if (!target || !confirm("Tem certeza que deseja remover o prazo deste alvo?")) break;
-
                 const oldDeadlineDate = target.deadlineDate;
                 const oldHasDeadline = target.hasDeadline;
-
                 target.deadlineDate = null;
                 target.hasDeadline = false;
-
+                applyFiltersAndRender(panelId);
                 try {
                     await Service.updateTargetField(state.user.uid, target.id, isArchived, { hasDeadline: false, deadlineDate: null });
                     showToast("Prazo removido.", "info");
-                    await syncTarget(id);
+                    requestSync(id);
                 } catch(error) {
-                    showToast("Falha ao remover prazo. A alteração foi desfeita.", "error");
                     target.deadlineDate = oldDeadlineDate;
                     target.hasDeadline = oldHasDeadline;
-                } finally {
                     applyFiltersAndRender(panelId);
+                    showToast("Falha ao remover prazo.", "error");
                 }
                 break;
             }
@@ -978,22 +877,15 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'edit-category':
                 UI.toggleEditCategoryForm(id, target?.category);
                 break;
-
             case 'save-category':
                 await handleSaveCategory(target, isArchived, panelId);
                 break;
-
             case 'toggle-priority':
                 await handleTogglePriority(target);
                 break;
-
             case 'download-target-pdf':
-                if (target) {
-                    generateAndDownloadPdf(target);
-                    showToast(`Gerando PDF para "${target.title}"...`, 'success');
-                }
+                if (target) { generateAndDownloadPdf(target); showToast(`Gerando PDF para "${target.title}"...`, 'success'); }
                 break;
-            
             case 'select-manual-target':
                 try {
                     await Service.addManualTargetToDailyList(state.user.uid, id);
@@ -1013,16 +905,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 const updatedObservationData = { isSubTarget: true, subTargetTitle: newTitle.trim(), subTargetStatus: 'active', interactionCount: 0, subObservations: [] };
                 const originalObservation = { ...target.observations[parseInt(obsIndex)] };
                 Object.assign(target.observations[parseInt(obsIndex)], updatedObservationData);
-
+                applyFiltersAndRender(panelId);
                 try {
                     await Service.updateObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), updatedObservationData);
-                    showToast("Observação promovida a sub-alvo com sucesso!", "success");
-                    await syncTarget(id);
+                    showToast("Observação promovida a sub-alvo!", "success");
+                    requestSync(id);
                 } catch (error) {
-                    showToast("Falha ao salvar. A alteração foi desfeita.", "error");
                     target.observations[parseInt(obsIndex)] = originalObservation;
-                } finally {
                     applyFiltersAndRender(panelId);
+                    showToast("Falha ao salvar. A alteração foi desfeita.", "error");
                 }
                 break;
             }
@@ -1060,21 +951,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
             case 'demote-sub-target': {
                 if (!confirm("Tem certeza que deseja reverter este sub-alvo para uma observação comum?")) break;
-
                 const originalSubTarget = { ...target.observations[parseInt(obsIndex)] };
                 const updatedObservation = { ...originalSubTarget, isSubTarget: false };
                 delete updatedObservation.subTargetTitle; delete updatedObservation.subTargetStatus; delete updatedObservation.interactionCount; delete updatedObservation.subObservations;
                 target.observations[parseInt(obsIndex)] = updatedObservation;
-                
+                applyFiltersAndRender(panelId);
                 try {
                     await Service.updateObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), updatedObservation);
                     showToast("Sub-alvo revertido para observação.", "info");
-                    await syncTarget(id);
+                    requestSync(id);
                 } catch (error) {
-                    showToast("Erro ao reverter. A alteração foi desfeita.", "error");
                     target.observations[parseInt(obsIndex)] = originalSubTarget;
-                } finally {
                     applyFiltersAndRender(panelId);
+                    showToast("Erro ao reverter. A alteração foi desfeita.", "error");
                 }
                 break;
             }
@@ -1084,16 +973,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 const originalSubTarget = { ...target.observations[parseInt(obsIndex)] };
                 const updatedObservation = { subTargetStatus: 'resolved' };
                 Object.assign(target.observations[parseInt(obsIndex)], updatedObservation);
-
+                applyFiltersAndRender(panelId);
                 try {
                     await Service.updateObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), updatedObservation);
                     showToast("Sub-alvo marcado como respondido!", "success");
-                    await syncTarget(id);
+                    requestSync(id);
                 } catch (error) {
-                    showToast("Erro ao salvar. A alteração foi desfeita.", "error");
                     target.observations[parseInt(obsIndex)] = originalSubTarget;
-                } finally {
                     applyFiltersAndRender(panelId);
+                    showToast("Erro ao salvar. A alteração foi desfeita.", "error");
                 }
                 break;
             }
@@ -1101,21 +989,19 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'add-sub-observation': {
                 const text = prompt("Digite a nova observação para este sub-alvo:");
                 if (!text || text.trim() === '') break;
-
                 const newSubObservation = { text: text.trim(), date: new Date() };
                 const subTarget = target.observations[parseInt(obsIndex)];
                 if (!Array.isArray(subTarget.subObservations)) subTarget.subObservations = [];
                 subTarget.subObservations.push(newSubObservation);
-
+                applyFiltersAndRender(panelId);
                 try {
                     await Service.addSubObservationToTarget(state.user.uid, id, isArchived, parseInt(obsIndex), newSubObservation);
                     showToast("Observação adicionada ao sub-alvo.", "success");
-                    await syncTarget(id);
+                    requestSync(id);
                 } catch (error) {
-                    showToast("Erro ao salvar. A alteração foi desfeita.", "error");
                     subTarget.subObservations.pop();
-                } finally {
                     applyFiltersAndRender(panelId);
+                    showToast("Erro ao salvar. A alteração foi desfeita.", "error");
                 }
                 break;
             }
