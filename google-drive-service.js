@@ -80,7 +80,7 @@ function _buildMultipartBody(metadata, fileContent) {
 
 
 /**
- * (PRIORIDADE 1) Procura pela pasta da aplicação no Drive ou a cria se não existir.
+ * (PRIORIDADE 1 - CORRIGIDO) Procura pela pasta da aplicação no Drive ou a cria se não existir.
  * Utiliza a 'appDataFolder' para armazenar um marcador com o ID da pasta visível.
  * @returns {Promise<string>} - O ID da pasta.
  */
