@@ -52,7 +52,7 @@ export async function initializeDriveService(accessToken) {
 }
 
 /**
- * (PRIORIDADE 3) Constrói o corpo da requisição multipart para a API do Drive.
+ * (PRIORIDADE 3 - CORRIGIDO) Constrói o corpo da requisição multipart para a API do Drive.
  * Abstrai a lógica de criação do corpo para evitar duplicação.
  * @param {object} metadata - Os metadados do arquivo (nome, mimeType, etc.).
  * @param {string} fileContent - O conteúdo de texto do arquivo.
@@ -60,17 +60,22 @@ export async function initializeDriveService(accessToken) {
  */
 function _buildMultipartBody(metadata, fileContent) {
     const boundary = '---------' + Date.now();
-    const body = `
---${boundary}
-Content-Type: application/json; charset=UTF-8
+    const delimiter = `\r\n--${boundary}`;
+    const close_delim = `${delimiter}--`;
 
-${JSON.stringify(metadata)}
---${boundary}
-Content-Type: text/plain
+    const multipartRequestBody = [
+        delimiter,
+        'Content-Type: application/json; charset=UTF-8',
+        '',
+        JSON.stringify(metadata),
+        delimiter,
+        'Content-Type: text/plain; charset=UTF-8',
+        '',
+        fileContent,
+        close_delim
+    ].join('\r\n');
 
-${fileContent}
---${boundary}--`;
-    return { boundary, body };
+    return { boundary, body: multipartRequestBody };
 }
 
 
@@ -186,7 +191,7 @@ export async function backupTargetToDrive(target, googleDocId = null) {
         console.log(`[Drive Service] ATUALIZANDO documento. ID: ${googleDocId}, Novo Título: ${fileName}`);
         const updateMetadata = { name: fileName }; // Garante que o nome seja atualizado se o título do alvo mudar
         
-        // (PRIORIDADE 3) Utiliza a função auxiliar para construir o corpo da requisição
+        // Utiliza a função auxiliar para construir o corpo da requisição
         const { boundary, body } = _buildMultipartBody(updateMetadata, fileContent);
 
         await gapi.client.request({
@@ -210,7 +215,7 @@ export async function backupTargetToDrive(target, googleDocId = null) {
             'parents': [parentFolderId]
         };
 
-        // (PRIORIDADE 3) Utiliza a função auxiliar para construir o corpo da requisição
+        // Utiliza a função auxiliar para construir o corpo da requisição
         const { boundary, body } = _buildMultipartBody(createMetadata, fileContent);
 
         const response = await gapi.client.request({
