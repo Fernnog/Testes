@@ -226,9 +226,23 @@ export async function backupTargetToDrive(target, googleDocId = null) {
         return { success: true, docId: docId };
 
     } catch (err) {
-        // LOG 4.1: Analisar a resposta de ERRO
+        // LOG 4.1: Analisar a resposta de ERRO (BLOCO ATUALIZADO CONFORME SUGESTÃO)
         console.error(`%c[Drive Service] A API do Google retornou um ERRO para '${target.title}'.`, 'color: red; font-weight: bold;');
-        console.error('Detalhes do erro da API:', err); // Este é o log mais importante!
+        
+        // Análise detalhada do objeto de erro da API do Google
+        if (err.result && err.result.error && Array.isArray(err.result.error.errors)) {
+            console.error('==================== DETALHES DO ERRO DA API ====================');
+            console.error('Status Code:', err.code);
+            console.error('Mensagem Principal:', err.result.error.message);
+            console.error('Domínio do Erro:', err.result.error.errors[0].domain);
+            console.error('RAZÃO DO ERRO (A PISTA PRINCIPAL):', err.result.error.errors[0].reason);
+            console.error('INSTRUÇÃO: Use a "RAZÃO DO ERRO" acima para diagnosticar o problema no Google Cloud Console, seguindo o guia fornecido.');
+            console.error('================================================================');
+        } else {
+            // Log genérico se o formato do erro for inesperado
+            console.error('Detalhes completos do erro (formato não padrão):', err);
+        }
+
         throw err; // Re-lança o erro para ser pego pelo script.js
     }
 }
