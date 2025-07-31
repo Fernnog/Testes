@@ -1,0 +1,27 @@
+// --- START OF FILE manifest.json ---
+{
+  "name": "Gerenciador de Planos de Leitura",
+  "short_name": "Planos Leitura",
+  "description": "Gerencie e acompanhe seus planos de leitura de livros facilmente.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f8f8f8",
+  "theme_color": "#800080",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "./imagens/logo_192.png", // Verifique se este caminho está correto!
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable" // maskable é bom para ícones adaptativos no Android
+    },
+    {
+      "src": "./imagens/logo_512.png", // Verifique se este caminho está correto!
+      "type": "image/png",
+      "sizes": "512x512",
+       "purpose": "any maskable"
+    }
+  ]
+}
+// --- END OF FILE manifest.json ---
