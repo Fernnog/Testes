@@ -10,7 +10,7 @@ admin.initializeApp();
 
 // --- Configuração do Cliente OAuth2 ---
 // As credenciais devem ser configuradas no ambiente do Firebase usando a CLI:
-// firebase functions:config:set google.client_id="SEU_CLIENT_ID" google.client_secret="SEU_CLIENT_SECRET"
+// firebase functions:config:set google.client_id="589137978493-7l0j7dt1u8r53ek5h9982lnipgnou8nk.apps.googleusercontent.com" google.client_secret="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"
 const CLIENT_ID = functions.config().google.client_id;
 const CLIENT_SECRET = functions.config().google.client_secret;
 const REDIRECT_URI = "https://www.gstatic.com/firebasejs/auth/handler.html";
