@@ -69,7 +69,6 @@ function _prepararDadosParaSincronizacao(planos) {
 /**
  * Atualiza o estado local dos planos com os resultados da sincronização e salva no Firestore.
  * @param {object} resultados - O objeto de resultados retornado pela Firebase Function.
- * @param {object} user - O usuário atual logado.
  */
 async function _atualizarEstadoEsalvar(resultados) {
     if (!resultados) return;
