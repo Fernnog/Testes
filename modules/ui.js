@@ -1,4 +1,4 @@
-// --- START OF FILE ui.js (COMPLETO E MODIFICADO) ---
+// --- START OF FILE ui.js (COMPLETO E CORRIGIDO) ---
 
 // modules/ui.js
 // RESPONSABILIDADE ÚNICA: Manipular o DOM, renderizar elementos, ler dados de formulários
@@ -590,14 +590,26 @@ export function renderApp(planos, user) {
         DOMElements.logoutButton.style.display = 'inline-flex';
         DOMElements.novoPlanoBtn.style.display = 'inline-flex';
         DOMElements.inicioBtn.style.display = 'inline-flex';
-        DOMElements.exportarAgendaBtn.style.display = 'inline-flex';
+        // INÍCIO DA CORREÇÃO (Prioridade 1)
+        // O código tentava acessar 'exportarAgendaBtn', que é null.
+        // Substituído por 'syncGoogleCalendarBtn' e com uma verificação de segurança.
+        if (DOMElements.syncGoogleCalendarBtn) {
+            DOMElements.syncGoogleCalendarBtn.style.display = 'inline-flex';
+        }
+        // FIM DA CORREÇÃO
         DOMElements.reavaliarCargaBtn.style.display = 'inline-flex';
     } else {
         DOMElements.showAuthButton.style.display = 'inline-flex';
         DOMElements.logoutButton.style.display = 'none';
         DOMElements.novoPlanoBtn.style.display = 'none';
         DOMElements.inicioBtn.style.display = 'none';
-        DOMElements.exportarAgendaBtn.style.display = 'none';
+        // INÍCIO DA CORREÇÃO (Prioridade 1)
+        // O código tentava acessar 'exportarAgendaBtn', que é null.
+        // Substituído por 'syncGoogleCalendarBtn' e com uma verificação de segurança.
+        if (DOMElements.syncGoogleCalendarBtn) {
+            DOMElements.syncGoogleCalendarBtn.style.display = 'none';
+        }
+        // FIM DA CORREÇÃO
         DOMElements.reavaliarCargaBtn.style.display = 'none';
         hideAuthForm();
     }
@@ -635,5 +647,33 @@ export function toggleLoading(isLoading) {
     console.log(`[UI] Carregamento: ${isLoading ? 'ON' : 'OFF'}`);
     document.body.style.cursor = isLoading ? 'wait' : 'default';
 }
+
+/**
+ * MELHORIA (PRIORIDADE 2): Exibe uma notificação não bloqueante.
+ * @param {string} message - A mensagem a ser exibida.
+ * @param {'success'|'error'|'info'|'warning'} type - O tipo de notificação.
+ */
+export function showNotification(message, type = 'info') {
+    const container = document.getElementById('notification-container');
+    if (!container) return;
+
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.textContent = message;
+
+    container.appendChild(notification);
+
+    // Força um reflow para a animação de entrada funcionar
+    notification.offsetHeight; 
+    notification.classList.add('show');
+
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => {
+            container.removeChild(notification);
+        }, 500); // Espera a animação de saída terminar
+    }, 5000); // A notificação desaparece após 5 segundos
+}
+
 
 // --- END OF FILE ui.js ---
