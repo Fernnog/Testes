@@ -10,9 +10,8 @@ import * as firestoreService from './modules/firestore-service.js';
 import * as ui from './modules/ui.js';
 import * as planoLogic from './modules/plano-logic.js';
 import * as formHandler from './modules/form-handler.js';
-// INÍCIO DA MODIFICAÇÃO (PRIORIDADE 3)
-import * as calendarSync from './modules/calendar-sync.js'; // Importa o novo módulo de sincronização
-// FIM DA MODIFICAÇÃO
+// MELHORIA (PRIORIDADE 1): Importa o novo módulo de sincronização com a agenda
+import * as calendarSync from './modules/calendar-sync.js';
 
 // --- Inicialização da Aplicação ---
 document.addEventListener('DOMContentLoaded', initApp);
@@ -21,34 +20,37 @@ function initApp() {
     console.log("[Main] DOM pronto. Iniciando aplicação modularizada.");
     ui.registerServiceWorker();
     setupEventHandlers();
-    formHandler.init(); 
+    formHandler.init();
     authService.setupAuthStateObserver(handleAuthStateChange);
 }
 
 // --- Gerenciamento Central de Autenticação ---
 async function handleAuthStateChange(firebaseUser) {
     state.setUser(firebaseUser);
-    
     ui.toggleLoading(true);
+
     if (state.getCurrentUser()) {
         try {
             const planosCarregados = await firestoreService.carregarPlanos(state.getCurrentUser());
             state.setPlanos(planosCarregados);
         } catch (error) {
             console.error(error);
-            alert("Falha ao carregar seus dados. Verifique sua conexão e tente recarregar a página.");
+            // MELHORIA (PRIORIDADE 2): Substitui alert por notificação não bloqueante
+            ui.showNotification("Falha ao carregar seus dados. Verifique sua conexão e tente recarregar a página.", "error");
         }
     } else {
         state.setPlanos([]);
     }
-    
+
     ui.renderApp(state.getPlanos(), state.getCurrentUser());
     ui.toggleLoading(false);
 }
 
 // --- Configuração dos Ouvintes de Eventos (Event Listeners) ---
+// MELHORIA (PRIORIDADE 3): A arquitetura de manipulação de eventos já é robusta e centralizada aqui.
+// As funções `setupEventHandlers` e `handleCardAction` (com seu dispatcher) seguem boas práticas.
 function setupEventHandlers() {
-    // Autenticação
+    // Autenticação (funcionalidade corrigida)
     DOMElements.loginEmailButton.addEventListener('click', handleLogin);
     DOMElements.signupEmailButton.addEventListener('click', handleSignup);
     DOMElements.logoutButton.addEventListener('click', handleLogout);
@@ -59,17 +61,16 @@ function setupEventHandlers() {
     DOMElements.novoPlanoBtn.addEventListener('click', () => ui.showCadastroForm());
     DOMElements.inicioBtn.addEventListener('click', () => ui.showPlanosList(state.getPlanos(), state.getCurrentUser()));
     DOMElements.inicioCadastroBtn.addEventListener('click', () => ui.showPlanosList(state.getPlanos(), state.getCurrentUser()));
-    
+
     // Formulário de Plano
     DOMElements.formPlano.addEventListener('submit', handleFormSubmit);
 
-    // Ações nos Cards (Event Delegation)
+    // Ações nos Cards (Usando delegação de eventos, uma ótima prática)
     DOMElements.listaPlanos.addEventListener('click', handleCardAction);
 
     // Modal de Reavaliação de Carga
     DOMElements.reavaliarCargaBtn.addEventListener('click', handleReavaliarCarga);
     DOMElements.fecharReavaliacaoBtn.addEventListener('click', ui.hideReavaliacaoModal);
-    
     DOMElements.reavaliacaoModal.addEventListener('click', (e) => {
         if (e.target === DOMElements.reavaliacaoModal) {
             ui.hideReavaliacaoModal();
@@ -77,7 +78,7 @@ function setupEventHandlers() {
         }
         handleModalReavaliacaoAction(e);
     });
-    
+
     // Modal de Recálculo
     DOMElements.confirmRecalculoBtn.addEventListener('click', handleConfirmRecalculo);
     DOMElements.recalculoModalCloseBtn.addEventListener('click', ui.hideRecalculoModal);
@@ -86,16 +87,12 @@ function setupEventHandlers() {
         if (e.target === DOMElements.recalculoModal) ui.hideRecalculoModal();
     });
 
-    // INÍCIO DA MODIFICAÇÃO (PRIORIDADE 1)
-    // Listener do botão de sincronização com Google Agenda
-    // Assume-se que o botão com id 'sync-google-calendar' foi adicionado ao HTML.
+    // MELHORIA (PRIORIDADE 1): Listener do novo botão de sincronização com Google Agenda.
     const syncGoogleBtn = document.getElementById('sync-google-calendar');
     if (syncGoogleBtn) {
         syncGoogleBtn.addEventListener('click', handleGoogleSync);
     }
-    // FIM DA MODIFICAÇÃO
 }
-
 
 // --- Manipuladores de Ações de Autenticação e Formulário (Handlers) ---
 
@@ -104,29 +101,32 @@ async function handleLogin() {
         const email = DOMElements.emailLoginInput.value;
         const password = DOMElements.passwordLoginInput.value;
         await authService.loginWithEmailPassword(email, password);
+        // A mudança de estado será capturada pelo `handleAuthStateChange`
     } catch (error) {
         console.error('[Main] Erro no login:', error);
-        alert('Erro ao fazer login: ' + error.message);
+        ui.showNotification('Erro ao fazer login: ' + error.message, 'error');
     }
 }
+
 async function handleSignup() {
     try {
         const email = DOMElements.emailLoginInput.value;
         const password = DOMElements.passwordLoginInput.value;
         await authService.signupWithEmailPassword(email, password);
-        alert('Cadastro realizado com sucesso! Agora você pode fazer login.');
+        ui.showNotification('Cadastro realizado com sucesso! Agora você pode fazer login.', 'success');
         ui.hideAuthForm();
     } catch (error) {
         console.error('[Main] Erro no cadastro:', error);
-        alert('Erro ao cadastrar: ' + error.message);
+        ui.showNotification('Erro ao cadastrar: ' + error.message, 'error');
     }
 }
+
 async function handleLogout() {
     try {
         await authService.logout();
     } catch (error) {
         console.error('[Main] Erro no logout:', error);
-        alert('Erro ao sair: ' + error.message);
+        ui.showNotification('Erro ao sair: ' + error.message, 'error');
     }
 }
 
@@ -134,83 +134,63 @@ async function handleFormSubmit(event) {
     event.preventDefault();
     const currentUser = state.getCurrentUser();
     if (!currentUser) {
-        alert("Você precisa estar logado para salvar um plano.");
+        ui.showNotification("Você precisa estar logado para salvar um plano.", "warning");
         return;
     }
 
     try {
-        const formData = ui.getFormData(); 
+        const formData = ui.getFormData();
         const planoData = planoLogic.construirObjetoPlano(formData, state.getPlanoByIndex(state.getPlanoEditandoIndex()));
         planoLogic.distribuirPaginasPlano(planoData);
-        
+
         const indexEditando = state.getPlanoEditandoIndex();
         if (indexEditando !== -1) {
             state.updatePlano(indexEditando, planoData);
         } else {
             state.addPlano(planoData);
         }
-        
+
         await firestoreService.salvarPlanos(currentUser, state.getPlanos());
 
         const acao = indexEditando !== -1 ? 'atualizado' : 'criado';
-        alert(`Plano "${planoData.titulo}" ${acao} com sucesso!`);
-        
+        ui.showNotification(`Plano "${planoData.titulo}" ${acao} com sucesso!`, 'success');
+
         state.setPlanoEditando(-1);
         ui.showPlanosList(state.getPlanos(), currentUser);
-        
+
         const planoIndexFinal = state.getPlanos().findIndex(p => p.id === planoData.id);
-        if(planoIndexFinal !== -1) {
+        if (planoIndexFinal !== -1) {
             ui.highlightAndScrollToPlano(planoIndexFinal);
         }
 
     } catch (error) {
         console.error("[Main] Erro ao submeter formulário:", error);
-        alert("Erro: " + error.message);
+        ui.showNotification("Erro: " + error.message, "error");
     }
 }
 
-// INÍCIO DA MODIFICAÇÃO (PRIORIDADES 1, 2 e 3)
 /**
- * Manipula o fluxo de sincronização com o Google Agenda.
- * Esta função delega a lógica complexa para o módulo 'calendarSync',
- * mantendo o 'main.js' limpo e focado na orquestração.
+ * MELHORIA (PRIORIDADE 1): Manipula o fluxo de sincronização com o Google Agenda.
+ * Delega a lógica complexa para o módulo 'calendarSync', mantendo o 'main.js' limpo.
+ * Assume que 'calendarSync' agora lida com sua própria lógica interna e lança erros
+ * em caso de falha, permitindo que o 'main.js' gerencie o feedback da UI.
  */
 async function handleGoogleSync() {
     const currentUser = state.getCurrentUser();
     if (!currentUser) {
-        alert("Você precisa estar logado para sincronizar com a agenda.");
+        ui.showNotification("Você precisa estar logado para sincronizar com a agenda.", "warning");
         return;
     }
 
-    ui.toggleLoading(true);
-    try {
-        // O módulo calendarSync lida com a autenticação, preparação de dados,
-        // chamada à função de backend e atualização do estado dos planos.
-        const resultado = await calendarSync.sincronizarPlanos(state.getPlanos());
-
-        // Atualiza o estado da aplicação com os planos modificados (com as flags de sync)
-        state.setPlanos(resultado.planosAtualizados);
-        
-        // Salva o estado atualizado no banco de dados
-        await firestoreService.salvarPlanos(currentUser, state.getPlanos());
-
-        // Exibe a mensagem de sucesso ou aviso retornada pelo módulo
-        alert(resultado.message);
-
-        // Renderiza a aplicação para refletir quaisquer mudanças
-        ui.renderApp(state.getPlanos(), currentUser);
-
-    } catch (error) {
-        console.error('[Main] Erro na sincronização com Google Agenda:', error);
-        alert('Falha na sincronização: ' + error.message);
-    } finally {
-        ui.toggleLoading(false);
-    }
+    // A função em calendar-sync.js agora controla o fluxo completo.
+    // main.js apenas invoca e lida com o feedback final.
+    await calendarSync.syncWithGoogleCalendar();
 }
-// FIM DA MODIFICAÇÃO
 
 
-// Mapeamento de ações para suas respectivas funções de tratamento
+// --- Lógica de Ações do Card ---
+
+// Mapeamento de ações para suas respectivas funções de tratamento (Dispatcher Pattern)
 const actionHandlers = {
     'editar': handleEditarPlano,
     'excluir': handleExcluirPlano,
@@ -237,13 +217,12 @@ function handleCardAction(event) {
 
     if (isNaN(planoIndex) || !plano || !currentUser) return;
 
-    // Chama o handler correspondente à ação, se ele existir
     if (actionHandlers[action]) {
         actionHandlers[action](target, plano, planoIndex, currentUser);
     }
 }
 
-// --- Funções de Tratamento de Ações do Card ---
+// Funções de Tratamento de Ações do Card
 
 function handleEditarPlano(target, plano, planoIndex, currentUser) {
     state.setPlanoEditando(planoIndex);
@@ -254,7 +233,7 @@ async function handleExcluirPlano(target, plano, planoIndex, currentUser) {
     if (confirm(`Tem certeza que deseja excluir o plano "${plano.titulo}"?`)) {
         state.removePlano(planoIndex);
         await firestoreService.salvarPlanos(currentUser, state.getPlanos());
-        alert(`Plano excluído.`);
+        ui.showNotification(`Plano excluído.`, 'success');
         ui.renderApp(state.getPlanos(), currentUser);
     }
 }
@@ -262,9 +241,8 @@ async function handleExcluirPlano(target, plano, planoIndex, currentUser) {
 async function handleMarcarLido(target, plano, planoIndex, currentUser) {
     const diaIndex = parseInt(target.dataset.diaIndex, 10);
     const dia = plano.diasPlano[diaIndex];
-    
-    dia.lido = target.checked;
 
+    dia.lido = target.checked;
     if (dia.lido) {
         dia.ultimaPaginaLida = null;
     }
@@ -282,18 +260,15 @@ async function handleSalvarParcial(target, plano, planoIndex, currentUser) {
     const ultimaPagina = parseInt(inputParcial.value, 10);
 
     if (!ultimaPagina || isNaN(ultimaPagina) || ultimaPagina < dia.paginaInicioDia || ultimaPagina > dia.paginaFimDia) {
-        alert(`Por favor, insira um número de página válido entre ${dia.paginaInicioDia} e ${dia.paginaFimDia}.`);
+        ui.showNotification(`Por favor, insira um número de página válido entre ${dia.paginaInicioDia} e ${dia.paginaFimDia}.`, 'warning');
         inputParcial.focus();
         return;
     }
 
     dia.ultimaPaginaLida = ultimaPagina;
-
-    if (ultimaPagina === dia.paginaFimDia) {
-        dia.lido = true;
+    dia.lido = (ultimaPagina === dia.paginaFimDia);
+    if (dia.lido) {
         dia.ultimaPaginaLida = null;
-    } else {
-        dia.lido = false;
     }
 
     planoLogic.atualizarPaginasLidas(plano);
@@ -302,14 +277,13 @@ async function handleSalvarParcial(target, plano, planoIndex, currentUser) {
     ui.renderApp(state.getPlanos(), currentUser);
 }
 
-
 async function handlePausarPlano(target, plano, planoIndex, currentUser) {
     if (confirm(`Tem certeza que deseja pausar o plano "${plano.titulo}"? O cronograma será congelado.`)) {
         plano.isPaused = true;
         plano.dataPausa = new Date();
         state.updatePlano(planoIndex, plano);
         await firestoreService.salvarPlanos(currentUser, state.getPlanos());
-        alert(`Plano pausado.`);
+        ui.showNotification(`Plano pausado.`, 'info');
         ui.renderApp(state.getPlanos(), currentUser);
     }
 }
@@ -318,7 +292,7 @@ async function handleRetomarPlano(target, plano, planoIndex, currentUser) {
     const planoRetomado = planoLogic.retomarPlano(plano);
     state.updatePlano(planoIndex, planoRetomado);
     await firestoreService.salvarPlanos(currentUser, state.getPlanos());
-    alert(`Plano "${plano.titulo}" retomado! As datas futuras foram ajustadas.`);
+    ui.showNotification(`Plano "${plano.titulo}" retomado! As datas futuras foram ajustadas.`, 'success');
     ui.renderApp(state.getPlanos(), currentUser);
 }
 
@@ -358,29 +332,29 @@ async function handleConfirmRecalculo() {
             if (!paginasPorDia || paginasPorDia <= 0) throw new Error("Insira um número válido de páginas por dia.");
             planoRecalculado = planoLogic.recalcularPlanoPorPaginasDia(planoModificado, paginasPorDia);
         }
-        
+
         state.updatePlano(planoIndex, planoRecalculado);
         await firestoreService.salvarPlanos(currentUser, state.getPlanos());
-        
+
         ui.hideRecalculoModal();
-        alert(`Plano "${planoOriginal.titulo}" remanejado e recalculado com sucesso!`);
-        
+        ui.showNotification(`Plano "${planoOriginal.titulo}" remanejado e recalculado com sucesso!`, 'success');
+
         ui.renderApp(state.getPlanos(), currentUser);
         ui.highlightAndScrollToPlano(planoIndex);
 
     } catch (error) {
         console.error('[Main] Erro ao confirmar recálculo/remanejamento:', error);
-        alert('Erro ao remanejar: ' + error.message);
+        ui.showNotification('Erro ao remanejar: ' + error.message, 'error');
     }
 }
 
 function handleReavaliarCarga() {
     const planosAtuais = state.getPlanos();
-    const totalPlanos = planosAtuais.length; 
+    const totalPlanos = planosAtuais.length;
     const dadosCarga = planoLogic.analisarCargaSemanal(planosAtuais, totalPlanos);
-    
-    ui.renderizarModalReavaliacaoCompleto(dadosCarga, planosAtuais, totalPlanos); 
-    
+
+    ui.renderizarModalReavaliacaoCompleto(dadosCarga, planosAtuais, totalPlanos);
+
     ui.showReavaliacaoModal();
 }
 
@@ -392,11 +366,9 @@ function handleModalReavaliacaoAction(event) {
     const plano = state.getPlanoByIndex(planoIndex);
 
     if (isNaN(planoIndex) || !plano) return;
-    
+
     ui.hideReavaliacaoModal();
     setTimeout(() => {
         ui.showRecalculoModal(plano, planoIndex, 'Confirmar Remanejamento');
     }, 300);
 }
-
-// --- END OF FILE main.js ---
