@@ -1,14 +1,14 @@
 // modules/auth.js
 // RESPONSABILIDADE ÚNICA: Lidar com todas as operações do Firebase Authentication.
-// Versão atualizada para incluir a autenticação via Google para a sincronização da agenda.
+// Versão finalizada para incluir a autenticação via Google para a sincronização da agenda.
 
 import { 
     onAuthStateChanged, 
     signOut, 
     signInWithEmailAndPassword, 
     createUserWithEmailAndPassword,
-    GoogleAuthProvider, // <-- NOVO: Importado para o fluxo de login com Google
-    signInWithPopup     // <-- NOVO: Importado para abrir a janela de login do Google
+    GoogleAuthProvider, // <-- Importado para o fluxo de login com Google
+    signInWithPopup     // <-- Importado para abrir a janela de login do Google
 } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js';
 import { auth } from '../config/firebase-config.js';
 
@@ -51,8 +51,9 @@ export function signupWithEmailPassword(email, password) {
 }
 
 /**
- * Inicia o processo de autenticação com a conta Google.
- * Solicita permissão para acessar a agenda do usuário, que é um requisito da nossa nova funcionalidade.
+ * Inicia o processo de autenticação com a conta Google para a sincronização.
+ * Solicita permissão explícita para ler e escrever na agenda do usuário, um requisito
+ * essencial da funcionalidade de sincronização.
  * @returns {Promise<UserCredential>} Uma promessa que resolve com as credenciais do usuário, incluindo o token de acesso para a API do Google.
  */
 export function signInWithGoogle() {
@@ -60,7 +61,7 @@ export function signInWithGoogle() {
     const provider = new GoogleAuthProvider();
 
     // Adiciona o "escopo" de permissão necessário. Estamos pedindo ao usuário
-    // permissão para ler e escrever eventos na sua agenda.
+    // permissão para ler e escrever eventos na sua agenda. Este é o passo crucial.
     provider.addScope('https://www.googleapis.com/auth/calendar.events');
 
     // Abre a janela pop-up do Google para que o usuário possa fazer login e autorizar o acesso.
