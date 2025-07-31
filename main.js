@@ -47,8 +47,6 @@ async function handleAuthStateChange(firebaseUser) {
 }
 
 // --- Configuração dos Ouvintes de Eventos (Event Listeners) ---
-// MELHORIA (PRIORIDADE 3): A arquitetura de manipulação de eventos já é robusta e centralizada aqui.
-// As funções `setupEventHandlers` e `handleCardAction` (com seu dispatcher) seguem boas práticas.
 function setupEventHandlers() {
     // Autenticação (funcionalidade corrigida)
     DOMElements.loginEmailButton.addEventListener('click', handleLogin);
@@ -172,25 +170,15 @@ async function handleFormSubmit(event) {
 /**
  * MELHORIA (PRIORIDADE 1): Manipula o fluxo de sincronização com o Google Agenda.
  * Delega a lógica complexa para o módulo 'calendarSync', mantendo o 'main.js' limpo.
- * Assume que 'calendarSync' agora lida com sua própria lógica interna e lança erros
- * em caso de falha, permitindo que o 'main.js' gerencie o feedback da UI.
  */
 async function handleGoogleSync() {
-    const currentUser = state.getCurrentUser();
-    if (!currentUser) {
-        ui.showNotification("Você precisa estar logado para sincronizar com a agenda.", "warning");
-        return;
-    }
-
     // A função em calendar-sync.js agora controla o fluxo completo.
-    // main.js apenas invoca e lida com o feedback final.
-    await calendarSync.syncWithGoogleCalendar();
+    // main.js apenas invoca e o módulo lida com o feedback para o usuário.
+    await calendarSync.sincronizarPlanos();
 }
-
 
 // --- Lógica de Ações do Card ---
 
-// Mapeamento de ações para suas respectivas funções de tratamento (Dispatcher Pattern)
 const actionHandlers = {
     'editar': handleEditarPlano,
     'excluir': handleExcluirPlano,
@@ -201,11 +189,6 @@ const actionHandlers = {
     'salvar-parcial': handleSalvarParcial
 };
 
-/**
- * Função principal que delega as ações executadas nos cards dos planos.
- * Atua como um "dispatcher", chamando a função de tratamento correta.
- * @param {Event} event - O evento de clique.
- */
 function handleCardAction(event) {
     const target = event.target.closest('[data-action]');
     if (!target) return;
@@ -221,8 +204,6 @@ function handleCardAction(event) {
         actionHandlers[action](target, plano, planoIndex, currentUser);
     }
 }
-
-// Funções de Tratamento de Ações do Card
 
 function handleEditarPlano(target, plano, planoIndex, currentUser) {
     state.setPlanoEditando(planoIndex);
