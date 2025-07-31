@@ -17,6 +17,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js" type="module"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js" type="module"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js" type="module"></script>
+    <!-- Adicionado para Firebase Functions -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-functions.js" type="module"></script>
     <!-- Link para o Manifest do PWA -->
     <link rel="manifest" href="manifest.json">
 </head>
@@ -35,7 +37,7 @@
             <button id="inicio" style="display: none;">
                 <span class="material-symbols-outlined">home</span> Início
             </button>
-            <!-- BOTÃO DE EXPORTAR SUBSTITUÍDO PELO DE SINCRONIZAÇÃO -->
+            <!-- BOTÃO DE EXPORTAR SUBSTITUÍDO PELO DE SINCRONIZAÇÃO (PRIORIDADE 1) -->
             <button id="sync-google-calendar" style="display: none;">
                 <span class="material-symbols-outlined">sync</span> Sincronizar com Google
             </button>
@@ -273,6 +275,9 @@
         </div>
         
     </main>
+
+    <!-- Contêiner para notificações não-bloqueantes (Prioridade 2) -->
+    <div id="notification-container"></div>
 
     <footer>
         <p>© 2024-2025 Gerenciador de Planos de Leitura</p>
