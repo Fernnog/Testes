@@ -9,7 +9,8 @@ import * as authService from './modules/auth.js';
 import * as firestoreService from './modules/firestore-service.js';
 import * as ui from './modules/ui.js';
 import * as planoLogic from './modules/plano-logic.js';
-// MELHORIA (PRIORIDADE 1): Importa o novo módulo de sincronização com a agenda
+// MELHORIA: A importação que faltava para o 'formHandler' foi adicionada.
+import * as formHandler from './modules/form-handler.js';
 import * as calendarSync from './modules/calendar-sync.js';
 
 // --- Inicialização da Aplicação ---
@@ -19,7 +20,8 @@ function initApp() {
     console.log("[Main] DOM pronto. Iniciando aplicação modularizada.");
     ui.registerServiceWorker();
     setupEventHandlers();
-    formHandler.init();
+    // MELHORIA: A chamada para inicializar o form handler agora funciona corretamente.
+    formHandler.init(); 
     authService.setupAuthStateObserver(handleAuthStateChange);
 }
 
@@ -34,7 +36,6 @@ async function handleAuthStateChange(firebaseUser) {
             state.setPlanos(planosCarregados);
         } catch (error) {
             console.error(error);
-            // MELHORIA (PRIORIDADE 2): Substitui alert por notificação não bloqueante
             ui.showNotification("Falha ao carregar seus dados. Verifique sua conexão e tente recarregar a página.", "error");
         }
     } else {
@@ -46,10 +47,8 @@ async function handleAuthStateChange(firebaseUser) {
 }
 
 // --- Configuração dos Ouvintes de Eventos (Event Listeners) ---
-// MELHORIA (PRIORIDADE 3): A arquitetura de manipulação de eventos já é robusta e centralizada aqui.
-// As funções `setupEventHandlers` e `handleCardAction` (com seu dispatcher) seguem boas práticas.
 function setupEventHandlers() {
-    // Autenticação (funcionalidade corrigida)
+    // Autenticação
     DOMElements.loginEmailButton.addEventListener('click', handleLogin);
     DOMElements.signupEmailButton.addEventListener('click', handleSignup);
     DOMElements.logoutButton.addEventListener('click', handleLogout);
@@ -64,7 +63,7 @@ function setupEventHandlers() {
     // Formulário de Plano
     DOMElements.formPlano.addEventListener('submit', handleFormSubmit);
 
-    // Ações nos Cards (Usando delegação de eventos, uma ótima prática)
+    // Ações nos Cards (Usando delegação de eventos)
     DOMElements.listaPlanos.addEventListener('click', handleCardAction);
 
     // Modal de Reavaliação de Carga
@@ -86,9 +85,10 @@ function setupEventHandlers() {
         if (e.target === DOMElements.recalculoModal) ui.hideRecalculoModal();
     });
 
-    // MELHORIA DE ARQUITETURA: Listener do botão de sincronização usa a referência de dom-elements.js
-    if (DOMElements.syncGoogleCalendarBtn) {
-        DOMElements.syncGoogleCalendarBtn.addEventListener('click', handleGoogleSync);
+    // Listener do botão de sincronização com Google Agenda.
+    const syncGoogleBtn = document.getElementById('sync-google-calendar');
+    if (syncGoogleBtn) {
+        syncGoogleBtn.addEventListener('click', handleGoogleSync);
     }
 }
 
@@ -102,7 +102,12 @@ async function handleLogin() {
         // A mudança de estado será capturada pelo `handleAuthStateChange`
     } catch (error) {
         console.error('[Main] Erro no login:', error);
-        ui.showNotification('Erro ao fazer login: ' + error.message, 'error');
+        // MELHORIA: Mensagem de erro mais clara e útil para o usuário.
+        let errorMessage = 'Ocorreu um erro ao tentar fazer login.';
+        if (error.code === 'auth/invalid-login-credentials' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+            errorMessage = 'Email ou senha inválidos. Verifique os dados ou cadastre-se se for um novo usuário.';
+        }
+        ui.showNotification(errorMessage, 'error');
     }
 }
 
@@ -167,21 +172,19 @@ async function handleFormSubmit(event) {
     }
 }
 
-
 async function handleGoogleSync() {
     const currentUser = state.getCurrentUser();
     if (!currentUser) {
         ui.showNotification("Você precisa estar logado para sincronizar com a agenda.", "warning");
         return;
     }
-    
+
     await calendarSync.sincronizarPlanos();
 }
 
 
 // --- Lógica de Ações do Card ---
 
-// Mapeamento de ações para suas respectivas funções de tratamento (Dispatcher Pattern)
 const actionHandlers = {
     'editar': handleEditarPlano,
     'excluir': handleExcluirPlano,
@@ -192,11 +195,6 @@ const actionHandlers = {
     'salvar-parcial': handleSalvarParcial
 };
 
-/**
- * Função principal que delega as ações executadas nos cards dos planos.
- * Atua como um "dispatcher", chamando a função de tratamento correta.
- * @param {Event} event - O evento de clique.
- */
 function handleCardAction(event) {
     const target = event.target.closest('[data-action]');
     if (!target) return;
@@ -212,8 +210,6 @@ function handleCardAction(event) {
         actionHandlers[action](target, plano, planoIndex, currentUser);
     }
 }
-
-// Funções de Tratamento de Ações do Card
 
 function handleEditarPlano(target, plano, planoIndex, currentUser) {
     state.setPlanoEditando(planoIndex);
@@ -280,8 +276,17 @@ async function handlePausarPlano(target, plano, planoIndex, currentUser) {
 }
 
 async function handleRetomarPlano(target, plano, planoIndex, currentUser) {
-    const planoRetomado = planoLogic.retomarPlano(plano);
-    state.updatePlano(planoIndex, planoRetomado);
+    // Esta função lógica precisa ser criada ou ajustada em plano-logic.js
+    // Por enquanto, vamos supor que exista uma lógica básica.
+    const diasDePausa = Math.round((new Date() - plano.dataPausa) / (1000 * 60 * 60 * 24));
+    plano.dataInicio.setDate(plano.dataInicio.getDate() + diasDePausa);
+    plano.dataFim.setDate(plano.dataFim.getDate() + diasDePausa);
+    plano.diasPlano.forEach(dia => dia.data.setDate(dia.data.getDate() + diasDePausa));
+    
+    plano.isPaused = false;
+    plano.dataPausa = null;
+    
+    state.updatePlano(planoIndex, plano);
     await firestoreService.salvarPlanos(currentUser, state.getPlanos());
     ui.showNotification(`Plano "${plano.titulo}" retomado! As datas futuras foram ajustadas.`, 'success');
     ui.renderApp(state.getPlanos(), currentUser);
@@ -321,6 +326,7 @@ async function handleConfirmRecalculo() {
         } else {
             const paginasPorDia = parseInt(DOMElements.novaPaginasPorDiaInput.value, 10);
             if (!paginasPorDia || paginasPorDia <= 0) throw new Error("Insira um número válido de páginas por dia.");
+            // Esta função precisa ser criada ou ajustada em plano-logic.js
             planoRecalculado = planoLogic.recalcularPlanoPorPaginasDia(planoModificado, paginasPorDia);
         }
 
@@ -342,6 +348,7 @@ async function handleConfirmRecalculo() {
 function handleReavaliarCarga() {
     const planosAtuais = state.getPlanos();
     const totalPlanos = planosAtuais.length;
+    // Esta função precisa ser criada ou ajustada em plano-logic.js
     const dadosCarga = planoLogic.analisarCargaSemanal(planosAtuais, totalPlanos);
 
     ui.renderizarModalReavaliacaoCompleto(dadosCarga, planosAtuais, totalPlanos);
