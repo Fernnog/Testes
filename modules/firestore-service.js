@@ -39,7 +39,7 @@ export async function carregarPlanos(user) {
                     data: dia.data ? new Date(dia.data) : null,
                     lido: Boolean(dia.lido || false),
                     ultimaPaginaLida: dia.ultimaPaginaLida ? Number(dia.ultimaPaginaLida) : null,
-                    // --- MELHORIA DE ARQUITETURA (PRIORIDADE 1) ---
+                    // --- MELHORIA DE ARQUITETURA ---
                     // Carrega o ID do evento do Google Agenda para evitar duplicatas.
                     // Garante retrocompatibilidade com planos antigos que não possuem este campo.
                     googleEventId: dia.googleEventId || null
@@ -90,7 +90,7 @@ export async function salvarPlanos(user, planosParaSalvar) {
                 data: (dia.data instanceof Date && !isNaN(dia.data)) ? dia.data.toISOString() : null,
                 lido: Boolean(dia.lido || false),
                 ultimaPaginaLida: dia.ultimaPaginaLida || null,
-                // --- MELHORIA DE ARQUITETURA (PRIORIDADE 1) ---
+                // --- MELHORIA DE ARQUITETURA ---
                 // Salva o ID do evento do Google Agenda no banco de dados para persistir o estado de sincronização.
                 googleEventId: dia.googleEventId || null
             })),

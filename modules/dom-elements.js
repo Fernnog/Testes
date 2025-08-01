@@ -1,4 +1,4 @@
-// --- START OF FILE dom-elements.js (COMPLETO E CORRIGIDO) ---
+// --- START OF FILE dom-elements.js (COMPLETO E MODIFICADO) ---
 
 // modules/dom-elements.js
 // RESPONSABILIDADE ÚNICA: Selecionar e exportar todos os elementos do DOM
@@ -23,11 +23,7 @@ export const semPlanosPausadosP = document.getElementById('sem-planos-pausados')
 // --- Header e Botões de Ação ---
 export const novoPlanoBtn = document.getElementById('novo-plano');
 export const inicioBtn = document.getElementById('inicio');
-// INÍCIO DA CORREÇÃO (Prioridade 1)
-// O ID 'exportar-agenda' foi removido do HTML. A referência a ele causava o erro.
-// Foi substituído pela referência ao novo botão de sincronização.
-export const syncGoogleCalendarBtn = document.getElementById('sync-google-calendar');
-// FIM DA CORREÇÃO
+export const exportarAgendaBtn = document.getElementById('exportar-agenda');
 export const inicioCadastroBtn = document.getElementById('inicio-cadastro');
 export const reavaliarCargaBtn = document.getElementById('reavaliar-carga-btn');
 
@@ -47,21 +43,29 @@ export const periodicidadeSelect = document.getElementById('periodicidade');
 export const diasSemanaSelecao = document.getElementById('dias-semana-selecao');
 export const definirPorDatasRadio = document.getElementById('definir-por-datas');
 export const definirPorDiasRadio = document.getElementById('definir-por-dias');
+// INÍCIO DA MODIFICAÇÃO (Prioridade 1)
 export const definirPorPaginasRadio = document.getElementById('definir-por-paginas');
+// FIM DA MODIFICAÇÃO
 export const periodoPorDatasDiv = document.getElementById('periodo-por-datas');
 export const periodoPorDiasDiv = document.getElementById('periodo-por-dias');
+// INÍCIO DA MODIFICAÇÃO (Prioridade 1)
 export const periodoPorPaginasDiv = document.getElementById('periodo-por-paginas');
+// FIM DA MODIFICAÇÃO
 export const dataInicio = document.getElementById('data-inicio');
 export const dataFim = document.getElementById('data-fim');
 export const dataInicioDias = document.getElementById('data-inicio-dias');
 export const numeroDias = document.getElementById('numero-dias');
+// INÍCIO DA MODIFICAÇÃO (Prioridade 1)
 export const dataInicioPaginas = document.getElementById('data-inicio-paginas');
 export const paginasPorDiaInput = document.getElementById('paginas-por-dia');
+// FIM DA MODIFICAÇÃO
 export const linkDriveInput = document.getElementById('link-drive');
 export const tituloLivroInput = document.getElementById('titulo-livro');
 export const paginaInicioInput = document.getElementById('pagina-inicio');
 export const paginaFimInput = document.getElementById('pagina-fim');
+// INÍCIO DA MODIFICAÇÃO (Prioridade 2.B)
 export const estimativaDataFimP = document.getElementById('estimativa-data-fim');
+// FIM DA MODIFICAÇÃO
 
 // --- Modal de Reavaliação ---
 export const reavaliacaoModal = document.getElementById('reavaliacao-modal');

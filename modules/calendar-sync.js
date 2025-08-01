@@ -12,7 +12,7 @@ import { auth as appAuth } from '../config/firebase-config.js'; // A instância 
 import * as state from './state.js';
 import * as firestoreService from './firestore-service.js';
 import * as ui from './ui.js';
-// A importação do 'firebase-helpers.js' foi removida, pois era a fonte do erro.
+import { getFirebaseFunctions } from '../config/firebase-helpers.js'; // Helper para inicializar Functions
 
 /**
  * Prepara os eventos para a API do backend.
@@ -36,7 +36,7 @@ function _prepararDadosParaSincronizacao(planos) {
             if (dia.lido && dia.googleEventId) {
                 eventosParaDeletar.push(dia.googleEventId);
                 // O ID será removido do 'dia' após a confirmação do backend.
-            }
+            } 
             // Se o dia não foi lido e ainda não passou, ele deve ser criado ou atualizado.
             else if (!dia.lido && dia.data >= hoje) {
                 const dataInicioEvento = new Date(dia.data);
@@ -69,10 +69,11 @@ function _prepararDadosParaSincronizacao(planos) {
 /**
  * Atualiza o estado local dos planos com os resultados da sincronização e salva no Firestore.
  * @param {object} resultados - O objeto de resultados retornado pela Firebase Function.
+ * @param {object} user - O usuário atual logado.
  */
 async function _atualizarEstadoEsalvar(resultados) {
     if (!resultados) return;
-
+    
     const user = state.getCurrentUser();
     const planos = state.getPlanos();
 
@@ -101,9 +102,9 @@ async function _atualizarEstadoEsalvar(resultados) {
 
     state.setPlanos(planos);
     await firestoreService.salvarPlanos(user, planos);
-
+    
     // Renderiza a aplicação para refletir o estado atualizado
-    ui.renderApp(state.getPlanos(), user);
+    ui.renderApp(state.getPlanos(), user); 
 }
 
 /**
@@ -131,23 +132,22 @@ export async function sincronizarPlanos() {
         // 2. Autenticação com Google para obter o token de acesso
         const provider = new GoogleAuthProvider();
         provider.addScope('https://www.googleapis.com/auth/calendar.events');
-
+        
         const result = await signInWithPopup(appAuth, provider);
         const credential = GoogleAuthProvider.credentialFromResult(result);
         const accessToken = credential.accessToken;
-
+        
         if (!accessToken) {
             throw new Error("Não foi possível obter o token de acesso do Google.");
         }
 
         // 3. Chamar a Firebase Function
-        // CORREÇÃO CRÍTICA: Chamada direta a getFunctions() sem o helper inexistente.
-        const functions = getFunctions();
+        const functions = getFirebaseFunctions(); // Helper para garantir inicialização
         const syncFunction = httpsCallable(functions, 'sincronizarGoogleAgenda');
-
+        
         const totalOperacoes = eventos.length + eventosParaDeletar.length;
         ui.showNotification(`Sincronizando ${totalOperacoes} item(ns) com sua agenda. Isso pode levar um momento...`, "info");
-
+        
         const response = await syncFunction({
             accessToken: accessToken,
             eventos: eventos,
@@ -158,13 +158,9 @@ export async function sincronizarPlanos() {
         if (response.data.success) {
             await _atualizarEstadoEsalvar(response.data.resultados);
             const { criados, atualizados, deletados, erros } = response.data.resultados;
-            
-            // MELHORIA DE UX: Mensagem de sucesso detalhada.
             const successMessage = `Sincronização concluída! Criados: ${criados.length}, Atualizados: ${atualizados.length}, Deletados: ${deletados.length}.`;
             ui.showNotification(successMessage, "success");
-
             if (erros.length > 0) {
-                // MELHORIA DE UX: Notificação de aviso para erros parciais.
                 ui.showNotification(`Ocorreram ${erros.length} erros em itens específicos. Veja o console para detalhes.`, "warning");
                 console.warn("Erros durante a sincronização:", erros);
             }
@@ -175,8 +171,6 @@ export async function sincronizarPlanos() {
     } catch (error) {
         console.error("[Calendar Sync Error]:", error);
         let errorMessage = "Ocorreu um erro durante a sincronização. ";
-
-        // MELHORIA DE UX: Tratamento de erros específicos para mensagens mais claras.
         if (error.code === 'auth/popup-closed-by-user') {
             errorMessage = "A janela de login do Google foi fechada antes da conclusão.";
         } else if (error.code === 'functions/unauthenticated') {
