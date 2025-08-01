@@ -945,6 +945,54 @@ footer { text-align: center; padding: 15px 0; background-color: #343a40; color: 
     animation: flash-highlight 1.5s ease-out;
 }
 
+/* --- INÍCIO: NOVOS ESTILOS PARA NOTIFICAÇÕES --- */
+#notification-container {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+}
+
+.notification {
+    background-color: #333;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 5px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    font-size: 0.95em;
+    opacity: 0;
+    transform: translateX(100%);
+    transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+    max-width: 320px;
+}
+
+.notification.visible {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.notification-success {
+    background-color: #2e7d32; /* Verde escuro */
+}
+
+.notification-error {
+    background-color: #c62828; /* Vermelho escuro */
+}
+
+.notification-warning {
+    background-color: #ef6c00; /* Laranja escuro */
+}
+
+.notification-info {
+    background-color: #0277bd; /* Azul escuro */
+}
+/* --- FIM: NOVOS ESTILOS PARA NOTIFICAÇÕES --- */
+
+
 /* --- Media Queries --- */
 
 /* Tablets */
