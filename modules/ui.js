@@ -55,8 +55,8 @@ export function showCadastroForm(planoParaEditar = null) {
     DOMElements.cadastroPlanoSection.style.display = 'block';
 
     DOMElements.formPlano.reset();
-    togglePeriodoFields(); // MODIFICAÇÃO: Garante o estado visual inicial correto
-    toggleDiasSemana();   // MODIFICAÇÃO: Garante o estado visual inicial correto
+    togglePeriodoFields();
+    toggleDiasSemana();
 
     if (planoParaEditar) {
         DOMElements.cadastroPlanoSection.querySelector('h2').textContent = 'Editar Plano de Leitura';
@@ -91,10 +91,8 @@ export function showCadastroForm(planoParaEditar = null) {
     }
 }
 
-// --- NOVAS FUNÇÕES PARA CONTROLE DO FORMULÁRIO ---
 /**
  * Controla a visibilidade dos campos de definição de período no formulário.
- * Esta função corrige os bugs de interface reportados.
  */
 export function togglePeriodoFields() {
     const isPorDatas = DOMElements.definirPorDatasRadio.checked;
@@ -105,7 +103,6 @@ export function togglePeriodoFields() {
     DOMElements.periodoPorDiasDiv.style.display = isPorDias ? 'block' : 'none';
     DOMElements.periodoPorPaginasDiv.style.display = isPorPaginas ? 'block' : 'none';
 
-    // Garante que os inputs 'required' só sejam exigidos se estiverem visíveis
     DOMElements.dataInicio.required = isPorDatas;
     DOMElements.dataFim.required = isPorDatas;
     DOMElements.dataInicioDias.required = isPorDias;
@@ -116,7 +113,6 @@ export function togglePeriodoFields() {
 
 /**
  * Controla a visibilidade da seleção de dias da semana.
- * Corrige o bug em que a seleção não aparecia.
  */
 export function toggleDiasSemana() {
     if (DOMElements.periodicidadeSelect.value === 'semanal') {
@@ -128,11 +124,10 @@ export function toggleDiasSemana() {
 
 /**
  * Renderiza a estimativa da data de término no formulário.
- * Implementa a melhoria de UX (2.B).
  * @param {Date | null} data - A data estimada ou null se não puder ser calculada.
  */
 export function renderizarDataFimEstimada(data) {
-    const feedbackElement = DOMElements.estimativaDataFim; // Supondo que você adicionará este elemento no HTML e dom-elements.js
+    const feedbackElement = DOMElements.estimativaDataFim;
     if (!feedbackElement) return;
 
     if (data instanceof Date && !isNaN(data)) {
@@ -143,7 +138,6 @@ export function renderizarDataFimEstimada(data) {
         feedbackElement.style.display = 'none';
     }
 }
-// --- FIM DAS NOVAS FUNÇÕES ---
 
 /** Mostra o formulário de autenticação. */
 export function showAuthForm() {
@@ -185,7 +179,7 @@ function setupRecalculoInteractions() {
         DOMElements.recalculoOpcaoPaginasDiv.style.display = 'block';
     });
 }
-setupRecalculoInteractions(); // Chamada da função movida para dentro do módulo
+setupRecalculoInteractions();
 
 /** Mostra o modal de recálculo com os dados do plano e texto do botão customizável. */
 export function showRecalculoModal(plano, planoIndex, buttonText) {
@@ -590,14 +584,16 @@ export function renderApp(planos, user) {
         DOMElements.logoutButton.style.display = 'inline-flex';
         DOMElements.novoPlanoBtn.style.display = 'inline-flex';
         DOMElements.inicioBtn.style.display = 'inline-flex';
-        DOMElements.exportarAgendaBtn.style.display = 'inline-flex';
+        // CORREÇÃO: Utiliza a nova referência correta do dom-elements.js.
+        DOMElements.syncGoogleCalendarBtn.style.display = 'inline-flex';
         DOMElements.reavaliarCargaBtn.style.display = 'inline-flex';
     } else {
         DOMElements.showAuthButton.style.display = 'inline-flex';
         DOMElements.logoutButton.style.display = 'none';
         DOMElements.novoPlanoBtn.style.display = 'none';
         DOMElements.inicioBtn.style.display = 'none';
-        DOMElements.exportarAgendaBtn.style.display = 'none';
+        // CORREÇÃO: Utiliza a nova referência correta do dom-elements.js.
+        DOMElements.syncGoogleCalendarBtn.style.display = 'none';
         DOMElements.reavaliarCargaBtn.style.display = 'none';
         hideAuthForm();
     }
@@ -619,7 +615,41 @@ export function renderApp(planos, user) {
     }
 }
 
-// --- Funções Auxiliares (PWA, Loading, etc) ---
+// --- Funções Auxiliares (PWA, Loading, Notificações, etc) ---
+
+// CORREÇÃO: Implementação da função showNotification para resolver o erro do console.
+/**
+ * Exibe uma notificação não-bloqueante na tela.
+ * @param {string} message - A mensagem a ser exibida.
+ * @param {string} type - O tipo de notificação ('success', 'error', 'info', 'warning').
+ */
+export function showNotification(message, type = 'info') {
+    const container = document.getElementById('notification-container');
+    if (!container) {
+        console.error("Elemento '#notification-container' não encontrado no DOM.");
+        return;
+    }
+
+    const notification = document.createElement('div');
+    // As classes CSS (ex: 'notification-error') devem ser criadas no seu arquivo style.css
+    notification.className = `notification notification-${type}`;
+    notification.textContent = message;
+
+    container.appendChild(notification);
+
+    // Força um reflow para garantir que a animação de entrada funcione
+    setTimeout(() => {
+        notification.classList.add('visible');
+    }, 10);
+
+    // Remove a notificação após 5 segundos
+    setTimeout(() => {
+        notification.classList.remove('visible');
+        // O evento 'transitionend' garante que o elemento só seja removido após a animação de saída.
+        notification.addEventListener('transitionend', () => notification.remove());
+    }, 5000);
+}
+
 
 export function registerServiceWorker() {
     if ('serviceWorker' in navigator) {
