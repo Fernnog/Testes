@@ -1,32 +1,33 @@
-// index.js (no diretório 'functions' do seu projeto Firebase)
-
 // Importa os módulos necessários
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const { google } = require("googleapis");
 
-// Inicializa o Firebase Admin SDK
+// Inicializa o Firebase Admin SDK para ter acesso a outros serviços do Firebase, se necessário.
 admin.initializeApp();
 
 // --- Configuração do Cliente OAuth2 ---
-// As credenciais devem ser configuradas no ambiente do Firebase usando a CLI:
-// firebase functions:config:set google.client_id="589137978493-7l0j7dt1u8r53ek5h9982lnipgnou8nk.apps.googleusercontent.com" google.client_secret="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"
+// As credenciais são carregadas de forma segura a partir da configuração do ambiente do Firebase.
+// NUNCA exponha o client_secret diretamente no código.
 const CLIENT_ID = functions.config().google.client_id;
 const CLIENT_SECRET = functions.config().google.client_secret;
+// Este URI de redirecionamento é simbólico para o fluxo no servidor e deve corresponder
+// ao que foi configurado no Google Cloud Console.
 const REDIRECT_URI = "https://www.gstatic.com/firebasejs/auth/handler.html";
 
 const oauth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
 
 /**
- * Função principal na nuvem, acionada via HTTPS (onCall).
- * Sincroniza eventos de leitura com o Google Agenda do usuário.
+ * Função principal na nuvem, acionada via HTTPS pelo front-end (onCall).
+ * Responsável por sincronizar os eventos de leitura com o Google Agenda do usuário.
  *
- * @param {object} data - Dados enviados pelo cliente.
- * @param {string} data.accessToken - Token de acesso OAuth2 do usuário.
- * @param {Array<object>} data.eventos - Eventos para criar ou atualizar.
- * @param {Array<string>} data.eventosParaDeletar - IDs de eventos para deletar.
- * @param {object} context - Informações de autenticação do usuário.
- * @returns {Promise<object>} Um objeto com o resultado detalhado da operação.
+ * @param {object} data - O objeto de dados enviado pelo cliente.
+ * @param {string} data.accessToken - O token de acesso OAuth2 do usuário.
+ * @param {Array<object>} data.eventos - Um array de eventos a serem sincronizados.
+ *    Cada evento deve ter: summary, description, start, end, e um 'calendarEventId' (null se for novo).
+ * @param {Array<string>} data.eventosParaDeletar - IDs de eventos que foram removidos do plano e devem ser deletados da agenda.
+ * @param {object} context - Informações de autenticação do usuário que fez a chamada.
+ * @returns {Promise<object>} Um objeto com o resultado da operação.
  */
 exports.sincronizarGoogleAgenda = functions.https.onCall(async (data, context) => {
   // 1. Verificação de Segurança: Garante que o usuário está autenticado.
@@ -38,10 +39,10 @@ exports.sincronizarGoogleAgenda = functions.https.onCall(async (data, context) =
   }
 
   // 2. Validação dos Dados de Entrada
-  if (!data.accessToken || !Array.isArray(data.eventos) || !Array.isArray(data.eventosParaDeletar)) {
+  if (!data.accessToken || !Array.isArray(data.eventos)) {
      throw new functions.https.HttpsError(
       "invalid-argument",
-      "O token de acesso e as listas de eventos são obrigatórios."
+      "O token de acesso e a lista de eventos são obrigatórios."
     );
   }
 
@@ -56,18 +57,21 @@ exports.sincronizarGoogleAgenda = functions.https.onCall(async (data, context) =
     erros: [],
   };
 
-  // --- Processa eventos para criar ou atualizar ---
+  // --- Lógica de Sincronização ---
+  // Esta seção implementa a melhoria de UX para evitar duplicatas.
+
+  // Processa eventos para criar ou atualizar
   for (const evento of data.eventos) {
     const recursoEvento = {
       summary: evento.summary,
       description: evento.description,
-      start: evento.start,
-      end: evento.end,
+      start: evento.start, // { dateTime: 'YYYY-MM-DDTHH:mm:ss', timeZone: '...' }
+      end: evento.end,     // { dateTime: 'YYYY-MM-DDTHH:mm:ss', timeZone: '...' }
     };
 
     try {
       if (evento.calendarEventId) {
-        // ATUALIZA o evento existente
+        // Se já existe um ID, ATUALIZA o evento
         await calendar.events.update({
           calendarId: "primary",
           eventId: evento.calendarEventId,
@@ -75,14 +79,14 @@ exports.sincronizarGoogleAgenda = functions.https.onCall(async (data, context) =
         });
         resultados.atualizados.push(evento.calendarEventId);
       } else {
-        // CRIA um novo evento
+        // Se não existe ID, CRIA um novo evento
         const novoEvento = await calendar.events.insert({
           calendarId: "primary",
           resource: recursoEvento,
         });
         // Retorna o novo ID para o front-end poder salvar
         resultados.criados.push({
-            diaId: evento.diaId, // ID do dia do plano para mapeamento
+            diaId: evento.diaId, // O front-end precisa enviar um ID do dia do plano
             novoCalendarEventId: novoEvento.data.id 
         });
       }
@@ -95,31 +99,35 @@ exports.sincronizarGoogleAgenda = functions.https.onCall(async (data, context) =
     }
   }
 
-  // --- Processa eventos para deletar ---
-  for (const eventId of data.eventosParaDeletar) {
-      try {
-          await calendar.events.delete({
-              calendarId: "primary",
-              eventId: eventId,
-          });
-          resultados.deletados.push(eventId);
-      } catch (error) {
-          // Erro '410 Gone' significa que o usuário já deletou o evento manualmente.
-          // Isso não é um erro crítico, então contamos como sucesso na deleção.
-          if (error.code !== 410) {
-              resultados.erros.push({
-                  diaId: eventId,
-                  error: `Falha ao deletar: ${error.message}`
+  // Processa eventos para deletar
+  if (data.eventosParaDeletar && data.eventosParaDeletar.length > 0) {
+      for (const eventId of data.eventosParaDeletar) {
+          try {
+              await calendar.events.delete({
+                  calendarId: "primary",
+                  eventId: eventId,
               });
-               console.error("Erro ao deletar evento:", error.message);
-          } else {
-              // O evento já não existia, consideramos como 'deletado' com sucesso.
               resultados.deletados.push(eventId);
+          } catch (error) {
+              // Um erro comum aqui é '410 Gone' se o usuário já deletou o evento manualmente.
+              // Podemos ignorá-lo ou registrá-lo.
+              if (error.code !== 410) {
+                  resultados.erros.push({
+                      diaId: eventId,
+                      error: `Falha ao deletar: ${error.message}`
+                  });
+                   console.error("Erro ao deletar evento:", error.message);
+              } else {
+                  // O evento já não existia, consideramos como 'deletado' com sucesso.
+                  resultados.deletados.push(eventId);
+              }
           }
       }
   }
 
-  // 4. Retorno detalhado para o Cliente
+
+  // 4. Retorno para o Cliente
+  // Envia uma resposta estruturada para que o front-end possa atualizar o estado local.
   console.log(`Sincronização concluída para o usuário ${context.auth.uid}. Resultados:`, resultados);
   return {
     success: true,
