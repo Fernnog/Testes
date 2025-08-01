@@ -12,7 +12,6 @@ import { auth as appAuth } from '../config/firebase-config.js'; // A instância 
 import * as state from './state.js';
 import * as firestoreService from './firestore-service.js';
 import * as ui from './ui.js';
-import { getFirebaseFunctions } from '../config/firebase-helpers.js'; // Helper para inicializar Functions
 
 /**
  * Prepara os eventos para a API do backend.
@@ -69,7 +68,6 @@ function _prepararDadosParaSincronizacao(planos) {
 /**
  * Atualiza o estado local dos planos com os resultados da sincronização e salva no Firestore.
  * @param {object} resultados - O objeto de resultados retornado pela Firebase Function.
- * @param {object} user - O usuário atual logado.
  */
 async function _atualizarEstadoEsalvar(resultados) {
     if (!resultados) return;
@@ -142,7 +140,7 @@ export async function sincronizarPlanos() {
         }
 
         // 3. Chamar a Firebase Function
-        const functions = getFirebaseFunctions(); // Helper para garantir inicialização
+        const functions = getFunctions(); // CORREÇÃO: Chamada direta ao SDK do Firebase.
         const syncFunction = httpsCallable(functions, 'sincronizarGoogleAgenda');
         
         const totalOperacoes = eventos.length + eventosParaDeletar.length;
