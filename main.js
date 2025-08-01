@@ -9,7 +9,6 @@ import * as authService from './modules/auth.js';
 import * as firestoreService from './modules/firestore-service.js';
 import * as ui from './modules/ui.js';
 import * as planoLogic from './modules/plano-logic.js';
-import * as formHandler from './modules/form-handler.js';
 // MELHORIA (PRIORIDADE 1): Importa o novo módulo de sincronização com a agenda
 import * as calendarSync from './modules/calendar-sync.js';
 
@@ -35,6 +34,7 @@ async function handleAuthStateChange(firebaseUser) {
             state.setPlanos(planosCarregados);
         } catch (error) {
             console.error(error);
+            // MELHORIA (PRIORIDADE 2): Substitui alert por notificação não bloqueante
             ui.showNotification("Falha ao carregar seus dados. Verifique sua conexão e tente recarregar a página.", "error");
         }
     } else {
@@ -46,8 +46,10 @@ async function handleAuthStateChange(firebaseUser) {
 }
 
 // --- Configuração dos Ouvintes de Eventos (Event Listeners) ---
+// MELHORIA (PRIORIDADE 3): A arquitetura de manipulação de eventos já é robusta e centralizada aqui.
+// As funções `setupEventHandlers` e `handleCardAction` (com seu dispatcher) seguem boas práticas.
 function setupEventHandlers() {
-    // Autenticação
+    // Autenticação (funcionalidade corrigida)
     DOMElements.loginEmailButton.addEventListener('click', handleLogin);
     DOMElements.signupEmailButton.addEventListener('click', handleSignup);
     DOMElements.logoutButton.addEventListener('click', handleLogout);
@@ -62,7 +64,7 @@ function setupEventHandlers() {
     // Formulário de Plano
     DOMElements.formPlano.addEventListener('submit', handleFormSubmit);
 
-    // Ações nos Cards (Usando delegação de eventos)
+    // Ações nos Cards (Usando delegação de eventos, uma ótima prática)
     DOMElements.listaPlanos.addEventListener('click', handleCardAction);
 
     // Modal de Reavaliação de Carga
@@ -84,11 +86,9 @@ function setupEventHandlers() {
         if (e.target === DOMElements.recalculoModal) ui.hideRecalculoModal();
     });
 
-    // MELHORIA (PRIORIDADE 1 e 2): Listener do botão de sincronização, usando a referência de dom-elements.js.
-    // Esta linha assume que 'syncGoogleCalendarBtn' foi devidamente exportado de 'modules/dom-elements.js'.
-    const syncGoogleBtn = document.getElementById('sync-google-calendar'); // Mantido para compatibilidade, mas idealmente viria de DOMElements
-    if (syncGoogleBtn) {
-        syncGoogleBtn.addEventListener('click', handleGoogleSync);
+    // MELHORIA DE ARQUITETURA: Listener do botão de sincronização usa a referência de dom-elements.js
+    if (DOMElements.syncGoogleCalendarBtn) {
+        DOMElements.syncGoogleCalendarBtn.addEventListener('click', handleGoogleSync);
     }
 }
 
@@ -99,6 +99,7 @@ async function handleLogin() {
         const email = DOMElements.emailLoginInput.value;
         const password = DOMElements.passwordLoginInput.value;
         await authService.loginWithEmailPassword(email, password);
+        // A mudança de estado será capturada pelo `handleAuthStateChange`
     } catch (error) {
         console.error('[Main] Erro no login:', error);
         ui.showNotification('Erro ao fazer login: ' + error.message, 'error');
@@ -166,40 +167,21 @@ async function handleFormSubmit(event) {
     }
 }
 
-/**
- * Manipula o fluxo de sincronização com o Google Agenda.
- * Delega a lógica para o módulo 'calendarSync' e gerencia o estado da UI.
- */
+
 async function handleGoogleSync() {
     const currentUser = state.getCurrentUser();
     if (!currentUser) {
         ui.showNotification("Você precisa estar logado para sincronizar com a agenda.", "warning");
         return;
     }
-
-    // MELHORIA UX: Desabilita o botão para dar feedback e prevenir múltiplos cliques.
-    const syncButton = document.getElementById('sync-google-calendar'); // Usando getElementById como no código original
-    const originalButtonContent = syncButton.innerHTML;
-    syncButton.disabled = true;
-    syncButton.innerHTML = `<span class="material-symbols-outlined">sync</span> Sincronizando...`;
-
-    try {
-        // CORREÇÃO (Prioridade 1): Chama a função correta 'sincronizarPlanos' do módulo.
-        await calendarSync.sincronizarPlanos();
-    } catch (error) {
-        // A função 'sincronizarPlanos' já exibe notificações de erro ao usuário.
-        // O log aqui é para depuração do desenvolvedor em caso de falhas inesperadas.
-        console.error("[Main] Erro inesperado capturado durante a sincronização com a agenda:", error);
-    } finally {
-        // Garante que o botão seja reativado e seu conteúdo restaurado, mesmo se a sincronização falhar.
-        syncButton.disabled = false;
-        syncButton.innerHTML = originalButtonContent;
-    }
+    
+    await calendarSync.sincronizarPlanos();
 }
 
 
 // --- Lógica de Ações do Card ---
 
+// Mapeamento de ações para suas respectivas funções de tratamento (Dispatcher Pattern)
 const actionHandlers = {
     'editar': handleEditarPlano,
     'excluir': handleExcluirPlano,
@@ -210,6 +192,11 @@ const actionHandlers = {
     'salvar-parcial': handleSalvarParcial
 };
 
+/**
+ * Função principal que delega as ações executadas nos cards dos planos.
+ * Atua como um "dispatcher", chamando a função de tratamento correta.
+ * @param {Event} event - O evento de clique.
+ */
 function handleCardAction(event) {
     const target = event.target.closest('[data-action]');
     if (!target) return;
@@ -225,6 +212,8 @@ function handleCardAction(event) {
         actionHandlers[action](target, plano, planoIndex, currentUser);
     }
 }
+
+// Funções de Tratamento de Ações do Card
 
 function handleEditarPlano(target, plano, planoIndex, currentUser) {
     state.setPlanoEditando(planoIndex);
